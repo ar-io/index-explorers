@@ -20,7 +20,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: npx playwright install --with-deps chromium
-      - run: pnpm --filter ./apps/* run build
+      - run: pnpm --filter "./apps/*" run build
       - run: pnpm e2e:live
         env:
           GW: https://turbo-gateway.com
