@@ -20,8 +20,10 @@ export const QUESTIONS: Question[] = [
     title: 'What do people keep on ArDrive?',
     sub: 'File types, by count and size',
     sql: "SELECT coalesce(content_type, '(no type)') AS type,\n       count(*) AS files,\n       round(sum(data_size) / power(2,30), 2) AS gib\nFROM uploads\nWHERE NOT is_record\nGROUP BY 1\nORDER BY gib DESC\nLIMIT 15;",
-    caption: 'File data uploaded through ArDrive {RANGE}, by its content type. Drive, folder and file records (small JSON) are left out.',
-    wideSql: "SELECT value AS type, uploads\nFROM tag_counts('Content-Type')\nORDER BY uploads DESC\nLIMIT 15;",
+    caption:
+      'File data uploaded through ArDrive {RANGE}, by its content type. Drive, folder and file records (small JSON) are left out.',
+    wideSql:
+      "SELECT value AS type, uploads\nFROM tag_counts('Content-Type')\nORDER BY uploads DESC\nLIMIT 15;",
     wideCaption:
       'Uploads by content type over <strong>everything the index holds</strong>, as exact counts from the index’s own lookups (kilobytes to read). Records count here too (application/json). Bytes need a scan: pick a period for those.',
   },
@@ -30,7 +32,8 @@ export const QUESTIONS: Question[] = [
     sub: 'Public and private, by month',
     sql: "SELECT strftime(date_trunc('month', created_at), '%Y-%m') AS month,\n       count(*) FILTER (WHERE privacy = 'public') AS public_drives,\n       count(*) FILTER (WHERE privacy = 'private') AS private_drives,\n       count(DISTINCT owner) AS owners\nFROM drives\nGROUP BY date_trunc('month', created_at)\nORDER BY date_trunc('month', created_at);",
     caption: 'Drives whose record was written {RANGE}, by the month the app stamped on it.',
-    wideSql: "SELECT value AS kind, uploads AS records\nFROM tag_counts('Entity-Type')\nORDER BY records DESC;",
+    wideSql:
+      "SELECT value AS kind, uploads AS records\nFROM tag_counts('Entity-Type')\nORDER BY records DESC;",
     wideCaption:
       'Drive, folder, file and snapshot records over <strong>everything the index holds</strong>: exact counts from the lookups. Drives by month need a scan: pick a period.',
   },
@@ -38,20 +41,24 @@ export const QUESTIONS: Question[] = [
     title: 'Who stores the most?',
     sub: 'Wallets ranked by bytes',
     sql: 'SELECT u.owner AS owner,\n       count(*) AS uploads,\n       round(sum(u.data_size) / power(2,30), 2) AS gib,\n       count(DISTINCT e.drive_id) FILTER (WHERE e.drive_id IS NOT NULL) AS drives_touched\nFROM uploads u\nLEFT JOIN entities e USING (id, height)\nGROUP BY u.owner\nORDER BY gib DESC\nLIMIT 15;',
-    caption: 'Wallets by bytes uploaded through ArDrive {RANGE}. Open one by pasting its address above.',
+    caption:
+      'Wallets by bytes uploaded through ArDrive {RANGE}. Open one by pasting its address above.',
   },
   {
     title: 'Biggest files',
     sub: 'The largest uploads',
     sql: 'SELECT id, owner, round(data_size / power(2,20), 1) AS mib, content_type, created_at\nFROM uploads\nWHERE NOT is_record\nORDER BY data_size DESC\nLIMIT 15;',
-    caption: 'The largest file data uploaded {RANGE}. Paste an id above to find the drive it belongs to.',
+    caption:
+      'The largest file data uploaded {RANGE}. Paste an id above to find the drive it belongs to.',
   },
   {
     title: 'Public or private?',
     sub: 'How much is encrypted',
     sql: "SELECT CASE WHEN cipher IS NULL THEN 'public' ELSE 'private' END AS how,\n       count(*) AS uploads,\n       round(sum(data_size) / power(2,30), 2) AS gib,\n       count(DISTINCT owner) AS wallets\nFROM uploads\nWHERE NOT is_record\nGROUP BY 1\nORDER BY gib DESC;",
-    caption: 'File data {RANGE}: private files are encrypted before upload with a key only the drive owner holds, so only their size is known.',
-    wideSql: "WITH c AS (SELECT sum(uploads) AS private FROM tag_counts('Cipher'))\nSELECT 'private' AS how, private AS uploads FROM c\nUNION ALL\nSELECT 'public', {TOTAL} - private FROM c;",
+    caption:
+      'File data {RANGE}: private files are encrypted before upload with a key only the drive owner holds, so only their size is known.',
+    wideSql:
+      "WITH c AS (SELECT sum(uploads) AS private FROM tag_counts('Cipher'))\nSELECT 'private' AS how, private AS uploads FROM c\nUNION ALL\nSELECT 'public', {TOTAL} - private FROM c;",
     wideCaption:
       'Uploads with a Cipher tag (encrypted) against all {TOTAL_TEXT} uploads the publication signs, over <strong>everything the index holds</strong>: exact counts from the lookups. Bytes need a scan: pick a period.',
   },
@@ -60,7 +67,8 @@ export const QUESTIONS: Question[] = [
     sub: 'What wrote the uploads',
     sql: 'SELECT app, app_version, count(*) AS uploads, round(sum(data_size) / power(2,30), 2) AS gib\nFROM uploads\nGROUP BY 1, 2\nORDER BY uploads DESC\nLIMIT 15;',
     caption: 'Every upload names the app that made it (App-Name and App-Version tags), {RANGE}.',
-    wideSql: "SELECT value AS app, uploads\nFROM tag_counts('App-Name')\nORDER BY uploads DESC\nLIMIT 15;",
+    wideSql:
+      "SELECT value AS app, uploads\nFROM tag_counts('App-Name')\nORDER BY uploads DESC\nLIMIT 15;",
     wideCaption:
       'Uploads by app over <strong>everything the index holds</strong>: exact counts from the lookups. Versions and bytes need a scan: pick a period.',
   },
@@ -68,7 +76,8 @@ export const QUESTIONS: Question[] = [
     title: 'New wallets',
     sub: 'First-time uploaders, by month',
     sql: "WITH firsts AS (\n  SELECT owner, min(created_at) AS first_seen FROM uploads GROUP BY owner\n)\nSELECT strftime(date_trunc('month', first_seen), '%Y-%m') AS month, count(*) AS new_wallets\nFROM firsts\nGROUP BY date_trunc('month', first_seen)\nORDER BY date_trunc('month', first_seen);",
-    caption: 'Wallets whose first ArDrive upload in this period fell in each month. Over a short period, every wallet looks new: widen it for the real picture.',
+    caption:
+      'Wallets whose first ArDrive upload in this period fell in each month. Over a short period, every wallet looks new: widen it for the real picture.',
   },
   {
     title: 'Where do the bytes go?',
@@ -85,7 +94,10 @@ export interface Preset {
 }
 
 export const PRESETS: Preset[] = [
-  { label: 'Newest drives', sql: 'SELECT drive_id, name_id, owner, privacy, created_at, app\nFROM drives\nORDER BY created_at DESC\nLIMIT 25;' },
+  {
+    label: 'Newest drives',
+    sql: 'SELECT drive_id, name_id, owner, privacy, created_at, app\nFROM drives\nORDER BY created_at DESC\nLIMIT 25;',
+  },
   {
     label: 'Busiest drives',
     sql: 'SELECT drive_id, count(*) AS files, count(DISTINCT owner) AS writers, min(created_at) AS first, max(created_at) AS last\nFROM files\nGROUP BY drive_id\nORDER BY files DESC\nLIMIT 15;',
@@ -109,8 +121,14 @@ export const PRESETS: Preset[] = [
   },
 ];
 
-export const presetSql = (p: Preset, sampleWallet: string | null, sampleDrive: string | null): string =>
-  p.sql.replaceAll('{WALLET}', sampleWallet ?? 'paste-an-address-here').replaceAll('{DRIVE}', sampleDrive ?? 'paste-a-drive-id-here');
+export const presetSql = (
+  p: Preset,
+  sampleWallet: string | null,
+  sampleDrive: string | null,
+): string =>
+  p.sql
+    .replaceAll('{WALLET}', sampleWallet ?? 'paste-an-address-here')
+    .replaceAll('{DRIVE}', sampleDrive ?? 'paste-a-drive-id-here');
 
 /** Splits a caption with <strong> marks into segments, so nothing is rendered as HTML. */
 export function captionSegments(text: string): { text: string; strong: boolean }[] {

@@ -64,7 +64,9 @@ export function encodeSpec(spec: RangeSpec): string {
 
 export function decodeSpec(s: string): RangeSpec {
   const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
-  const spec = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))) as RangeSpec;
+  const spec = JSON.parse(
+    new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))),
+  ) as RangeSpec;
   if (
     spec.v !== RANGE_VERSION ||
     !/^[0-9a-f]{64}$/.test(spec.ih) ||

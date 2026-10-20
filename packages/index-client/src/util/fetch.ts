@@ -15,9 +15,11 @@ export function describeStatus(status: number, what: string): string {
   if (status === 402) {
     return `${what} needs payment: this gateway meters these bytes and the free allowance for your address is spent. Pick another gateway, or wait for it to refill.`;
   }
-  if (status === 429) return `${what} was rate limited by this gateway. Wait a moment, or pick another gateway.`;
+  if (status === 429)
+    return `${what} was rate limited by this gateway. Wait a moment, or pick another gateway.`;
   if (status === 404) return `${what} is not on this gateway (404).`;
-  if (status === 503) return `${what} is temporarily unavailable; the publisher may be replacing a band.`;
+  if (status === 503)
+    return `${what} is temporarily unavailable; the publisher may be replacing a band.`;
   if (status >= 500) return `${what} failed: the gateway returned ${status}.`;
   return `${what} failed: HTTP ${status}.`;
 }
@@ -103,7 +105,8 @@ export async function fetchWithProgress(
       if (done) break;
       kick();
       if (exact) {
-        if (got + value.length > exact.length) throw new Error(`${label} is longer than its signed size`);
+        if (got + value.length > exact.length)
+          throw new Error(`${label} is longer than its signed size`);
         exact.set(value, got);
       } else parts.push(value);
       got += value.length;
@@ -131,7 +134,8 @@ export async function fetchWithProgress(
       throw new Error(
         `${label} stopped arriving for ${STALL_MS / 1000} seconds. The gateway may be overloaded; try again, or pick another.`,
       );
-    if (e instanceof TypeError) throw new Error(`${label} could not be fetched: the gateway did not answer.`);
+    if (e instanceof TypeError)
+      throw new Error(`${label} could not be fetched: the gateway did not answer.`);
     throw e;
   } finally {
     clearTimeout(timer);

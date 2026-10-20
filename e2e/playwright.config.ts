@@ -44,8 +44,8 @@ export default defineConfig({
   ],
   webServer: {
     command: LIVE
-      ? `node tools/fixture-gateway/server.mjs --site apps/ardrive-explorer/dist --port ${PORT}`
-      : `node tools/fixture-gateway/server.mjs --site apps/ardrive-explorer/dist-e2e --port ${PORT}`,
+      ? `node tools/fixture-gateway/server.mjs --site apps/ardrive-explorer/dist --mount /l1/=apps/arweave-l1-explorer/dist --mount /network-index/=apps/network-index/dist --port ${PORT}`
+      : `node tools/fixture-gateway/server.mjs --site apps/ardrive-explorer/dist-e2e --mount /l1/=apps/arweave-l1-explorer/dist-e2e --mount /network-index/=apps/network-index/dist-e2e --port ${PORT}`,
     cwd: ROOT,
     port: PORT,
     reuseExistingServer: true,

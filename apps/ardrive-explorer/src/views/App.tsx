@@ -13,7 +13,9 @@ export function App() {
       <Explore />
       <section class="panel" id="ask">
         <p class="panel-label">Ask the data</p>
-        <h2 class="panel-title">Questions over the period chosen above. Answers are computed in this tab.</h2>
+        <h2 class="panel-title">
+          Questions over the period chosen above. Answers are computed in this tab.
+        </h2>
         <Questions />
         <SqlDrawer />
         <DataSource />
@@ -45,11 +47,17 @@ export function App() {
             <ul>
               <li>
                 <a id="foot-pub" href={`${home}/ar-io/indexes`} target="_blank" rel="noopener">
-                  {pub.publisherName ? `${pub.publisherName}'s signed publication` : 'The signed publication'}
+                  {pub.publisherName
+                    ? `${pub.publisherName}'s signed publication`
+                    : 'The signed publication'}
                 </a>
               </li>
               <li>
-                <a href="https://docs.ar.io/build/advanced/index-publications" target="_blank" rel="noopener">
+                <a
+                  href="https://docs.ar.io/build/advanced/index-publications"
+                  target="_blank"
+                  rel="noopener"
+                >
                   Index publications, explained
                 </a>
               </li>
@@ -72,13 +80,15 @@ export function App() {
               <code>{`duckdb -c "SELECT count(*) FROM read_parquet('${home}/ar-io/indexes/ardrive-l2/<band>/data_items.parquet')"`}</code>
             </pre>
             <p class="note" style="margin-top:9px;font-size:13px">
-              Verify first: <code>ar-io-node index-l2-verify --bands-dir …</code> checks every band against its signed digests and a sample against the chain.
+              Verify first: <code>ar-io-node index-l2-verify --bands-dir …</code> checks every band
+              against its signed digests and a sample against the chain.
             </p>
           </div>
         </div>
         <p class="foot-legal">
-          Built on the ar.io network's verifiable indexes. ArDrive is a product of Permanent Data Solutions. This page holds no accounts and sets no cookies;
-          what it remembers (checked pieces of the index) stays in your browser.
+          Built on the ar.io network's verifiable indexes. ArDrive is a product of Permanent Data
+          Solutions. This page holds no accounts and sets no cookies; what it remembers (checked
+          pieces of the index) stays in your browser.
         </p>
       </footer>
     </div>

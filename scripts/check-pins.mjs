@@ -17,11 +17,19 @@ const report = (ok, what) => {
   if (!ok) failed = true;
 };
 
-const pkg = JSON.parse(readFileSync(path.join(ROOT, 'node_modules/@duckdb/duckdb-wasm/package.json'), 'utf8'));
-report(pkg.version === LOCK.version, `npm @duckdb/duckdb-wasm is ${pkg.version} (lock ${LOCK.version})`);
+const pkg = JSON.parse(
+  readFileSync(path.join(ROOT, 'node_modules/@duckdb/duckdb-wasm/package.json'), 'utf8'),
+);
+report(
+  pkg.version === LOCK.version,
+  `npm @duckdb/duckdb-wasm is ${pkg.version} (lock ${LOCK.version})`,
+);
 for (const k of ['worker', 'wasm']) {
   const bytes = readFileSync(path.join(ROOT, 'node_modules/@duckdb/duckdb-wasm', LOCK[k].npm));
-  report(sha(bytes) === LOCK[k].sha256 && bytes.length === LOCK[k].size, `npm ${LOCK[k].npm}: ${sha(bytes).slice(0, 16)}… ${bytes.length} bytes`);
+  report(
+    sha(bytes) === LOCK[k].sha256 && bytes.length === LOCK[k].size,
+    `npm ${LOCK[k].npm}: ${sha(bytes).slice(0, 16)}… ${bytes.length} bytes`,
+  );
 }
 
 const minHosts = Number(process.env.PIN_HOSTS || 2);

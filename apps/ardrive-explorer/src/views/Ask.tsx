@@ -17,7 +17,13 @@ export function Questions() {
           disabled={!enabled}
           aria-pressed={asked === i ? 'true' : 'false'}
           onClick={() => {
-            void flows.ask(i).then(() => document.getElementById('view')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+            void flows
+              .ask(i)
+              .then(() =>
+                document
+                  .getElementById('view')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+              );
           }}
         >
           <span>{q.title}</span>
@@ -33,9 +39,15 @@ export function SqlDrawer() {
   const sql = store.sql.value;
   const p = store.currentPeriod();
   const when = p ? fmtRange(timeAt(session.bands, p.lo), timeAt(session.bands, p.hi)) : null;
-  const fill = (i: number) => presetSql(PRESETS[i]!, store.sampleWallet.value, store.sampleDrive.value);
+  const fill = (i: number) =>
+    presetSql(PRESETS[i]!, store.sampleWallet.value, store.sampleDrive.value);
   return (
-    <details class="sqlcell" id="editor" open={store.editorOpen.value} onToggle={(e) => (store.editorOpen.value = (e.target as HTMLDetailsElement).open)}>
+    <details
+      class="sqlcell"
+      id="editor"
+      open={store.editorOpen.value}
+      onToggle={(e) => (store.editorOpen.value = (e.target as HTMLDetailsElement).open)}
+    >
       <summary>
         <span class="sqlcell-title">
           <span class="when-closed">Show the SQL</span>
@@ -70,12 +82,22 @@ export function SqlDrawer() {
           ))}
         </div>
         <label for="sql" class="note" style="display:block;margin:4px 0 6px">
-          SQL over <code>drives</code>, <code>folders</code>, <code>files</code>, <code>entities</code>, <code>uploads</code> and <code>tags</code>
+          SQL over <code>drives</code>, <code>folders</code>, <code>files</code>,{' '}
+          <code>entities</code>, <code>uploads</code> and <code>tags</code>
         </label>
-        <textarea id="sql" spellcheck={false} value={sql} onInput={(e) => (store.sql.value = (e.target as HTMLTextAreaElement).value)} />
+        <textarea
+          id="sql"
+          spellcheck={false}
+          value={sql}
+          onInput={(e) => (store.sql.value = (e.target as HTMLTextAreaElement).value)}
+        />
         <div class="toolbar">
           <p class="runscope">
-            <span id="runscope">{p ? `Over ${p.label}${when ? `, ${when}` : ''} · blocks ${num(p.lo)} to ${num(p.hi)}` : 'Over the period chosen at the top'}</span>{' '}
+            <span id="runscope">
+              {p
+                ? `Over ${p.label}${when ? `, ${when}` : ''} · blocks ${num(p.lo)} to ${num(p.hi)}`
+                : 'Over the period chosen at the top'}
+            </span>{' '}
             <button
               type="button"
               class="linkbtn"
@@ -112,43 +134,53 @@ export function SqlDrawer() {
                   <tr>
                     <td>drives</td>
                     <td>
-                      One row per drive: its newest record. <code>drive_id</code>, <code>name_id</code> (the record to fetch the name from), <code>owner</code>,{' '}
-                      <code>privacy</code>, <code>created_at</code>, <code>app</code>, <code>app_version</code>, <code>arfs</code>, <code>versions</code>
+                      One row per drive: its newest record. <code>drive_id</code>,{' '}
+                      <code>name_id</code> (the record to fetch the name from), <code>owner</code>,{' '}
+                      <code>privacy</code>, <code>created_at</code>, <code>app</code>,{' '}
+                      <code>app_version</code>, <code>arfs</code>, <code>versions</code>
                     </td>
                   </tr>
                   <tr>
                     <td>folders</td>
                     <td>
-                      One row per folder: <code>folder_id</code>, <code>drive_id</code>, <code>parent_folder_id</code>, <code>owner</code>, <code>created_at</code>,{' '}
+                      One row per folder: <code>folder_id</code>, <code>drive_id</code>,{' '}
+                      <code>parent_folder_id</code>, <code>owner</code>, <code>created_at</code>,{' '}
                       <code>versions</code>
                     </td>
                   </tr>
                   <tr>
                     <td>files</td>
                     <td>
-                      One row per file: <code>file_id</code>, <code>drive_id</code>, <code>parent_folder_id</code>, <code>owner</code>, <code>created_at</code>,{' '}
-                      <code>versions</code>, <code>is_hidden</code>. Its size and name are in its metadata record (<code>name_id</code>), not the index
+                      One row per file: <code>file_id</code>, <code>drive_id</code>,{' '}
+                      <code>parent_folder_id</code>, <code>owner</code>, <code>created_at</code>,{' '}
+                      <code>versions</code>, <code>is_hidden</code>. Its size and name are in its
+                      metadata record (<code>name_id</code>), not the index
                     </td>
                   </tr>
                   <tr>
                     <td>entities</td>
                     <td>
-                      Every ArFS record, every version: <code>id</code>, <code>height</code>, <code>created_at</code>, <code>kind</code> (drive, folder, file, snapshot),{' '}
-                      <code>drive_id</code>, <code>entity_id</code>, <code>parent_folder_id</code>, <code>privacy</code>, <code>cipher</code>, <code>arfs</code>, <code>app</code>,{' '}
-                      <code>app_version</code>, <code>owner</code>, <code>record_size</code>
+                      Every ArFS record, every version: <code>id</code>, <code>height</code>,{' '}
+                      <code>created_at</code>, <code>kind</code> (drive, folder, file, snapshot),{' '}
+                      <code>drive_id</code>, <code>entity_id</code>, <code>parent_folder_id</code>,{' '}
+                      <code>privacy</code>, <code>cipher</code>, <code>arfs</code>, <code>app</code>
+                      , <code>app_version</code>, <code>owner</code>, <code>record_size</code>
                     </td>
                   </tr>
                   <tr>
                     <td>uploads</td>
                     <td>
-                      Every upload ArDrive made in the period, records and file data alike: <code>id</code>, <code>height</code>, <code>created_at</code>, <code>owner</code>,{' '}
-                      <code>data_size</code>, <code>content_type</code>, <code>bundle</code>, <code>app</code>, <code>app_version</code>
+                      Every upload ArDrive made in the period, records and file data alike:{' '}
+                      <code>id</code>, <code>height</code>, <code>created_at</code>,{' '}
+                      <code>owner</code>, <code>data_size</code>, <code>content_type</code>,{' '}
+                      <code>bundle</code>, <code>app</code>, <code>app_version</code>
                     </td>
                   </tr>
                   <tr>
                     <td>tags</td>
                     <td>
-                      Every tag on every upload: <code>id</code>, <code>height</code>, <code>name</code>, <code>value</code>
+                      Every tag on every upload: <code>id</code>, <code>height</code>,{' '}
+                      <code>name</code>, <code>value</code>
                     </td>
                   </tr>
                 </tbody>
@@ -160,7 +192,11 @@ export function SqlDrawer() {
                 <tbody>
                   <tr>
                     <td>drive('…')</td>
-                    <td>Every record of one drive, by its Drive-Id, whatever the period. Reads the drive's whole span of blocks across every band: use Find above for the cheap path</td>
+                    <td>
+                      Every record of one drive, by its Drive-Id, whatever the period. Reads the
+                      drive's whole span of blocks across every band: use Find above for the cheap
+                      path
+                    </td>
                   </tr>
                   <tr>
                     <td>wallet_totals('…')</td>
@@ -183,16 +219,21 @@ export function SqlDrawer() {
               <h3 style="margin-top:14px">Tips</h3>
               <ul class="tips">
                 <li>
-                  Every table is already limited to the period; add <code>WHERE height BETWEEN</code> to read even less.
+                  Every table is already limited to the period; add{' '}
+                  <code>WHERE height BETWEEN</code> to read even less.
                 </li>
                 <li>
-                  <code>created_at</code> is the Unix-Time the app wrote; <code>date_trunc('month', created_at)</code> groups by month.
+                  <code>created_at</code> is the Unix-Time the app wrote;{' '}
+                  <code>date_trunc('month', created_at)</code> groups by month.
                 </li>
                 <li>
-                  A file's bytes are a separate upload named in its record as <code>dataTxId</code>; the record itself is tiny.
+                  A file's bytes are a separate upload named in its record as <code>dataTxId</code>;
+                  the record itself is tiny.
                 </li>
                 <li>A listing shows 200 rows; CSV and JSON carry them all.</li>
-                <li>Questions over periods larger than {mb(CONFIG.askFirstPeriod)} of index ask first.</li>
+                <li>
+                  Questions over periods larger than {mb(CONFIG.askFirstPeriod)} of index ask first.
+                </li>
               </ul>
             </div>
           </div>
@@ -254,7 +295,13 @@ export function DataSource() {
               }}
             />
           </div>
-          <button id="connect" type="button" class="secondary" disabled={pub.status === 'reading'} onClick={() => void session.readPublication()}>
+          <button
+            id="connect"
+            type="button"
+            class="secondary"
+            disabled={pub.status === 'reading'}
+            onClick={() => void session.readPublication()}
+          >
             Read publication
           </button>
         </div>
@@ -268,7 +315,13 @@ export function DataSource() {
               {pub.publisher ?? '(none)'}
             </dd>
             {pub.publisher && /^[A-Za-z0-9_-]{43,44}$/.test(pub.publisher) ? (
-              <a class="fact-link" id="f-portal" href={`${CONFIG.portalUrl}/#/gateways/${pub.publisher}`} target="_blank" rel="noopener">
+              <a
+                class="fact-link"
+                id="f-portal"
+                href={`${CONFIG.portalUrl}/#/gateways/${pub.publisher}`}
+                target="_blank"
+                rel="noopener"
+              >
                 On the Network Portal
               </a>
             ) : null}
@@ -283,7 +336,9 @@ export function DataSource() {
           </div>
           <div class="fact">
             <dt>Blocks</dt>
-            <dd id="f-range">{pub.bands.length ? `${num(pub.bands[0]!.from)} – ${num(pub.tip)}` : ''}</dd>
+            <dd id="f-range">
+              {pub.bands.length ? `${num(pub.bands[0]!.from)} – ${num(pub.tip)}` : ''}
+            </dd>
           </div>
         </dl>
         <p class="note" id="rangenote">
@@ -291,19 +346,29 @@ export function DataSource() {
             ? ''
             : range.ok
               ? 'Range reads are on: a listing fetches only the parts of each file it touches, and every piece is checked as it arrives.' +
-                (noTorrent ? ` ${noTorrent} band${noTorrent === 1 ? ' has' : 's have'} no torrent and ${noTorrent === 1 ? 'is' : 'are'} downloaded whole.` : '')
+                (noTorrent
+                  ? ` ${noTorrent} band${noTorrent === 1 ? ' has' : 's have'} no torrent and ${noTorrent === 1 ? 'is' : 'are'} downloaded whole.`
+                  : '')
               : `Range reads are off here (${range.why}), so periods are downloaded whole and hashed, up to ${mb(CONFIG.loadCap)}.`}
         </p>
         <p class="note" id="scopenote">
           {p
             ? session.periodDisabled(p)
-              ? `${p.label} is ${mb(session.wholeSize(p.bands))} to download whole, too much for a tab. ` + (range.ok ? 'Some of its bands have no torrent to read them in ranges.' : 'This browser cannot read in ranges (see above).')
-              : (when ? when + '. ' : '') + `Blocks ${num(p.lo)} to ${num(p.hi)}; about ${mb(p.size)} of index` + (p.bands.every((b) => session.isRangeable(b)) ? ', read only as far as a question needs.' : ' to download.')
+              ? `${p.label} is ${mb(session.wholeSize(p.bands))} to download whole, too much for a tab. ` +
+                (range.ok
+                  ? 'Some of its bands have no torrent to read them in ranges.'
+                  : 'This browser cannot read in ranges (see above).')
+              : (when ? when + '. ' : '') +
+                `Blocks ${num(p.lo)} to ${num(p.hi)}; about ${mb(p.size)} of index` +
+                (p.bands.every((b) => session.isRangeable(b))
+                  ? ', read only as far as a question needs.'
+                  : ' to download.')
             : ''}
         </p>
         {tipBand ? (
           <p class="note">
-            Do the same on the command line: <code id="cli">{`duckdb -c "SELECT count(*) FROM read_parquet('${tipBand.files.get('data_items.parquet')?.url ?? ''}')"`}</code>
+            Do the same on the command line:{' '}
+            <code id="cli">{`duckdb -c "SELECT count(*) FROM read_parquet('${tipBand.files.get('data_items.parquet')?.url ?? ''}')"`}</code>
           </p>
         ) : null}
       </div>

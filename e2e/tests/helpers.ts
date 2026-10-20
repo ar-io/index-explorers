@@ -39,15 +39,29 @@ export const KNOWN: Known = LIVE
     }
   : (JSON.parse(readFileSync(path.join(ROOT, 'fixtures/synthetic/known.json'), 'utf8')) as Known);
 
-export const url = (frag: string): string => `#gw=${encodeURIComponent(GW)}&period=month${frag ? '&' + frag : ''}`;
+export const url = (frag: string): string =>
+  `#gw=${encodeURIComponent(GW)}&period=month${frag ? '&' + frag : ''}`;
 
-export const status = (page: Page) => page.locator('#status').innerText().catch(() => '');
-export const title = (page: Page) => page.locator('#viewtitle').innerText().catch(() => '');
+export const status = (page: Page) =>
+  page
+    .locator('#status')
+    .innerText()
+    .catch(() => '');
+export const title = (page: Page) =>
+  page
+    .locator('#viewtitle')
+    .innerText()
+    .catch(() => '');
 export const rows = (page: Page) => page.locator('#results tbody tr').count();
 export const driveRows = (page: Page) => page.locator('#b-list tbody tr.b-row').count();
 
 /** Polls until `fn` is true, logging the status on a timeout. */
-export async function until(page: Page, fn: () => Promise<boolean>, ms: number, what: string): Promise<boolean> {
+export async function until(
+  page: Page,
+  fn: () => Promise<boolean>,
+  ms: number,
+  what: string,
+): Promise<boolean> {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
     if (await fn()) return true;
@@ -59,13 +73,20 @@ export async function until(page: Page, fn: () => Promise<boolean>, ms: number, 
 
 /** Clears the status line through the store: the DOM belongs to the renderer. */
 export const clearStatus = (page: Page) =>
-  page.evaluate(() => (window as unknown as { __explorer: { store: { say(t: string): void } } }).__explorer.store.say(''));
+  page.evaluate(() =>
+    (window as unknown as { __explorer: { store: { say(t: string): void } } }).__explorer.store.say(
+      '',
+    ),
+  );
 
 /** Waits for a listing or query to answer (a receipt, a row count, an error, or a cost card). */
 export const waitAnswer = (page: Page, ms = LIVE ? 240_000 : 60_000) =>
   until(
     page,
-    async () => /rows? in|Read |Nothing new|Answered from/.test(await status(page)) || /error|could not|bad/i.test(await status(page)) || (await page.locator('#cost').isVisible()),
+    async () =>
+      /rows? in|Read |Nothing new|Answered from/.test(await status(page)) ||
+      /error|could not|bad/i.test(await status(page)) ||
+      (await page.locator('#cost').isVisible()),
     ms,
     'answer',
   );
@@ -77,12 +98,21 @@ export async function openPage(page: Page, frag = ''): Promise<void> {
     console.log('pageerror', String(e).slice(0, 300));
   });
   await page.goto(url(frag));
-  await until(page, async () => (await page.locator('#proof').getAttribute('data-state')) !== 'run', 90_000, 'proof');
-  expect(await page.locator('#proof').getAttribute('data-state'), await page.locator('#proof-text').innerText()).toBe('ok');
+  await until(
+    page,
+    async () => (await page.locator('#proof').getAttribute('data-state')) !== 'run',
+    90_000,
+    'proof',
+  );
+  expect(
+    await page.locator('#proof').getAttribute('data-state'),
+    await page.locator('#proof-text').innerText(),
+  ).toBe('ok');
   (page as unknown as { __errors: string[] }).__errors = errors;
 }
 
-export const pageErrors = (page: Page): string[] => (page as unknown as { __errors?: string[] }).__errors ?? [];
+export const pageErrors = (page: Page): string[] =>
+  (page as unknown as { __errors?: string[] }).__errors ?? [];
 
 /**
  * Clicks the n-th folder row and measures, inside the page, from the click to
@@ -91,11 +121,17 @@ export const pageErrors = (page: Page): string[] => (page as unknown as { __erro
  */
 export const openFolderMeasured = (page: Page, nth: number): Promise<number> =>
   page.evaluate(async (idx) => {
-    const rows = [...document.querySelectorAll('#b-list tbody tr.b-row')].filter((r) => r.querySelector('.ico-folder')) as HTMLElement[];
+    const rows = [...document.querySelectorAll('#b-list tbody tr.b-row')].filter((r) =>
+      r.querySelector('.ico-folder'),
+    ) as HTMLElement[];
     const before = document.querySelectorAll('#b-crumbs .crumb').length;
     const t = performance.now();
     rows[idx]!.click();
-    while (document.querySelectorAll('#b-crumbs .crumb').length === before && performance.now() - t < 5000) await new Promise((r) => requestAnimationFrame(r));
+    while (
+      document.querySelectorAll('#b-crumbs .crumb').length === before &&
+      performance.now() - t < 5000
+    )
+      await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
     return performance.now() - t;
   }, nth);

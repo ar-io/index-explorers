@@ -41,11 +41,19 @@ describe('NamePool', () => {
     const fetchRecord = async (id: string) => {
       calls++;
       if (id === 'short') return { status: 200, bytes: enc('{"name":"x"}') };
-      if (id === 'flaky') return calls < 3 ? { status: 503, bytes: new Uint8Array(0) } : { status: 200, bytes: enc('{"name":"ok"}') };
+      if (id === 'flaky')
+        return calls < 3
+          ? { status: 503, bytes: new Uint8Array(0) }
+          : { status: 200, bytes: enc('{"name":"ok"}') };
       return { status: 404, bytes: new Uint8Array(0) };
     };
     const got = new Map<string, { ok: boolean; why: string | null; name: string | null }>();
-    const pool = new NamePool({ fetchRecord, concurrency: 1, retryAfterMs: 1, onResult: (id, r) => got.set(id, r) });
+    const pool = new NamePool({
+      fetchRecord,
+      concurrency: 1,
+      retryAfterMs: 1,
+      onResult: (id, r) => got.set(id, r),
+    });
     pool.want('short', 500, true);
     await vi.waitFor(() => expect(got.has('short')).toBe(true));
     expect(got.get('short')!.ok).toBe(false);

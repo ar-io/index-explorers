@@ -35,19 +35,30 @@ export function Icon({ name, big = false }: { name: IconName; big?: boolean }) {
 }
 
 /** Which icon a file gets, from its content type, else its name. */
-export function iconFor(type: string | null | undefined, name: string | null | undefined): IconName {
+export function iconFor(
+  type: string | null | undefined,
+  name: string | null | undefined,
+): IconName {
   const t = (type || '').toLowerCase();
   const n = (name || '').toLowerCase();
   if (t.startsWith('image/')) return 'image';
   if (t.startsWith('video/')) return 'video';
   if (t.startsWith('audio/')) return 'audio';
-  if (/zip|rar|7z|tar|gzip|compressed|x-iso|diskimage/.test(t) || /\.(zip|rar|7z|tar|gz|tgz|iso|dmg)$/.test(n)) return 'archive';
+  if (
+    /zip|rar|7z|tar|gzip|compressed|x-iso|diskimage/.test(t) ||
+    /\.(zip|rar|7z|tar|gz|tgz|iso|dmg)$/.test(n)
+  )
+    return 'archive';
   if (
     /javascript|json|xml|html|css|x-sh|typescript|yaml|python/.test(t) ||
     /\.(js|ts|json|xml|html?|css|sh|py|yml|yaml|md|sql)$/.test(n)
   )
     return 'code';
-  if (/pdf|msword|officedocument|text\/|epub|rtf/.test(t) || /\.(pdf|docx?|xlsx?|pptx?|txt|csv|epub)$/.test(n)) return 'doc';
+  if (
+    /pdf|msword|officedocument|text\/|epub|rtf/.test(t) ||
+    /\.(pdf|docx?|xlsx?|pptx?|txt|csv|epub)$/.test(n)
+  )
+    return 'doc';
   return 'file';
 }
 
@@ -67,8 +78,16 @@ const KIND_LABEL: Record<IconName, string> = {
 };
 
 /** A short type label for a list: the subtype of a content type, or the icon's kind. */
-export function typeLabel(type: string | null | undefined, name: string | null | undefined): string {
+export function typeLabel(
+  type: string | null | undefined,
+  name: string | null | undefined,
+): string {
   if (type && type !== 'application/octet-stream')
-    return type.split('/').pop()!.replace(/^x-/, '').replace(/^vnd\./, '').slice(0, 24);
+    return type
+      .split('/')
+      .pop()!
+      .replace(/^x-/, '')
+      .replace(/^vnd\./, '')
+      .slice(0, 24);
   return KIND_LABEL[iconFor(type, name)];
 }

@@ -17,7 +17,11 @@ export interface Link {
   view: ViewState | null;
 }
 
-export function encodeFragment(link: { gw: string | null; period: string | null; view: ViewState }): string {
+export function encodeFragment(link: {
+  gw: string | null;
+  period: string | null;
+  view: ViewState;
+}): string {
   const q = new URLSearchParams();
   if (link.gw) q.set('gw', link.gw);
   if (link.period) q.set('period', link.period);
@@ -49,6 +53,8 @@ export function parseFragment(hash: string): Link {
 
 export const sameView = (a: ViewState, b: ViewState): boolean =>
   a.kind === b.kind &&
-  (a.kind !== 'drive' || (a.key === (b as { key: string }).key && a.folder === (b as { folder: string | null }).folder)) &&
+  (a.kind !== 'drive' ||
+    (a.key === (b as { key: string }).key &&
+      a.folder === (b as { folder: string | null }).folder)) &&
   (!('key' in a) || a.kind === 'drive' || a.key === (b as { key: string }).key) &&
   (a.kind !== 'query' || a.sql === (b as { sql: string | null }).sql);

@@ -167,14 +167,26 @@ async function fetchBytes(
       }, STALL_MS);
     };
     try {
-      const res = await fetch(url, { ...init, signal: ac.signal, cache: 'no-store', credentials: 'omit', redirect: 'follow' });
+      const res = await fetch(url, {
+        ...init,
+        signal: ac.signal,
+        cache: 'no-store',
+        credentials: 'omit',
+        redirect: 'follow',
+      });
       kick();
       totals.originRequests += 1;
       if (!expect(res.status)) {
         const retryable = [408, 425, 429, 500, 502, 503, 504].includes(res.status);
         const after = Number(res.headers.get('retry-after'));
         lastErr = new Refusal(
-          res.status === 402 ? 'payment' : res.status === 429 ? 'rate' : res.status >= 500 ? 'server' : 'status',
+          res.status === 402
+            ? 'payment'
+            : res.status === 429
+              ? 'rate'
+              : res.status >= 500
+                ? 'server'
+                : 'status',
           describe(res.status, what, url),
         );
         try {
@@ -239,7 +251,8 @@ async function fetchBytes(
 
 function describe(status: number, what: string, url: string): string {
   const host = hostOf(url);
-  if (status === 402) return `${host} wants payment for ${what}: its free allowance for your address is spent`;
+  if (status === 402)
+    return `${host} wants payment for ${what}: its free allowance for your address is spent`;
   if (status === 429) return `${host} is rate limiting reads of ${what}`;
   if (status === 404) return `${host} does not have ${what}`;
   if (status === 416) return `${host} refused the byte range asked of ${what}`;
@@ -280,14 +293,22 @@ function verifiedTorrent(spec: RangeSpec): Promise<Map<string, FileTree>> {
         const { body } = await fetchBytes(
           t,
           {},
-          { what: 'the band’s torrent', expect: (s) => s === 200, maxBytes: MAX_TORRENT, retries: t === last ? RETRIES : 1 },
+          {
+            what: 'the band’s torrent',
+            expect: (s) => s === 200,
+            maxBytes: MAX_TORRENT,
+            retries: t === last ? RETRIES : 1,
+          },
         );
         let files: Map<string, FileTree>;
         try {
           files = await checkTorrent(body, spec.ih);
         } catch (e) {
           const r = e as Refusal;
-          throw new Refusal(r.code, `the torrent from ${hostOf(t)} ${r.code === 'integrity' ? r.message : 'is unusable: ' + r.message}`);
+          throw new Refusal(
+            r.code,
+            `the torrent from ${hostOf(t)} ${r.code === 'integrity' ? r.message : 'is unusable: ' + r.message}`,
+          );
         }
         try {
           await (await caches.open(TORRENT_CACHE)).put(key, new Response(body as BodyInit));
@@ -305,7 +326,16 @@ function verifiedTorrent(spec: RangeSpec): Promise<Map<string, FileTree>> {
         }
       }
     }
-    const rank: Record<string, number> = { integrity: 0, torrent: 1, payment: 2, rate: 3, server: 4, network: 5, size: 6, status: 7 };
+    const rank: Record<string, number> = {
+      integrity: 0,
+      torrent: 1,
+      payment: 2,
+      rate: 3,
+      server: 4,
+      network: 5,
+      size: 6,
+      status: 7,
+    };
     errors.sort((x, y) => (rank[x.code] ?? 9) - (rank[y.code] ?? 9));
     throw errors[0] || new Refusal('torrent', 'no source for the band’s torrent');
   })();
@@ -320,7 +350,10 @@ async function tree(spec: RangeSpec): Promise<FileTree> {
   if (!t) throw new Refusal('torrent', `${spec.f} is not in the band’s torrent`);
   // The publication signed this size too; the two must agree.
   if (spec.n !== undefined && t.size !== spec.n) {
-    throw new Refusal('integrity', `the torrent says ${spec.f} is ${t.size} bytes; the publication signed ${spec.n}`);
+    throw new Refusal(
+      'integrity',
+      `the torrent says ${spec.f} is ${t.size} bytes; the publication signed ${spec.n}`,
+    );
   }
   return t;
 }
@@ -422,7 +455,8 @@ async function diskGet(t: FileTree, k: number): Promise<Uint8Array | null> {
   }
 }
 async function clearDisk(): Promise<void> {
-  for (const name of await caches.keys()) if (name.startsWith(CACHE_PREFIX)) await caches.delete(name);
+  for (const name of await caches.keys())
+    if (name.startsWith(CACHE_PREFIX)) await caches.delete(name);
   mem.clear();
   memBytes = 0;
 }
@@ -434,7 +468,12 @@ const inflight = new Map<string, Promise<Uint8Array>>(); // piece key -> bytes
 const pieceKey = (t: FileTree, k: number) => `${t.rootHex}:${t.pieceLength}:${t.size}:${k}`;
 
 /** Pieces first..last, verified, fetching what is not stored in as few requests as possible. */
-async function readPieces(spec: RangeSpec, t: FileTree, first: number, last: number): Promise<Map<number, Uint8Array>> {
+async function readPieces(
+  spec: RangeSpec,
+  t: FileTree,
+  first: number,
+  last: number,
+): Promise<Map<number, Uint8Array>> {
   const out = new Map<number, Uint8Array | Promise<Uint8Array>>();
   const missing: number[] = [];
   for (let k = first; k <= last; k++) {
@@ -494,16 +533,25 @@ async function readPieces(spec: RangeSpec, t: FileTree, first: number, last: num
   return done;
 }
 
-const status200Cap = (t: FileTree, n: number) => Math.max(n, t.size <= MAX_WHOLE_FALLBACK ? t.size : n);
+const status200Cap = (t: FileTree, n: number) =>
+  Math.max(n, t.size <= MAX_WHOLE_FALLBACK ? t.size : n);
 
 /** One run of pieces from the first source that serves it with bytes that verify. */
-async function fetchRun(spec: RangeSpec, t: FileTree, a: number, b: number): Promise<Map<number, Uint8Array>> {
+async function fetchRun(
+  spec: RangeSpec,
+  t: FileTree,
+  a: number,
+  b: number,
+): Promise<Map<number, Uint8Array>> {
   const P = t.pieceLength;
   const start = a * P;
   const end = Math.min((b + 1) * P, t.size) - 1;
   // Sources that failed earlier are tried last, never skipped: one hiccup
   // must not cost a file that only that source has.
-  const sources = [...spec.u.filter((u) => !sourceDown.has(hostOf(u))), ...spec.u.filter((u) => sourceDown.has(hostOf(u)))];
+  const sources = [
+    ...spec.u.filter((u) => !sourceDown.has(hostOf(u))),
+    ...spec.u.filter((u) => sourceDown.has(hostOf(u))),
+  ];
   // Each source once, quickly, while another remains; the last one patiently.
   const plan = sources.map((u, i) => ({ u, retries: i === sources.length - 1 ? RETRIES : 0 }));
   const errors: Refusal[] = [];
@@ -525,10 +573,16 @@ async function fetchRun(spec: RangeSpec, t: FileTree, a: number, b: number): Pro
       let bytes = body;
       if (status === 200) {
         if (body.length !== t.size)
-          throw new Refusal('integrity', `${hostOf(u)} sent ${body.length} bytes of ${spec.label}, which is ${t.size}`);
+          throw new Refusal(
+            'integrity',
+            `${hostOf(u)} sent ${body.length} bytes of ${spec.label}, which is ${t.size}`,
+          );
         bytes = body.subarray(start, end + 1);
       } else if (bytes.length !== end - start + 1) {
-        throw new Refusal('integrity', `${hostOf(u)} sent ${bytes.length} bytes for a ${end - start + 1}-byte range of ${spec.label}`);
+        throw new Refusal(
+          'integrity',
+          `${hostOf(u)} sent ${bytes.length} bytes for a ${end - start + 1}-byte range of ${spec.label}`,
+        );
       }
       const got = new Map<number, Uint8Array>();
       for (let k = a; k <= b; k++) {
@@ -572,10 +626,20 @@ async function fetchRun(spec: RangeSpec, t: FileTree, a: number, b: number): Pro
   }
   // Report the failure that matters most: a gateway that sent forged bytes
   // outranks one that merely lacked the file.
-  const rank: Record<string, number> = { integrity: 0, payment: 1, rate: 2, server: 3, network: 4, size: 5, status: 6 };
+  const rank: Record<string, number> = {
+    integrity: 0,
+    payment: 1,
+    rate: 2,
+    server: 3,
+    network: 4,
+    size: 5,
+    status: 6,
+  };
   errors.sort((x, y) => (rank[x.code] ?? 9) - (rank[y.code] ?? 9));
   const worst = errors[0]!;
-  throw errors.length > 1 ? new Refusal(worst.code, `${worst.message}, and no other gateway had a good copy`) : worst;
+  throw errors.length > 1
+    ? new Refusal(worst.code, `${worst.message}, and no other gateway had a good copy`)
+    : worst;
 }
 
 // ---- the route ----------------------------------------------------------------
@@ -597,7 +661,11 @@ self.addEventListener('fetch', (e: FetchEvent) => {
   try {
     spec = decodeSpec(rest);
   } catch {
-    e.respondWith(refuse(new Refusal('request', 'this page and its reader are different versions; reload the page')));
+    e.respondWith(
+      refuse(
+        new Refusal('request', 'this page and its reader are different versions; reload the page'),
+      ),
+    );
     return;
   }
   e.respondWith(serve(e.request, spec));
@@ -638,7 +706,11 @@ async function serve(req: Request, spec: RangeSpec): Promise<Response> {
       });
     }
     if (req.method !== 'GET') return refuse(new Refusal('request', 'only reads are served'));
-    if (t.size === 0) return new Response(new Uint8Array(0), { status: 200, headers: { ...base, 'Content-Length': '0' } });
+    if (t.size === 0)
+      return new Response(new Uint8Array(0), {
+        status: 200,
+        headers: { ...base, 'Content-Length': '0' },
+      });
     let start = 0;
     let end = t.size - 1;
     if (range) {
@@ -647,7 +719,10 @@ async function serve(req: Request, spec: RangeSpec): Promise<Response> {
       start = Number(m[1]);
       end = m[2] === '' ? t.size - 1 : Math.min(Number(m[2]), t.size - 1);
       if (start > end || start >= t.size) {
-        return new Response(null, { status: 416, headers: { ...base, 'Content-Range': `bytes */${t.size}` } });
+        return new Response(null, {
+          status: 416,
+          headers: { ...base, 'Content-Range': `bytes */${t.size}` },
+        });
       }
     }
     const P = t.pieceLength;
@@ -661,7 +736,11 @@ async function serve(req: Request, spec: RangeSpec): Promise<Response> {
       // Every piece is exactly as long as the tree says, or nothing is sent:
       // a short one would leave unchecked zeros in the answer.
       const want = pieceSize(t, k);
-      if (!c || c.length !== want) throw new Refusal('integrity', `piece ${k} of ${spec.label} is not the length its tree requires`);
+      if (!c || c.length !== want)
+        throw new Refusal(
+          'integrity',
+          `piece ${k} of ${spec.label} is not the length its tree requires`,
+        );
       const from = Math.max(start, at) - at;
       const to = Math.min(end, at + c.length - 1) - at;
       out.set(c.subarray(from, to + 1), Math.max(start, at) - start);
@@ -675,6 +754,10 @@ async function serve(req: Request, spec: RangeSpec): Promise<Response> {
       },
     });
   } catch (err) {
-    return refuse(err instanceof Refusal ? err : new Refusal('error', err instanceof Error ? err.message : String(err)));
+    return refuse(
+      err instanceof Refusal
+        ? err
+        : new Refusal('error', err instanceof Error ? err.message : String(err)),
+    );
   }
 }

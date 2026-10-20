@@ -27,7 +27,12 @@ export interface CostOptions {
  * of tags, and of the two items columns a record needs (about 45% of the
  * items file), never less than one row group of each.
  */
-export function windowCost(bands: readonly Band[], lo: number, hi: number, opts: CostOptions = {}): number {
+export function windowCost(
+  bands: readonly Band[],
+  lo: number,
+  hi: number,
+  opts: CostOptions = {},
+): number {
   const scan = opts.scanFile ?? 'tags.parquet';
   const part = opts.partFile ?? 'data_items.parquet';
   const share = opts.partShare ?? 0.45;
@@ -46,7 +51,12 @@ export const bandScanSize = (b: Band, files: readonly string[]): number =>
   files.reduce((t, f) => t + (b.files.get(f)?.size ?? 0), 0);
 
 /** The block nearest a time, from the band edges' dates, else by two-minute blocks from the tip. */
-export function heightAt(bands: readonly Band[], secs: number, tip: number, tipTime: number): number {
+export function heightAt(
+  bands: readonly Band[],
+  secs: number,
+  tip: number,
+  tipTime: number,
+): number {
   for (const b of bands) {
     if (b.fromTime && b.toTime && b.to !== null && secs >= b.fromTime && secs <= b.toTime) {
       const f = (secs - b.fromTime) / Math.max(1, b.toTime - b.fromTime);
@@ -93,7 +103,8 @@ export interface PeriodOptions {
 export function buildPeriods(bands: readonly Band[], opts: PeriodOptions): Period[] {
   if (!bands.length) return [];
   const first = bands[0]!;
-  const tipTime = opts.tipTime ?? bands[bands.length - 1]!.toTime ?? (opts.now ?? Date.now()) / 1000;
+  const tipTime =
+    opts.tipTime ?? bands[bands.length - 1]!.toTime ?? (opts.now ?? Date.now()) / 1000;
   const dayAgo = (d: number) => heightAt(bands, tipTime - d * 86400, opts.tip, tipTime);
   const out: Period[] = [];
   const add = (id: string, label: string, lo: number, hi: number) => {
@@ -115,7 +126,12 @@ export function buildPeriods(bands: readonly Band[], opts: PeriodOptions): Perio
     for (let y = y1; y >= y0; y--) {
       const a = Date.UTC(y, 0, 1) / 1000;
       const z = Date.UTC(y + 1, 0, 1) / 1000 - 1;
-      add('y' + y, String(y), Math.max(first.from, heightAt(bands, a, opts.tip, tipTime)), Math.min(opts.tip, heightAt(bands, z, opts.tip, tipTime)));
+      add(
+        'y' + y,
+        String(y),
+        Math.max(first.from, heightAt(bands, a, opts.tip, tipTime)),
+        Math.min(opts.tip, heightAt(bands, z, opts.tip, tipTime)),
+      );
     }
   }
   add('all', 'All history', first.from, opts.tip);
@@ -123,7 +139,10 @@ export function buildPeriods(bands: readonly Band[], opts: PeriodOptions): Perio
 }
 
 /** Heights clustered into stretches: a gap wider than `gap` blocks starts a new one. */
-export function clusterHeights(heights: readonly number[], gap = ROW_GROUP_BLOCKS): [number, number][] {
+export function clusterHeights(
+  heights: readonly number[],
+  gap = ROW_GROUP_BLOCKS,
+): [number, number][] {
   const clusters: [number, number][] = [];
   for (const h of heights) {
     const last = clusters[clusters.length - 1];

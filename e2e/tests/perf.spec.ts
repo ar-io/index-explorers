@@ -6,15 +6,30 @@
  */
 import { expect, test } from '@playwright/test';
 
-import { driveRows, KNOWN, LIVE, openFolderMeasured, openPage, pageErrors, until } from './helpers.js';
+import {
+  driveRows,
+  KNOWN,
+  LIVE,
+  openFolderMeasured,
+  openPage,
+  pageErrors,
+  until,
+} from './helpers.js';
 
 // Thousands of record fetches make a trace slow to save; the numbers are in the log.
 test.use({ trace: 'off' });
 
-test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts', async ({ page }) => {
+test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts', async ({
+  page,
+}) => {
   test.setTimeout(LIVE ? 900_000 : 300_000);
   await openPage(page);
-  await until(page, async () => (await page.locator('#results tbody tr').count()) > 0, 240_000, 'browse');
+  await until(
+    page,
+    async () => (await page.locator('#results tbody tr').count()) > 0,
+    240_000,
+    'browse',
+  );
   await page.evaluate(() => {
     const w = window as unknown as { __lt: number[] };
     w.__lt = [];
@@ -24,12 +39,25 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
   });
   const longTasks = () => page.evaluate(() => (window as unknown as { __lt: number[] }).__lt);
   const maxLong = async () => Math.max(0, ...(await longTasks()));
-  const mem = () => page.evaluate(() => ((performance as unknown as { memory?: { usedJSHeapSize: number } }).memory ? Math.round((performance as unknown as { memory: { usedJSHeapSize: number } }).memory.usedJSHeapSize / 1048576) : -1));
+  const mem = () =>
+    page.evaluate(() =>
+      (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+        ? Math.round(
+            (performance as unknown as { memory: { usedJSHeapSize: number } }).memory
+              .usedJSHeapSize / 1048576,
+          )
+        : -1,
+    );
   const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
   const t0 = Date.now();
   await page.fill('#find', KNOWN.bigDrive);
   await page.click('#findgo');
-  await until(page, async () => (await page.locator('#cost button').count()) > 0 || (await driveRows(page)) > 0, 120_000, 'drive or cost');
+  await until(
+    page,
+    async () => (await page.locator('#cost button').count()) > 0 || (await driveRows(page)) > 0,
+    120_000,
+    'drive or cost',
+  );
   if (await page.locator('#cost button').count()) {
     log('cost card:', (await page.locator('#cost').innerText()).slice(0, 120));
     await page.locator('#cost button').click();
@@ -37,12 +65,23 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
   }
   const firstRows = (Date.now() - t0) / 1000;
   const head = (await page.locator('.b-head').innerText()).replace(/\n/g, ' | ');
-  log(`first rows after ${firstRows.toFixed(1)}s | rows in DOM: ${await driveRows(page)} | head: ${head.slice(0, 200)}`);
+  log(
+    `first rows after ${firstRows.toFixed(1)}s | rows in DOM: ${await driveRows(page)} | head: ${head.slice(0, 200)}`,
+  );
   expect(await driveRows(page)).toBeLessThanOrEqual(201);
   expect(head).toMatch(/20,000|19,9\d\d/);
-  if (LIVE) expect(firstRows).toBeLessThanOrEqual(12);
+  log('status:', await page.locator('#status').innerText());
+  // The budget (V1-ARCHITECTURE §4.2: ~6 s on v0's network) is a bound on a known network; PERF_FIRST_ROWS_S sets it for this one.
+  if (LIVE) expect(firstRows).toBeLessThanOrEqual(Number(process.env.PERF_FIRST_ROWS_S || 12));
   log('heap', await mem(), 'MB | long tasks:', (await longTasks()).join(','), 'ms');
-  log('trace:', (await page.evaluate(() => (window as unknown as { __explorer: { trace: string[] } }).__explorer.trace.slice(-14))).join(' | '));
+  log(
+    'trace:',
+    (
+      await page.evaluate(() =>
+        (window as unknown as { __explorer: { trace: string[] } }).__explorer.trace.slice(-14),
+      )
+    ).join(' | '),
+  );
   expect(await maxLong()).toBeLessThanOrEqual(130 + (LIVE ? 50 : 70));
   // scroll the list to the bottom repeatedly: windowed rendering should grow in chunks
   for (let i = 0; i < 6; i++) {
@@ -52,9 +91,18 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
     });
     await page.waitForTimeout(600);
   }
-  log('after scrolling: rows in DOM', await driveRows(page), '| more sentinel:', (await page.locator('#b-list .b-more').count()) ? await page.locator('#b-list .b-more').innerText() : 'none');
+  log(
+    'after scrolling: rows in DOM',
+    await driveRows(page),
+    '| more sentinel:',
+    (await page.locator('#b-list .b-more').count())
+      ? await page.locator('#b-list .b-more').innerText()
+      : 'none',
+  );
   // open the biggest folder
-  const folderRows = page.locator('#b-list tbody tr.b-row').filter({ has: page.locator('.ico-folder') });
+  const folderRows = page
+    .locator('#b-list tbody tr.b-row')
+    .filter({ has: page.locator('.ico-folder') });
   const nf = await folderRows.count();
   if (nf) {
     let best = 0;
@@ -70,7 +118,9 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
     }
     const move = Math.round(await openFolderMeasured(page, best));
     await until(page, async () => (await driveRows(page)) > 0, 30_000, 'folder');
-    log(`opened folder with ${bestN} items in ${move} ms | rows in DOM ${await driveRows(page)} | crumbs: ${await page.locator('#b-crumbs').innerText()}`);
+    log(
+      `opened folder with ${bestN} items in ${move} ms | rows in DOM ${await driveRows(page)} | crumbs: ${await page.locator('#b-crumbs').innerText()}`,
+    );
     expect(move).toBeLessThanOrEqual(400);
     await page.evaluate(() => ((window as unknown as { __lt: number[] }).__lt.length = 0));
     for (let i = 0; i < 8; i++) {
@@ -80,12 +130,29 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
       });
       await page.waitForTimeout(500);
     }
-    log('after scrolling the folder: rows', await driveRows(page), '| long tasks', (await longTasks()).length, 'max', await maxLong(), 'ms | heap', await mem(), 'MB');
+    log(
+      'after scrolling the folder: rows',
+      await driveRows(page),
+      '| long tasks',
+      (await longTasks()).length,
+      'max',
+      await maxLong(),
+      'ms | heap',
+      await mem(),
+      'MB',
+    );
     expect(await maxLong()).toBeLessThanOrEqual(130 + 70);
     const t2 = Date.now();
-    await page.locator('#b-list tbody tr.b-row').filter({ hasNot: page.locator('.ico-folder') }).filter({ hasNot: page.locator('.ico-up') }).nth(3).click();
+    await page
+      .locator('#b-list tbody tr.b-row')
+      .filter({ hasNot: page.locator('.ico-folder') })
+      .filter({ hasNot: page.locator('.ico-up') })
+      .nth(3)
+      .click();
     await page.waitForTimeout(300);
-    log(`selected a file in ${Date.now() - t2} ms | details: ${(await page.locator('#b-details').innerText()).replace(/\n/g, ' | ').slice(0, 120)}`);
+    log(
+      `selected a file in ${Date.now() - t2} ms | details: ${(await page.locator('#b-details').innerText()).replace(/\n/g, ' | ').slice(0, 120)}`,
+    );
     expect(await page.locator('#b-details').isVisible()).toBe(true);
     const t3 = Date.now();
     await page.locator('#b-list tbody tr.b-up').click();
@@ -97,9 +164,13 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
   const t4 = Date.now();
   await page.fill('#b-filter', 'a');
   await page.waitForTimeout(1500);
-  log(`search typed; ${Date.now() - t4} ms later rows ${await driveRows(page)} | sub: ${(await page.locator('#b-sub').innerText()).replace(/\n/g, ' | ')}`);
+  log(
+    `search typed; ${Date.now() - t4} ms later rows ${await driveRows(page)} | sub: ${(await page.locator('#b-sub').innerText()).replace(/\n/g, ' | ')}`,
+  );
   await page.waitForTimeout(LIVE ? 20_000 : 8_000);
-  log(`later: rows ${await driveRows(page)} | sub: ${(await page.locator('#b-sub').innerText()).replace(/\n/g, ' | ')} | long tasks ${(await longTasks()).length} max ${await maxLong()} ms | heap ${await mem()} MB`);
+  log(
+    `later: rows ${await driveRows(page)} | sub: ${(await page.locator('#b-sub').innerText()).replace(/\n/g, ' | ')} | long tasks ${(await longTasks()).length} max ${await maxLong()} ms | heap ${await mem()} MB`,
+  );
   expect(await maxLong()).toBeLessThanOrEqual(130 + 70);
   await page.fill('#b-filter', '');
   await page.waitForTimeout(500);

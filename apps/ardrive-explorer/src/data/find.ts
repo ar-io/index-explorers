@@ -2,7 +2,17 @@
  * Find: a drive id, a wallet, any upload id, or a block height. An id is
  * looked up through the index's id lookup, then its wallet lookup.
  */
-import { bytesText, fmtWhen, isId43, isUuid, num, parquetL2, rowsOf, shortId, sq } from '@ar-io/index-client';
+import {
+  bytesText,
+  fmtWhen,
+  isId43,
+  isUuid,
+  num,
+  parquetL2,
+  rowsOf,
+  shortId,
+  sq,
+} from '@ar-io/index-client';
 
 import { toRecord } from '../model/arfs.js';
 import type { Session } from '../session.js';
@@ -24,7 +34,12 @@ export function createFindFlows(
     browse: (reset: boolean) => Promise<void>;
     openDrive: (id: string, confirmed: boolean, folder: string | null) => Promise<void>;
     openWallet: (addr: string, everything: boolean) => Promise<void>;
-    runQuery: (opts: { title?: string | null; caption?: string | null; confirmed?: boolean; sql?: string }) => Promise<void>;
+    runQuery: (opts: {
+      title?: string | null;
+      caption?: string | null;
+      confirmed?: boolean;
+      sql?: string;
+    }) => Promise<void>;
   },
 ) {
   const st = s.store;
@@ -38,29 +53,42 @@ export function createFindFlows(
       { label: 'Drives', go: () => void go.browse(true) },
       { label: shortId(id), go: null },
     ];
-    st.content.value = { ...emptyContent(), crumbs, title: `Looking up ${shortId(id)}`, sub: 'Through the index’s id lookup, then its wallet lookup.' };
+    st.content.value = {
+      ...emptyContent(),
+      crumbs,
+      title: `Looking up ${shortId(id)}`,
+      sub: 'Through the index’s id lookup, then its wallet lookup.',
+    };
     const r = await s.measured('Looking it up', async () => {
       const bands = s.registeredBands();
       const p = st.currentPeriod()!;
       const heights = s.hasLookups
-        ? rowsOf(await s.engine!.query(`SELECT DISTINCT height FROM lookup_id WHERE id8 = key64(unb64u(${sq(id)}))`)).map((x) => Number(x.height))
+        ? rowsOf(
+            await s.engine!.query(
+              `SELECT DISTINCT height FROM lookup_id WHERE id8 = key64(unb64u(${sq(id)}))`,
+            ),
+          ).map((x) => Number(x.height))
         : [];
       const lo = heights.length ? Math.min(...heights) : p.lo;
       const hi = heights.length ? Math.max(...heights) : p.hi;
       const hit =
         !heights.length && s.hasLookups
           ? null
-          : (rowsOf(
+          : ((rowsOf(
               await s.engine!.query(
                 `SELECT b64u(i.id) AS id, i.height, b64u(i.owner_address) AS owner, i.data_size, i.content_type, b64u(i.root_transaction_id) AS bundle,
                  (SELECT string_agg(name || '=' || value, '  ') FROM ${parquetL2.tagsSql(bands, lo, hi)} g WHERE g.height = i.height AND g.id = i.id) AS tags
                  FROM ${parquetL2.itemsSql(bands, lo, hi, false)} i WHERE i.id = unb64u(${sq(id)}) LIMIT 1`,
               ),
-            )[0] as unknown as IdHit | undefined) ?? null;
+            )[0] as unknown as IdHit | undefined) ?? null);
       if (hit) {
         hit.height = Number(hit.height);
         hit.data_size = Number(hit.data_size);
-        const ent = rowsOf(await s.engine!.query(`SELECT * FROM ${parquetL2.entitiesSql(bands, hit.height, hit.height)} WHERE id = ${sq(id)}`))[0];
+        const ent = rowsOf(
+          await s.engine!.query(
+            `SELECT * FROM ${parquetL2.entitiesSql(bands, hit.height, hit.height)} WHERE id = ${sq(id)}`,
+          ),
+        )[0];
         return { hit, ent: ent ? toRecord(ent) : null, wallet: null };
       }
       const [w] = rowsOf(await s.engine!.query(`SELECT * FROM wallet_totals(${sq(id)})`));
@@ -102,13 +130,28 @@ export function createFindFlows(
       sub: '',
       facts,
       caption: 'Tags: ' + (hit.tags || '(none)'),
-      more: [{ kind: 'link', label: ent ? 'Open the record' : 'Open the data', href: `${gw}/${ent ? 'raw/' : ''}${id}` }],
+      more: [
+        {
+          kind: 'link',
+          label: ent ? 'Open the record' : 'Open the data',
+          href: `${gw}/${ent ? 'raw/' : ''}${id}`,
+        },
+      ],
       namesNote: !!ent && ent.privacy !== 'private',
-      exportable: { cols: Object.keys(hit), rows: [hit as unknown as Record<string, unknown>], isTime: new Set(), slug: `id-${id.slice(0, 8)}` },
+      exportable: {
+        cols: Object.keys(hit),
+        rows: [hit as unknown as Record<string, unknown>],
+        isTime: new Set(),
+        slug: `id-${id.slice(0, 8)}`,
+      },
     };
     // The record view's title carries its name (fetched); a file record also links to its bytes.
     if (ent && ent.privacy !== 'private') {
-      st.content.value = { ...st.content.value, title: '', titleName: { prefix: `${Title}: `, id, size: hit.data_size, fallback: shortId(id) } };
+      st.content.value = {
+        ...st.content.value,
+        title: '',
+        titleName: { prefix: `${Title}: `, id, size: hit.data_size, fallback: shortId(id) },
+      };
       s.names.want(id, hit.data_size, true);
     }
     st.say(r.receipt, 'ok');
@@ -144,7 +187,10 @@ export function createFindFlows(
       void openHeight(Number(v.replace(/[,_]/g, '')));
       return;
     }
-    st.say(`"${v.slice(0, 48)}" is not a drive id (uuid), a 43-character id or address, or a block height.`, 'bad');
+    st.say(
+      `"${v.slice(0, 48)}" is not a drive id (uuid), a 43-character id or address, or a block height.`,
+      'bad',
+    );
   }
 
   return { openId, openHeight, find };

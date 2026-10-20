@@ -119,9 +119,18 @@ export class NamePool {
     let out: NameResult = { ok: false, name: null, meta: null, why: 'not fetched' };
     try {
       const { status, bytes } = await this.opts.fetchRecord(id);
-      if (status !== 200) out.why = status === 404 ? 'the gateway does not have the record (404)' : `the gateway answered HTTP ${status}`;
+      if (status !== 200)
+        out.why =
+          status === 404
+            ? 'the gateway does not have the record (404)'
+            : `the gateway answered HTTP ${status}`;
       else if (dataSize != null && bytes.length !== dataSize) {
-        out = { ok: false, name: null, meta: null, why: `the gateway's record is ${bytes.length} bytes; the index says ${dataSize.toLocaleString()}` };
+        out = {
+          ok: false,
+          name: null,
+          meta: null,
+          why: `the gateway's record is ${bytes.length} bytes; the index says ${dataSize.toLocaleString()}`,
+        };
       } else {
         let meta: unknown = null;
         try {
@@ -130,12 +139,16 @@ export class NamePool {
           out.why = 'the record is not JSON';
         }
         if (meta !== null) {
-          const m = typeof meta === 'object' && !Array.isArray(meta) ? (meta as Record<string, unknown>) : {};
+          const m =
+            typeof meta === 'object' && !Array.isArray(meta)
+              ? (meta as Record<string, unknown>)
+              : {};
           out = { ok: true, name: typeof m.name === 'string' ? m.name : null, meta: m, why: null };
         }
       }
     } catch (e) {
-      out.why = e instanceof Error && e.name === 'AbortError' ? 'no answer in 12 seconds' : 'unreachable';
+      out.why =
+        e instanceof Error && e.name === 'AbortError' ? 'no answer in 12 seconds' : 'unreachable';
     }
     if (!out.ok && !this.retried.has(id)) {
       this.retried.add(id);

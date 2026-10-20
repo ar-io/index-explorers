@@ -10,8 +10,18 @@ export function Masthead() {
   return (
     <header class="framed">
       <div class="bar">
-        <a href="https://ardrive.io" aria-label="ArDrive home" class="logo-link" dangerouslySetInnerHTML={{ __html: logo.replace('<svg ', '<svg class="logo" ') }} />
-        <a class="pill" href="https://docs.ar.io/build/advanced/index-publications" target="_blank" rel="noopener">
+        <a
+          href="https://ardrive.io"
+          aria-label="ArDrive home"
+          class="logo-link"
+          dangerouslySetInnerHTML={{ __html: logo.replace('<svg ', '<svg class="logo" ') }}
+        />
+        <a
+          class="pill"
+          href="https://docs.ar.io/build/advanced/index-publications"
+          target="_blank"
+          rel="noopener"
+        >
           How the index works
         </a>
       </div>
@@ -20,8 +30,8 @@ export function Masthead() {
         Every drive, folder and file on ArDrive. <em>Verified in your browser.</em>
       </h1>
       <p class="lede">
-        Browse public drives newest first, open any drive or wallet, or ask the whole data set a question. Nothing is installed and your
-        questions never leave this tab.
+        Browse public drives newest first, open any drive or wallet, or ask the whole data set a
+        question. Nothing is installed and your questions never leave this tab.
       </p>
       <dl class="stats" id="stats">
         <div class="stat">
@@ -47,10 +57,12 @@ export function Masthead() {
         checks={pub.checks}
         note={
           <>
-            Ids, owners, sizes, dates and the drive each file belongs to come from the signed index and are checked as above.{' '}
-            <strong>Names are the exception:</strong> a drive's or file's name lives in its small metadata record, which is read from the
-            gateway and is not covered by the signature. Each one is checked for size against the index, and a mismatch is shown, never
-            hidden. A failure at any step stops the listing; a check that cannot run counts as a failure.
+            Ids, owners, sizes, dates and the drive each file belongs to come from the signed index
+            and are checked as above. <strong>Names are the exception:</strong> a drive's or file's
+            name lives in its small metadata record, which is read from the gateway and is not
+            covered by the signature. Each one is checked for size against the index, and a mismatch
+            is shown, never hidden. A failure at any step stops the listing; a check that cannot run
+            counts as a failure.
           </>
         }
       />

@@ -1,7 +1,10 @@
 node_modules
 dist
+dist-e2e
 fixtures/live
 fixtures/synthetic
 fixtures/cache
 pnpm-lock.yaml
 *.md
+e2e/out
+e2e/report

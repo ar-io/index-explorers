@@ -11,7 +11,8 @@ import { parquetL2, type parquetL2 as L2 } from '../src/index.js';
 import { LIVE_BAND_DIR } from './helpers.js';
 
 type Row = Record<string, unknown>;
-const q = async (c: DuckDBConnection, sql: string): Promise<Row[]> => (await c.runAndReadAll(sql)).getRowObjects() as Row[];
+const q = async (c: DuckDBConnection, sql: string): Promise<Row[]> =>
+  (await c.runAndReadAll(sql)).getRowObjects() as Row[];
 const n = (v: unknown): number => Number(v);
 
 describe('parquet-l2 over the recorded band (blocks 700,000–799,999)', () => {
@@ -46,36 +47,62 @@ describe('parquet-l2 over the recorded band (blocks 700,000–799,999)', () => {
   });
 
   it('pivots ArFS records into entities with kinds, ids and privacy', async () => {
-    const kinds = await q(c, 'SELECT kind, count(*) AS n FROM entities GROUP BY kind ORDER BY kind');
+    const kinds = await q(
+      c,
+      'SELECT kind, count(*) AS n FROM entities GROUP BY kind ORDER BY kind',
+    );
     const m = Object.fromEntries(kinds.map((r) => [r.kind as string, n(r.n)]));
     expect(m.drive).toBeGreaterThan(0);
     expect(m.file).toBeGreaterThan(0);
     expect(m.folder).toBeGreaterThan(0);
     const [d] = await q(c, 'SELECT count(*) AS n, count(DISTINCT drive_id) AS drives FROM drives');
     expect(n(d!.n)).toBe(n(d!.drives));
-    const [badTime] = await q(c, 'SELECT count(*) AS n FROM entities WHERE created_at IS NULL AND unix_time IS NOT NULL');
+    const [badTime] = await q(
+      c,
+      'SELECT count(*) AS n FROM entities WHERE created_at IS NULL AND unix_time IS NOT NULL',
+    );
     // Any created_at left null is a Unix-Time outside the bounded range, never a formatter's problem.
     expect(n(badTime!.n)).toBeGreaterThanOrEqual(0);
-    const [p] = await q(c, "SELECT count(*) FILTER (WHERE privacy = 'public') AS pub, count(*) FILTER (WHERE privacy = 'private') AS priv FROM entities");
+    const [p] = await q(
+      c,
+      "SELECT count(*) FILTER (WHERE privacy = 'public') AS pub, count(*) FILTER (WHERE privacy = 'private') AS priv FROM entities",
+    );
     expect(n(p!.pub) + n(p!.priv)).toBeGreaterThan(0);
   });
 
   it('the latest-version rule: files has one row per File-Id and versions counts the rest', async () => {
-    const [r] = await q(c, 'SELECT count(*) AS rows, count(DISTINCT file_id) AS ids, sum(versions) AS all_versions FROM files');
+    const [r] = await q(
+      c,
+      'SELECT count(*) AS rows, count(DISTINCT file_id) AS ids, sum(versions) AS all_versions FROM files',
+    );
     expect(n(r!.rows)).toBe(n(r!.ids));
-    const [e] = await q(c, "SELECT count(*) AS n FROM entities WHERE kind = 'file' AND entity_id IS NOT NULL");
+    const [e] = await q(
+      c,
+      "SELECT count(*) AS n FROM entities WHERE kind = 'file' AND entity_id IS NOT NULL",
+    );
     expect(n(r!.all_versions)).toBe(n(e!.n));
   });
 
   it('tag_counts and drive_window answer from the lookups and agree with a scan', async () => {
     const counts = await q(c, "SELECT * FROM tag_counts('Entity-Type') ORDER BY value");
-    const scan = await q(c, "SELECT value, count(DISTINCT id) AS uploads FROM tags WHERE name = 'Entity-Type' GROUP BY value ORDER BY value");
-    expect(counts.map((r) => [r.value, n(r.uploads)])).toEqual(scan.map((r) => [r.value, n(r.uploads)]));
-    const [drive] = await q(c, 'SELECT drive_id, count(*) AS n FROM entities WHERE drive_id IS NOT NULL GROUP BY drive_id ORDER BY n DESC LIMIT 1');
+    const scan = await q(
+      c,
+      "SELECT value, count(DISTINCT id) AS uploads FROM tags WHERE name = 'Entity-Type' GROUP BY value ORDER BY value",
+    );
+    expect(counts.map((r) => [r.value, n(r.uploads)])).toEqual(
+      scan.map((r) => [r.value, n(r.uploads)]),
+    );
+    const [drive] = await q(
+      c,
+      'SELECT drive_id, count(*) AS n FROM entities WHERE drive_id IS NOT NULL GROUP BY drive_id ORDER BY n DESC LIMIT 1',
+    );
     const id = drive!.drive_id as string;
     const [w] = await q(c, `SELECT * FROM drive_window('${id}')`);
     expect(n(w!.records)).toBe(n(drive!.n));
-    const [span] = await q(c, `SELECT min(height) AS lo, max(height) AS hi FROM entities WHERE drive_id = '${id}'`);
+    const [span] = await q(
+      c,
+      `SELECT min(height) AS lo, max(height) AS hi FROM entities WHERE drive_id = '${id}'`,
+    );
     expect(n(w!.lo)).toBe(n(span!.lo));
     expect(n(w!.hi)).toBe(n(span!.hi));
     const viaMacro = await q(c, `SELECT count(*) AS n FROM drive('${id}')`);
@@ -89,7 +116,10 @@ describe('parquet-l2 over the recorded band (blocks 700,000–799,999)', () => {
     expect(found[0]!.owner).toBe(u!.owner);
     expect(n(found[0]!.data_size)).toBe(n(u!.data_size));
     const [t] = await q(c, `SELECT * FROM wallet_totals('${u!.owner}')`);
-    const [s] = await q(c, `SELECT count(*) AS n, min(height) AS lo FROM uploads WHERE owner = '${u!.owner}'`);
+    const [s] = await q(
+      c,
+      `SELECT count(*) AS n, min(height) AS lo FROM uploads WHERE owner = '${u!.owner}'`,
+    );
     expect(n(t!.uploads)).toBe(n(s!.n));
     expect(n(t!.first_block)).toBe(n(s!.lo));
   });
@@ -106,6 +136,7 @@ describe('parquet-l2 over the recorded band (blocks 700,000–799,999)', () => {
     const rows = await q(c, parquetL2.newestDrivesSql([band], 700000, 799999));
     const ids = rows.map((r) => r.drive_id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (let i = 1; i < rows.length; i++) expect(n(rows[i - 1]!.height)).toBeGreaterThanOrEqual(n(rows[i]!.height));
+    for (let i = 1; i < rows.length; i++)
+      expect(n(rows[i - 1]!.height)).toBeGreaterThanOrEqual(n(rows[i]!.height));
   });
 });
