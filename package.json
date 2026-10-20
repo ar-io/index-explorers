@@ -1,0 +1,39 @@
+{
+  "name": "index-explorers",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ar.io verifiable index explorers: the index client library, the ArDrive Explorer, the Arweave L1 explorer and the network index page",
+  "license": "AGPL-3.0-or-later",
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter './packages/*' --filter './apps/*' run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r --filter './packages/*' --filter './apps/*' run test",
+    "lint": "prettier --check . && pnpm typecheck",
+    "format": "prettier --write .",
+    "fixtures:build": "node scripts/build-fixtures.mjs",
+    "fixture-gateway": "node tools/fixture-gateway/server.mjs",
+    "pins:check": "node scripts/check-pins.mjs",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:live": "LIVE=1 playwright test -c e2e/playwright.config.ts --project live"
+  },
+  "devDependencies": {
+    "@duckdb/node-api": "1.5.6-r.1",
+    "@playwright/test": "1.64.1",
+    "prettier": "3.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "vitest": "3.2.7"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@duckdb/node-bindings",
+      "@duckdb/node-bindings-linux-x64"
+    ]
+  }
+}

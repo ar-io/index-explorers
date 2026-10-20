@@ -1,0 +1,7 @@
+node_modules
+dist
+fixtures/live
+fixtures/synthetic
+fixtures/cache
+pnpm-lock.yaml
+*.md

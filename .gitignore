@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+e2e/out/
+e2e/report/
+test-results/
+fixtures/cache/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

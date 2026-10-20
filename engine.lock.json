@@ -1,0 +1,24 @@
+{
+  "comment": "DuckDB-WASM, pinned by SHA-256 of the decompressed bytes. The engine computes every answer, so these are checked before the engine starts, on every visit. scripts/check-pins.mjs compares them against node_modules and two gateways.",
+  "package": "@duckdb/duckdb-wasm",
+  "version": "1.30.0",
+  "hosts": ["https://duck-db-wasm.ar.io/", "https://duck-db-wasm.vilenarios.com/", "https://duck-db-wasm.turbo-gateway.com/"],
+  "worker": {
+    "path": "gzip/duckdb-browser-eh.worker.js",
+    "npm": "dist/duckdb-browser-eh.worker.js",
+    "sha256": "107f554b8311552239b5cc4d6f2ab9a76a3d62eab588943cafe924cca1cec23f",
+    "size": 771557
+  },
+  "wasm": {
+    "path": "gzip/duckdb-eh.wasm",
+    "npm": "dist/duckdb-eh.wasm",
+    "sha256": "5c11d89272279142ddc69be39d35a4f9b290f859ca1e78a0c41691fc62a87bd5",
+    "size": 33504918
+  },
+  "extension": {
+    "comment": "Checked by DuckDB's own extension signature inside the engine, which cannot be switched off from a page; the hash here is for the fixture gateway and the pin check only.",
+    "path": "v1.3.2/wasm_eh/parquet.duckdb_extension.wasm",
+    "sha256": "0cd8dbaeeba5773e82254b2a2ae115d8bac33b67e55b1d5b55308796b5f86ce0",
+    "size": 2828142
+  }
+}
