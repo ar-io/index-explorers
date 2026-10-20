@@ -1,0 +1,8 @@
+{
+  "name": "@ar-io/fixture-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A local gateway that serves a recorded or synthetic publication, its band files with Range, torrents, /ar-io/peers, /raw records and /graphql, so E2E runs are deterministic",
+  "scripts": { "start": "node server.mjs", "typecheck": "echo ok", "test": "echo ok", "build": "echo ok" }
+}

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "schema": "l2-1",
+  "heightRange": [
+    700000,
+    799999
+  ],
+  "selection": {
+    "kind": "ans104-data-items",
+    "tag": {
+      "name": "App-Name",
+      "valuePrefix": "ArDrive",
+      "excludeValuePrefix": "ArDriver"
+    }
+  },
+  "tables": {
+    "data_items": {
+      "rows": 2712,
+      "rowDigest": "290306bcb066073f5b97daa242b2bef3b81cf43753347e392165018a9b1b145e"
+    },
+    "tags": {
+      "rows": 16359,
+      "rowDigest": "0b41c09b85f584994bfda14b5a3f6bf04f8b3e0ea1d334338c002475277fdcb1"
+    },
+    "wallets": {
+      "rows": 5,
+      "rowDigest": "10f04bcd736d8e5a53dff823080a7021fa5989a1a621f0a113ceaf3bb03a9ac7"
+    },
+    "parents": {
+      "rows": 0,
+      "rowDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "lookups": {
+    "id": {
+      "rows": 2712,
+      "rowDigest": "6f2ef937f04109e8d8c382de3fa154e66fd0fe388ac24a109b88a6ca4319bccb"
+    },
+    "wallet": {
+      "rows": 2712,
+      "rowDigest": "e46ad345657a027fed9786798f7ae1a0e3ab6a241278ebe605f19ca568936cae"
+    },
+    "tag": {
+      "rows": 1484,
+      "rowDigest": "f2ee2aea18c505016769875333cbe81920c7c59713dbb95f833f3a4418d6d244"
+    }
+  },
+  "checks": {
+    "ambiguousProven": 0,
+    "ambiguousUnlocated": 0,
+    "located": 2712,
+    "normalised": 1,
+    "ownersWithoutKey": 0,
+    "repaired": 0,
+    "unlocated": {}
+  },
+  "createdAt": "2021-10-29T11:43:05.000Z"
+}
