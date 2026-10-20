@@ -3,7 +3,9 @@
 export const num = (n: number | bigint | string): string => Number(n).toLocaleString();
 
 export const mb = (n: number): string =>
-  n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : (n / 1e6).toFixed(n < 1e7 ? 2 : n < 1e8 ? 1 : 0) + ' MB';
+  n >= 1e9
+    ? (n / 1e9).toFixed(1) + ' GB'
+    : (n / 1e6).toFixed(n < 1e7 ? 2 : n < 1e8 ? 1 : 0) + ' MB';
 
 export function bytesText(v: unknown): string {
   const n = Number(v);
@@ -27,7 +29,10 @@ export const fmtDay = (secs: number): string =>
     timeZone: 'UTC',
   });
 
-export const fmtRange = (a: number | null | undefined, b: number | null | undefined): string | null =>
+export const fmtRange = (
+  a: number | null | undefined,
+  b: number | null | undefined,
+): string | null =>
   a && b ? (fmtDay(a) === fmtDay(b) ? fmtDay(a) : `${fmtDay(a)} to ${fmtDay(b)}`) : null;
 
 /** `YYYY-MM-DD HH:MMZ` from epoch milliseconds; '' for anything a Date cannot hold. */
@@ -43,10 +48,22 @@ export function fmtWhen(ms: unknown): string {
   }
 }
 
-/** A date as a file browser shows one: time today, weekday this week, else the day. */
+const dateCache = new Map<string, string>();
+
+/** A date as a file browser shows one: time today, weekday this week, else the day. Cached: Intl formatting is slow per call. */
 export function fmtDate(ms: unknown, now: number = Date.now()): string {
   const n = Number(ms);
   if (!ms || !Number.isFinite(n)) return '';
+  const key = `${Math.floor(now / 3600000)}:${n}`;
+  const hit = dateCache.get(key);
+  if (hit !== undefined) return hit;
+  if (dateCache.size > 20000) dateCache.clear();
+  const out = fmtDateRaw(n, now);
+  dateCache.set(key, out);
+  return out;
+}
+
+function fmtDateRaw(n: number, now: number): string {
   const d = new Date(n);
   if (!Number.isFinite(d.getTime())) return '';
   const day = 86400000;
@@ -54,7 +71,9 @@ export function fmtDate(ms: unknown, now: number = Date.now()): string {
     if (now - n < day && now >= n) return d.toISOString().slice(11, 16) + ' UTC';
     if (now - n < 7 * day && now >= n)
       return (
-        d.toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }) + ' ' + d.toISOString().slice(11, 16)
+        d.toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }) +
+        ' ' +
+        d.toISOString().slice(11, 16)
       );
     return d.toLocaleDateString(undefined, {
       day: 'numeric',

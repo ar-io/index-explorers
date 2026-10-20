@@ -81,7 +81,9 @@ export function l1PeriodSql(bands: readonly RegisteredL1Band[], opts: L1PeriodOp
   }
   const second = (lo: number, hi: number): string[] => {
     const inPeriod = dated ? ` WHERE height BETWEEN ${lo} AND ${hi}` : '';
-    const out: string[] = [`CREATE OR REPLACE VIEW rawtx AS SELECT * FROM ${readList(tx)}${inPeriod}`];
+    const out: string[] = [
+      `CREATE OR REPLACE VIEW rawtx AS SELECT * FROM ${readList(tx)}${inPeriod}`,
+    ];
     if (bl.length) {
       out.push(`CREATE OR REPLACE VIEW txs AS SELECT
           b64u(t.id) AS tx_id, t.height, bk.mined_at, b64u(t.owner_address) AS owner,

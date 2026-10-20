@@ -1,0 +1,32 @@
+/* The L1 page: ar.io's colours (data-brand="ario" on the root), the chassis from the ui package. */
+.logo-link {
+  display: block;
+  color: var(--fg);
+}
+.answer {
+  margin-top: 18px;
+}
+.answer-title {
+  font-family: var(--headline);
+  font-weight: 800;
+  font-size: clamp(1.2rem, 3vw, 1.55rem);
+  margin: 0;
+}
+.pickfield {
+  margin: -4px 0 12px;
+  max-width: 520px;
+}
+.loadrow {
+  margin-top: 14px;
+  align-items: center;
+}
+.loadrow .note {
+  flex: 1 1 260px;
+  margin: 0;
+}
+.action-link {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--label);
+  text-decoration: none;
+}

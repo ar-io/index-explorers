@@ -1,0 +1,24 @@
+{
+  "bigDrive": "a36cfe32-6172-417e-ad65-1cda0d1a3c36",
+  "typicalDrive": "9c1a6bd7-008d-4710-a465-35068cf7affb",
+  "wideDrive": "be4122e1-7104-4458-a979-79bd8fb45924",
+  "privateDrive": "12510f26-eb8c-4b23-a597-d9c69de7d56d",
+  "owner": "XAm3iZSQqsn5SQzGQD0WYVCQlTVL_t1JQTcy9p0Kxs8",
+  "fileRecord": "2VEzcJM3pVnpyLKJcjpopKtOoiXz5vFKQ-e2lz5jYHs",
+  "fileData": "cfXFec-aYYYtjuFW5IeVbHBOESEkL3P9r05ir3EZMwA",
+  "folder": "dc9d69d7-644d-4b46-a5a9-758c1b67f55c",
+  "deepFolder": "85c0bb53-8e44-47c7-a538-477e986d15fe",
+  "publisher": "3UWhsaYkiPHZ7G2Vvq8P261npqoGphWWEuTp322rrN4E",
+  "keyId": "3UWhsaYkiPHZ7G2Vvq8P261npqoGphWWEuTp322rrN4E",
+  "tip": 2009999,
+  "bands": [
+    [
+      2000000,
+      2004999
+    ],
+    [
+      2005000,
+      2009999
+    ]
+  ]
+}

@@ -38,6 +38,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'fixtures', 'synthetic');
 const sha256 = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 const sha256Bytes = (b: Uint8Array) => new Uint8Array(createHash('sha256').update(b).digest());
+// noble's synchronous signing needs a SHA-512 wired in (the browser client uses the async WebCrypto path).
+ed.hashes.sha512 = (...msgs: Uint8Array[]) => {
+  const h = createHash('sha512');
+  for (const m of msgs) h.update(m);
+  return new Uint8Array(h.digest());
+};
 
 /* ---------- a seeded random, so the fixture is the same every build ---------- */
 let seed = 0x9e3779b9;
@@ -113,11 +119,21 @@ const rootAt = (height: number) => {
   }
   return r;
 };
-function addItem(height: number, owner: Wallet, tags: [string, string][], opts: { size?: number; json?: string; contentType?: string | null }): Item {
+function addItem(
+  height: number,
+  owner: Wallet,
+  tags: [string, string][],
+  opts: { size?: number; json?: string; contentType?: string | null },
+): Item {
   const root = rootAt(height);
   const json = opts.json;
   const size = json !== undefined ? Buffer.byteLength(json, 'utf8') : (opts.size ?? 1000);
-  const contentType = opts.contentType === undefined ? (json !== undefined ? 'application/json' : null) : opts.contentType;
+  const contentType =
+    opts.contentType === undefined
+      ? json !== undefined
+        ? 'application/json'
+        : null
+      : opts.contentType;
   const allTags: [string, string][] = contentType ? [...tags, ['Content-Type', contentType]] : tags;
   const it: Item = {
     id: bytes32(),
@@ -145,12 +161,59 @@ const APPS: [string, string][] = [
   ['ArDrive-Web', '2.90.1'],
   ['ArDrive-Desktop', '1.2.0'],
 ];
-const TYPES = ['image/png', 'image/jpeg', 'video/mp4', 'audio/mpeg', 'application/pdf', 'text/plain', 'application/zip', 'application/json', 'text/html'];
-const WORDS = ['holiday', 'invoice', 'report', 'photo', 'notes', 'backup', 'design', 'draft', 'archive', 'video', 'music', 'recipe', 'map', 'plan', 'budget', 'scan', 'letter', 'chart', 'model', 'sketch'];
-const name = (ext?: string) => `${pick(WORDS)}-${pick(WORDS)}-${Math.floor(rand() * 1000)}${ext ? '.' + ext : ''}`;
-const extOf = (t: string) => ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'video/mp4': 'mp4', 'audio/mpeg': 'mp3', 'application/pdf': 'pdf', 'text/plain': 'txt', 'application/zip': 'zip', 'application/json': 'json', 'text/html': 'html' })[t] ?? 'bin';
+const TYPES = [
+  'image/png',
+  'image/jpeg',
+  'video/mp4',
+  'audio/mpeg',
+  'application/pdf',
+  'text/plain',
+  'application/zip',
+  'application/json',
+  'text/html',
+];
+const WORDS = [
+  'holiday',
+  'invoice',
+  'report',
+  'photo',
+  'notes',
+  'backup',
+  'design',
+  'draft',
+  'archive',
+  'video',
+  'music',
+  'recipe',
+  'map',
+  'plan',
+  'budget',
+  'scan',
+  'letter',
+  'chart',
+  'model',
+  'sketch',
+];
+const name = (ext?: string) =>
+  `${pick(WORDS)}-${pick(WORDS)}-${Math.floor(rand() * 1000)}${ext ? '.' + ext : ''}`;
+const extOf = (t: string) =>
+  ({
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'video/mp4': 'mp4',
+    'audio/mpeg': 'mp3',
+    'application/pdf': 'pdf',
+    'text/plain': 'txt',
+    'application/zip': 'zip',
+    'application/json': 'json',
+    'text/html': 'html',
+  })[t] ?? 'bin';
 
-const arfsTags = (app: [string, string], unixTime: number, extra: [string, string][]): [string, string][] => [
+const arfsTags = (
+  app: [string, string],
+  unixTime: number,
+  extra: [string, string][],
+): [string, string][] => [
   ['App-Name', app[0]],
   ['App-Version', app[1]],
   ['ArFS', '0.15'],
@@ -191,18 +254,41 @@ function makeDrive(spec: DriveSpec): string {
   const rootFolderId = uuid();
   const h0 = spec.heights();
   const t0 = blockTime(h0);
-  const priv: [string, string][] = spec.privacy === 'private' ? [['Drive-Privacy', 'private'], ['Cipher', 'AES256-GCM'], ['Cipher-IV', 'abc']] : [['Drive-Privacy', 'public']];
+  const priv: [string, string][] =
+    spec.privacy === 'private'
+      ? [
+          ['Drive-Privacy', 'private'],
+          ['Cipher', 'AES256-GCM'],
+          ['Cipher-IV', 'abc'],
+        ]
+      : [['Drive-Privacy', 'public']];
   const dname = name();
-  addItem(h0, spec.owner, arfsTags(spec.app, t0, [['Entity-Type', 'drive'], ['Drive-Id', driveId], ...priv]), {
-    json: spec.privacy === 'private' ? 'x'.repeat(96) : JSON.stringify({ name: dname, rootFolderId }),
-    contentType: spec.privacy === 'private' ? 'application/octet-stream' : 'application/json',
-  });
+  addItem(
+    h0,
+    spec.owner,
+    arfsTags(spec.app, t0, [['Entity-Type', 'drive'], ['Drive-Id', driveId], ...priv]),
+    {
+      json:
+        spec.privacy === 'private' ? 'x'.repeat(96) : JSON.stringify({ name: dname, rootFolderId }),
+      contentType: spec.privacy === 'private' ? 'application/octet-stream' : 'application/json',
+    },
+  );
   const folderIds: string[] = [rootFolderId];
   const folderDepth = new Map<string, number>([[rootFolderId, 0]]);
-  addItem(h0, spec.owner, arfsTags(spec.app, t0, [['Entity-Type', 'folder'], ['Drive-Id', driveId], ['Folder-Id', rootFolderId], ...(spec.privacy === 'private' ? [['Cipher', 'AES256-GCM'] as [string, string]] : [])]), {
-    json: spec.privacy === 'private' ? 'x'.repeat(64) : JSON.stringify({ name: dname }),
-    contentType: spec.privacy === 'private' ? 'application/octet-stream' : 'application/json',
-  });
+  addItem(
+    h0,
+    spec.owner,
+    arfsTags(spec.app, t0, [
+      ['Entity-Type', 'folder'],
+      ['Drive-Id', driveId],
+      ['Folder-Id', rootFolderId],
+      ...(spec.privacy === 'private' ? [['Cipher', 'AES256-GCM'] as [string, string]] : []),
+    ]),
+    {
+      json: spec.privacy === 'private' ? 'x'.repeat(64) : JSON.stringify({ name: dname }),
+      contentType: spec.privacy === 'private' ? 'application/octet-stream' : 'application/json',
+    },
+  );
   for (let i = 0; i < spec.folders; i++) {
     const parents = folderIds.filter((f) => folderDepth.get(f)! < spec.depth);
     const parent = pick(parents.length ? parents : [rootFolderId]);
@@ -210,12 +296,24 @@ function makeDrive(spec: DriveSpec): string {
     folderIds.push(id);
     folderDepth.set(id, folderDepth.get(parent)! + 1);
     const h = spec.heights();
-    addItem(h, spec.owner, arfsTags(spec.app, blockTime(h), [['Entity-Type', 'folder'], ['Drive-Id', driveId], ['Folder-Id', id], ['Parent-Folder-Id', parent], ...(spec.privacy === 'private' ? [['Cipher', 'AES256-GCM'] as [string, string]] : [])]), {
-      json: spec.privacy === 'private' ? 'x'.repeat(64) : JSON.stringify({ name: name() }),
-      contentType: spec.privacy === 'private' ? 'application/octet-stream' : 'application/json',
-    });
+    addItem(
+      h,
+      spec.owner,
+      arfsTags(spec.app, blockTime(h), [
+        ['Entity-Type', 'folder'],
+        ['Drive-Id', driveId],
+        ['Folder-Id', id],
+        ['Parent-Folder-Id', parent],
+        ...(spec.privacy === 'private' ? [['Cipher', 'AES256-GCM'] as [string, string]] : []),
+      ]),
+      {
+        json: spec.privacy === 'private' ? 'x'.repeat(64) : JSON.stringify({ name: name() }),
+        contentType: spec.privacy === 'private' ? 'application/octet-stream' : 'application/json',
+      },
+    );
     if (i === 1 && !KNOWN.folder && spec.files > 100 && spec.files < 1000) KNOWN.folder = id;
-    if (folderDepth.get(id) === 2 && !KNOWN.deepFolder && spec.files > 100 && spec.files < 1000) KNOWN.deepFolder = id;
+    if (folderDepth.get(id) === 2 && !KNOWN.deepFolder && spec.files > 100 && spec.files < 1000)
+      KNOWN.deepFolder = id;
   }
   for (let i = 0; i < spec.files; i++) {
     const parent = pick(folderIds);
@@ -224,16 +322,43 @@ function makeDrive(spec: DriveSpec): string {
     const t = blockTime(h);
     const type = pick(TYPES);
     const size = Math.floor(Math.exp(rand() * 14)) + 100;
-    const data = addItem(h, spec.owner, [['App-Name', spec.app[0]], ['App-Version', spec.app[1]], ...(spec.privacy === 'private' ? [['Cipher', 'AES256-GCM'] as [string, string]] : [])], {
+    const data = addItem(
+      h,
+      spec.owner,
+      [
+        ['App-Name', spec.app[0]],
+        ['App-Version', spec.app[1]],
+        ...(spec.privacy === 'private' ? [['Cipher', 'AES256-GCM'] as [string, string]] : []),
+      ],
+      {
+        size,
+        contentType: spec.privacy === 'private' ? 'application/octet-stream' : type,
+      },
+    );
+    const meta = {
+      name: name(extOf(type)),
       size,
-      contentType: spec.privacy === 'private' ? 'application/octet-stream' : type,
-    });
-    const meta = { name: name(extOf(type)), size, lastModifiedDate: t * 1000 - Math.floor(rand() * 1e9), dataTxId: toBase64Url(data.id), dataContentType: type };
+      lastModifiedDate: t * 1000 - Math.floor(rand() * 1e9),
+      dataTxId: toBase64Url(data.id),
+      dataContentType: type,
+    };
     const hidden: [string, string][] = i === 7 ? [['Is-Hidden', 'true']] : [];
-    const rec = addItem(h, spec.owner, arfsTags(spec.app, t, [['Entity-Type', 'file'], ['Drive-Id', driveId], ['File-Id', fileId], ['Parent-Folder-Id', parent], ...hidden, ...(spec.privacy === 'private' ? [['Cipher', 'AES256-GCM'] as [string, string]] : [])]), {
-      json: spec.privacy === 'private' ? 'x'.repeat(128) : JSON.stringify(meta),
-      contentType: spec.privacy === 'private' ? 'application/octet-stream' : 'application/json',
-    });
+    const rec = addItem(
+      h,
+      spec.owner,
+      arfsTags(spec.app, t, [
+        ['Entity-Type', 'file'],
+        ['Drive-Id', driveId],
+        ['File-Id', fileId],
+        ['Parent-Folder-Id', parent],
+        ...hidden,
+        ...(spec.privacy === 'private' ? [['Cipher', 'AES256-GCM'] as [string, string]] : []),
+      ]),
+      {
+        json: spec.privacy === 'private' ? 'x'.repeat(128) : JSON.stringify(meta),
+        contentType: spec.privacy === 'private' ? 'application/octet-stream' : 'application/json',
+      },
+    );
     if (i === 3 && spec.files > 100 && spec.files < 1000 && !KNOWN.fileRecord) {
       KNOWN.fileRecord = toBase64Url(rec.id);
       KNOWN.fileData = toBase64Url(data.id);
@@ -241,9 +366,19 @@ function makeDrive(spec: DriveSpec): string {
     // A rename: a second version of the same File-Id, later.
     if (spec.versions && i % 50 === 5) {
       const h2 = Math.min(TIP, h + 3);
-      addItem(h2, spec.owner, arfsTags(spec.app, blockTime(h2), [['Entity-Type', 'file'], ['Drive-Id', driveId], ['File-Id', fileId], ['Parent-Folder-Id', parent]]), {
-        json: JSON.stringify({ ...meta, name: 'renamed-' + meta.name }),
-      });
+      addItem(
+        h2,
+        spec.owner,
+        arfsTags(spec.app, blockTime(h2), [
+          ['Entity-Type', 'file'],
+          ['Drive-Id', driveId],
+          ['File-Id', fileId],
+          ['Parent-Folder-Id', parent],
+        ]),
+        {
+          json: JSON.stringify({ ...meta, name: 'renamed-' + meta.name }),
+        },
+      );
     }
   }
   return driveId;
@@ -251,36 +386,102 @@ function makeDrive(spec: DriveSpec): string {
 
 function generate(): void {
   const heightsIn = (lo: number, hi: number) => () => lo + Math.floor(rand() * (hi - lo + 1));
-  const near = (h: number, spread: number) => () => Math.max(BANDS[0]![0], Math.min(TIP, h + Math.floor(rand() * spread)));
+  const near = (h: number, spread: number) => () =>
+    Math.max(BANDS[0]![0], Math.min(TIP, h + Math.floor(rand() * spread)));
   const mainOwner = walletFor();
   // 60 small drives spread over both bands, newest first in the browse view.
   const owners = Array.from({ length: 12 }, walletFor);
   for (let i = 0; i < 60; i++) {
     const h = BANDS[0]![0] + Math.floor((i / 60) * (TIP - BANDS[0]![0]));
     const privacy = i % 4 === 3 ? 'private' : 'public';
-    makeDrive({ privacy, app: pick(APPS), files: 2 + Math.floor(rand() * 12), folders: Math.floor(rand() * 3), depth: 2, heights: near(h, 20), owner: pick(owners) });
+    makeDrive({
+      privacy,
+      app: pick(APPS),
+      files: 2 + Math.floor(rand() * 12),
+      folders: Math.floor(rand() * 3),
+      depth: 2,
+      heights: near(h, 20),
+      owner: pick(owners),
+    });
   }
   // The typical drive: 549 records, nested folders, versions, a hidden file.
-  KNOWN.typicalDrive = makeDrive({ privacy: 'public', app: APPS[0]!, files: 270, folders: 6, depth: 3, heights: near(TIP - 60, 6), owner: mainOwner, versions: true });
+  KNOWN.typicalDrive = makeDrive({
+    privacy: 'public',
+    app: APPS[0]!,
+    files: 270,
+    folders: 6,
+    depth: 3,
+    heights: near(TIP - 60, 6),
+    owner: mainOwner,
+    versions: true,
+  });
   KNOWN.owner = toBase64Url(mainOwner.address);
   // The 20,000-file drive: 40 folders, two levels, in a tight window.
-  KNOWN.bigDrive = makeDrive({ privacy: 'public', app: APPS[1]!, files: 20000, folders: 40, depth: 2, heights: near(TIP - 500, 40), owner: walletFor() });
+  KNOWN.bigDrive = makeDrive({
+    privacy: 'public',
+    app: APPS[1]!,
+    files: 20000,
+    folders: 40,
+    depth: 2,
+    heights: near(TIP - 500, 40),
+    owner: walletFor(),
+  });
   // The wide drive: records across both bands, 9,000 blocks apart.
-  KNOWN.wideDrive = makeDrive({ privacy: 'public', app: APPS[2]!, files: 120, folders: 3, depth: 2, heights: heightsIn(BANDS[0]![0] + 100, TIP - 100), owner: walletFor() });
-  KNOWN.privateDrive = makeDrive({ privacy: 'private', app: APPS[0]!, files: 40, folders: 4, depth: 2, heights: near(TIP - 200, 10), owner: mainOwner });
+  KNOWN.wideDrive = makeDrive({
+    privacy: 'public',
+    app: APPS[2]!,
+    files: 120,
+    folders: 3,
+    depth: 2,
+    heights: heightsIn(BANDS[0]![0] + 100, TIP - 100),
+    owner: walletFor(),
+  });
+  KNOWN.privateDrive = makeDrive({
+    privacy: 'private',
+    app: APPS[0]!,
+    files: 40,
+    folders: 4,
+    depth: 2,
+    heights: near(TIP - 200, 10),
+    owner: mainOwner,
+  });
   // Some non-ArDrive-looking but selected uploads (App-Name ArDrive-Sync) with big files, for the questions.
   const sync = walletFor();
-  for (let i = 0; i < 30; i++) addItem(heightsIn(BANDS[1]![0], TIP)(), sync, [['App-Name', 'ArDrive-Sync'], ['App-Version', '0.1.0']], { size: 50_000_000 + Math.floor(rand() * 400_000_000), contentType: 'video/mp4' });
+  for (let i = 0; i < 30; i++)
+    addItem(
+      heightsIn(BANDS[1]![0], TIP)(),
+      sync,
+      [
+        ['App-Name', 'ArDrive-Sync'],
+        ['App-Version', '0.1.0'],
+      ],
+      { size: 50_000_000 + Math.floor(rand() * 400_000_000), contentType: 'video/mp4' },
+    );
 }
 
 /* ---------- writing parquet with DuckDB ---------- */
-async function writeBands(): Promise<Record<string, { dir: string; files: { name: string; bytes: Uint8Array }[]; records: number; from: number; to: number }>> {
+async function writeBands(): Promise<
+  Record<
+    string,
+    {
+      dir: string;
+      files: { name: string; bytes: Uint8Array }[];
+      records: number;
+      from: number;
+      to: number;
+    }
+  >
+> {
   const db = await DuckDBInstance.create(':memory:');
   const c = await db.connect();
   const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
   // Items and tags as CSV-ish inserts through a staging table.
-  await c.run(`CREATE TABLE items (id BLOB, height UBIGINT, block_transaction_index USMALLINT, root_transaction_id BLOB, parent_id BLOB, owner_address BLOB, target BLOB, anchor BLOB, signature_type UTINYINT, data_size UBIGINT, content_type VARCHAR, content_encoding VARCHAR, tag_count INTEGER, root_parent_offset UBIGINT, "offset" UBIGINT, size UBIGINT, data_offset UBIGINT, owner_offset UBIGINT, owner_size UBIGINT, signature_offset UBIGINT, signature_size UBIGINT)`);
-  await c.run(`CREATE TABLE tags (height UBIGINT, id BLOB, tag_index USMALLINT, tag_name BLOB, tag_value BLOB)`);
+  await c.run(
+    `CREATE TABLE items (id BLOB, height UBIGINT, block_transaction_index USMALLINT, root_transaction_id BLOB, parent_id BLOB, owner_address BLOB, target BLOB, anchor BLOB, signature_type UTINYINT, data_size UBIGINT, content_type VARCHAR, content_encoding VARCHAR, tag_count INTEGER, root_parent_offset UBIGINT, "offset" UBIGINT, size UBIGINT, data_offset UBIGINT, owner_offset UBIGINT, owner_size UBIGINT, signature_offset UBIGINT, signature_size UBIGINT)`,
+  );
+  await c.run(
+    `CREATE TABLE tags (height UBIGINT, id BLOB, tag_index USMALLINT, tag_name BLOB, tag_value BLOB)`,
+  );
   await c.run(`CREATE TABLE wallets (address BLOB, public_modulus BLOB)`);
   const esc = (s: string) => s.replace(/'/g, "''");
   const batches: string[] = [];
@@ -300,7 +501,9 @@ async function writeBands(): Promise<Record<string, { dir: string; files: { name
   const tagBatches: string[] = [];
   for (const it of items) {
     it.tags.forEach(([k, v], i) => {
-      cur.push(`(${it.height}, from_hex('${hex(it.id)}'), ${i}, '${esc(k)}'::BLOB, '${esc(v)}'::BLOB)`);
+      cur.push(
+        `(${it.height}, from_hex('${hex(it.id)}'), ${i}, '${esc(k)}'::BLOB, '${esc(v)}'::BLOB)`,
+      );
     });
     if (cur.length >= 4000) {
       tagBatches.push(cur.join(','));
@@ -309,22 +512,49 @@ async function writeBands(): Promise<Record<string, { dir: string; files: { name
   }
   if (cur.length) tagBatches.push(cur.join(','));
   for (const b of tagBatches) await c.run(`INSERT INTO tags VALUES ${b}`);
-  for (const w of wallets) await c.run(`INSERT INTO wallets VALUES (from_hex('${hex(w.address)}'), from_hex('${hex(w.modulus)}'))`);
+  for (const w of wallets)
+    await c.run(
+      `INSERT INTO wallets VALUES (from_hex('${hex(w.address)}'), from_hex('${hex(w.modulus)}'))`,
+    );
 
   const prefix64 = (col: string) => `('0x' || rpad(left(hex(${col}), 16), 16, '0'))::UBIGINT`;
   const sha64 = (col: string) => `('0x' || left(sha256(${col}), 16))::UBIGINT`;
-  const out: Record<string, { dir: string; files: { name: string; bytes: Uint8Array }[]; records: number; from: number; to: number }> = {};
+  const out: Record<
+    string,
+    {
+      dir: string;
+      files: { name: string; bytes: Uint8Array }[];
+      records: number;
+      from: number;
+      to: number;
+    }
+  > = {};
   for (const [from, to] of BANDS) {
     const tmp = path.join(OUT, '_tmp');
     mkdirSync(tmp, { recursive: true });
     const where = `height BETWEEN ${from} AND ${to}`;
     const copy = async (file: string, sql: string, rowGroup = 122880) =>
-      c.run(`COPY (${sql}) TO '${path.join(tmp, file)}' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE ${rowGroup})`);
-    await copy('data_items.parquet', `SELECT * FROM items WHERE ${where} ORDER BY height, block_transaction_index, id, root_parent_offset, "offset"`);
+      c.run(
+        `COPY (${sql}) TO '${path.join(tmp, file)}' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE ${rowGroup})`,
+      );
+    await copy(
+      'data_items.parquet',
+      `SELECT * FROM items WHERE ${where} ORDER BY height, block_transaction_index, id, root_parent_offset, "offset"`,
+    );
     await copy('tags.parquet', `SELECT * FROM tags WHERE ${where} ORDER BY height, id, tag_index`);
-    await copy('wallets.parquet', `SELECT * FROM wallets WHERE address IN (SELECT owner_address FROM items WHERE ${where}) ORDER BY address`);
-    await copy('parents.parquet', `SELECT NULL::BLOB AS id, NULL::BLOB AS root_transaction_id, NULL::UBIGINT AS root_parent_offset, NULL::UBIGINT AS "offset", NULL::UBIGINT AS size, NULL::UBIGINT AS data_offset WHERE false`);
-    await copy('lookup_id.parquet', `SELECT ${prefix64('id')} AS id8, height FROM (SELECT DISTINCT id, height FROM items WHERE ${where}) ORDER BY id8, height`, 16384);
+    await copy(
+      'wallets.parquet',
+      `SELECT * FROM wallets WHERE address IN (SELECT owner_address FROM items WHERE ${where}) ORDER BY address`,
+    );
+    await copy(
+      'parents.parquet',
+      `SELECT NULL::BLOB AS id, NULL::BLOB AS root_transaction_id, NULL::UBIGINT AS root_parent_offset, NULL::UBIGINT AS "offset", NULL::UBIGINT AS size, NULL::UBIGINT AS data_offset WHERE false`,
+    );
+    await copy(
+      'lookup_id.parquet',
+      `SELECT ${prefix64('id')} AS id8, height FROM (SELECT DISTINCT id, height FROM items WHERE ${where}) ORDER BY id8, height`,
+      16384,
+    );
     await copy(
       'lookup_wallet.parquet',
       `WITH i AS (SELECT DISTINCT id, height, owner_address, target, data_size FROM items WHERE ${where})
@@ -340,27 +570,63 @@ async function writeBands(): Promise<Record<string, { dir: string; files: { name
        FROM tags WHERE ${where} GROUP BY tag_name, tag_value ORDER BY name8, val8, name, value`,
       16384,
     );
-    const rows = async (sql: string) => Number(((await c.runAndReadAll(sql)).getRowObjects()[0] as { n: unknown }).n);
+    const rows = async (sql: string) =>
+      Number(((await c.runAndReadAll(sql)).getRowObjects()[0] as { n: unknown }).n);
     const records = await rows(`SELECT count(*) AS n FROM items WHERE ${where}`);
     const band = {
       version: 1,
       schema: 'l2-1',
       heightRange: [from, to],
-      selection: { kind: 'ans104-data-items', tag: { name: 'App-Name', valuePrefix: 'ArDrive', excludeValuePrefix: 'ArDriver' } },
+      selection: {
+        kind: 'ans104-data-items',
+        tag: { name: 'App-Name', valuePrefix: 'ArDrive', excludeValuePrefix: 'ArDriver' },
+      },
       tables: {
         data_items: { rows: records, rowDigest: '0'.repeat(64) },
-        tags: { rows: await rows(`SELECT count(*) AS n FROM tags WHERE ${where}`), rowDigest: '0'.repeat(64) },
-        wallets: { rows: await rows(`SELECT count(*) AS n FROM wallets WHERE address IN (SELECT owner_address FROM items WHERE ${where})`), rowDigest: '0'.repeat(64) },
-        parents: { rows: 0, rowDigest: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
+        tags: {
+          rows: await rows(`SELECT count(*) AS n FROM tags WHERE ${where}`),
+          rowDigest: '0'.repeat(64),
+        },
+        wallets: {
+          rows: await rows(
+            `SELECT count(*) AS n FROM wallets WHERE address IN (SELECT owner_address FROM items WHERE ${where})`,
+          ),
+          rowDigest: '0'.repeat(64),
+        },
+        parents: {
+          rows: 0,
+          rowDigest: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        },
       },
-      lookups: { id: { rows: records, rowDigest: '0'.repeat(64) }, wallet: { rows: records, rowDigest: '0'.repeat(64) }, tag: { rows: await rows(`SELECT count(*) AS n FROM (SELECT DISTINCT tag_name, tag_value FROM tags WHERE ${where})`), rowDigest: '0'.repeat(64) } },
+      lookups: {
+        id: { rows: records, rowDigest: '0'.repeat(64) },
+        wallet: { rows: records, rowDigest: '0'.repeat(64) },
+        tag: {
+          rows: await rows(
+            `SELECT count(*) AS n FROM (SELECT DISTINCT tag_name, tag_value FROM tags WHERE ${where})`,
+          ),
+          rowDigest: '0'.repeat(64),
+        },
+      },
       checks: { fixture: true },
       createdAt: new Date(blockTime(to) * 1000).toISOString(),
     };
-    const files: { name: string; bytes: Uint8Array }[] = [{ name: 'band.json', bytes: new TextEncoder().encode(JSON.stringify(band, null, 2) + '\n') }];
-    for (const f of ['data_items.parquet', 'tags.parquet', 'wallets.parquet', 'parents.parquet', 'lookup_id.parquet', 'lookup_wallet.parquet', 'lookup_tag.parquet'])
+    const files: { name: string; bytes: Uint8Array }[] = [
+      { name: 'band.json', bytes: new TextEncoder().encode(JSON.stringify(band, null, 2) + '\n') },
+    ];
+    for (const f of [
+      'data_items.parquet',
+      'tags.parquet',
+      'wallets.parquet',
+      'parents.parquet',
+      'lookup_id.parquet',
+      'lookup_wallet.parquet',
+      'lookup_tag.parquet',
+    ])
       files.push({ name: f, bytes: new Uint8Array(readFileSync(path.join(tmp, f))) });
-    const digest = sha256(new TextEncoder().encode(JSON.stringify([from, to]) + '\n' + JSON.stringify(band.selection))).slice(0, 12);
+    const digest = sha256(
+      new TextEncoder().encode(JSON.stringify([from, to]) + '\n' + JSON.stringify(band.selection)),
+    ).slice(0, 12);
     const id = `l2-h${from}-${to}-${PUBLISHER_TAG}-${digest}`;
     out[id] = { dir: path.join(OUT, 'ardrive-l2', id), files, records, from, to };
     rmSync(tmp, { recursive: true, force: true });
@@ -371,7 +637,9 @@ async function writeBands(): Promise<Record<string, { dir: string; files: { name
     const [from, to] = BANDS[1]!;
     const tmp = path.join(OUT, '_tmp');
     mkdirSync(tmp, { recursive: true });
-    await c.run(`CREATE TABLE blocks AS SELECT h AS height, from_hex(sha256(('b' || h)::BLOB)) AS indep_hash, from_hex(sha256(('p' || h)::BLOB)) AS previous_block, ''::BLOB AS nonce, ''::BLOB AS hash, (${TIP_TIME} - (${TIP} - h) * 120)::BIGINT AS block_timestamp, 0::INTEGER AS tx_count, 0::UBIGINT AS block_size, '1'::VARCHAR AS diff, '1'::VARCHAR AS cumulative_diff, 0::BIGINT AS last_retarget, NULL::BLOB AS reward_addr, '0'::VARCHAR AS reward_pool, (h * 1000000)::UBIGINT AS weave_size, 1::BIGINT AS usd_to_ar_rate_dividend, 1::BIGINT AS usd_to_ar_rate_divisor, 1::BIGINT AS scheduled_usd_to_ar_rate_dividend, 1::BIGINT AS scheduled_usd_to_ar_rate_divisor, ''::BLOB AS hash_list_merkle, ''::BLOB AS wallet_list, ''::BLOB AS tx_root FROM range(${from}, ${to + 1}) t(h)`);
+    await c.run(
+      `CREATE TABLE blocks AS SELECT h AS height, from_hex(sha256(('b' || h)::BLOB)) AS indep_hash, from_hex(sha256(('p' || h)::BLOB)) AS previous_block, ''::BLOB AS nonce, ''::BLOB AS hash, (${TIP_TIME} - (${TIP} - h) * 120)::BIGINT AS block_timestamp, 0::INTEGER AS tx_count, 0::UBIGINT AS block_size, '1'::VARCHAR AS diff, '1'::VARCHAR AS cumulative_diff, 0::BIGINT AS last_retarget, NULL::BLOB AS reward_addr, '0'::VARCHAR AS reward_pool, (h * 1000000)::UBIGINT AS weave_size, 1::BIGINT AS usd_to_ar_rate_dividend, 1::BIGINT AS usd_to_ar_rate_divisor, 1::BIGINT AS scheduled_usd_to_ar_rate_dividend, 1::BIGINT AS scheduled_usd_to_ar_rate_divisor, ''::BLOB AS hash_list_merkle, ''::BLOB AS wallet_list, ''::BLOB AS tx_root FROM range(${from}, ${to + 1}) t(h)`,
+    );
     const txRows: string[] = [];
     const txTagRows: string[] = [];
     let ti = 0;
@@ -379,27 +647,88 @@ async function writeBands(): Promise<Record<string, { dir: string; files: { name
       if (h < from || h > to) continue;
       const owner = r.items[0]!.owner;
       const size = r.items.reduce((t, i) => t + i.size + 1100, 0);
-      txRows.push(`(from_hex('${hex(r.id)}'), ${ti % 1000}, false, NULL, 0, ${1000000 + (ti % 7) * 12345}, NULL, ${size}, 'application/x.arweave-manifest+json', 2, ${h}, from_hex('${hex(owner)}'), from_hex('${hex(r.id)}'), ${ti * 1000}, NULL, 3, NULL)`);
-      txTagRows.push(`(${h}, from_hex('${hex(r.id)}'), 0, 'Bundle-Format'::BLOB, 'binary'::BLOB, false)`, `(${h}, from_hex('${hex(r.id)}'), 1, 'Bundle-Version'::BLOB, '2.0.0'::BLOB, false)`, `(${h}, from_hex('${hex(r.id)}'), 2, 'App-Name'::BLOB, '${pick(['Turbo', 'ArDrive', 'Bundlr'])}'::BLOB, false)`);
+      txRows.push(
+        `(from_hex('${hex(r.id)}'), ${ti % 1000}, false, NULL, 0, ${1000000 + (ti % 7) * 12345}, NULL, ${size}, 'application/x.arweave-manifest+json', 2, ${h}, from_hex('${hex(owner)}'), from_hex('${hex(r.id)}'), ${ti * 1000}, NULL, 3, NULL)`,
+      );
+      txTagRows.push(
+        `(${h}, from_hex('${hex(r.id)}'), 0, 'Bundle-Format'::BLOB, 'binary'::BLOB, false)`,
+        `(${h}, from_hex('${hex(r.id)}'), 1, 'Bundle-Version'::BLOB, '2.0.0'::BLOB, false)`,
+        `(${h}, from_hex('${hex(r.id)}'), 2, 'App-Name'::BLOB, '${pick(['Turbo', 'ArDrive', 'Bundlr'])}'::BLOB, false)`,
+      );
       ti++;
     }
-    await c.run(`CREATE TABLE l1tx (id BLOB, block_transaction_index USMALLINT, is_data_item BOOLEAN, target BLOB, quantity DECIMAL(20,0), reward DECIMAL(20,0), anchor BLOB, data_size UBIGINT, content_type VARCHAR, format UTINYINT, height UBIGINT, owner_address BLOB, data_root BLOB, "offset" UBIGINT, content_encoding VARCHAR, tag_count INTEGER, signature BLOB)`);
+    await c.run(
+      `CREATE TABLE l1tx (id BLOB, block_transaction_index USMALLINT, is_data_item BOOLEAN, target BLOB, quantity DECIMAL(20,0), reward DECIMAL(20,0), anchor BLOB, data_size UBIGINT, content_type VARCHAR, format UTINYINT, height UBIGINT, owner_address BLOB, data_root BLOB, "offset" UBIGINT, content_encoding VARCHAR, tag_count INTEGER, signature BLOB)`,
+    );
     await c.run(`INSERT INTO l1tx VALUES ${txRows.join(',')}`);
-    await c.run(`CREATE TABLE l1tags (height UBIGINT, id BLOB, tag_index USMALLINT, tag_name BLOB, tag_value BLOB, is_data_item BOOLEAN)`);
+    await c.run(
+      `CREATE TABLE l1tags (height UBIGINT, id BLOB, tag_index USMALLINT, tag_name BLOB, tag_value BLOB, is_data_item BOOLEAN)`,
+    );
     await c.run(`INSERT INTO l1tags VALUES ${txTagRows.join(',')}`);
     const copy = async (file: string, sql: string, rowGroup = 122880) =>
-      c.run(`COPY (${sql}) TO '${path.join(tmp, file)}' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE ${rowGroup})`);
+      c.run(
+        `COPY (${sql}) TO '${path.join(tmp, file)}' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE ${rowGroup})`,
+      );
     await copy('blocks.parquet', `SELECT * FROM blocks ORDER BY height`);
-    await copy('block_transactions.parquet', `SELECT height, block_transaction_index, id AS transaction_id FROM l1tx ORDER BY height, block_transaction_index`);
-    await copy('transactions.parquet', `SELECT * FROM l1tx ORDER BY height, block_transaction_index`);
+    await copy(
+      'block_transactions.parquet',
+      `SELECT height, block_transaction_index, id AS transaction_id FROM l1tx ORDER BY height, block_transaction_index`,
+    );
+    await copy(
+      'transactions.parquet',
+      `SELECT * FROM l1tx ORDER BY height, block_transaction_index`,
+    );
     await copy('tags.parquet', `SELECT * FROM l1tags ORDER BY height, id, tag_index`);
-    await copy('wallets.parquet', `SELECT * FROM wallets WHERE address IN (SELECT owner_address FROM l1tx) ORDER BY address`);
-    await copy('lookup_tx_id.parquet', `SELECT ${prefix64('id')} AS id8, height FROM l1tx ORDER BY id8, height`, 16384);
-    await copy('lookup_wallet.parquet', `SELECT ${prefix64('owner_address')} AS addr8, 0::UTINYINT AS role, height, data_size FROM l1tx ORDER BY addr8, height, role, data_size`, 16384);
-    await copy('lookup_tag.parquet', `SELECT ${sha64('tag_name')} AS name8, ${sha64('tag_value')} AS val8, tag_name AS name, tag_value AS value, count(DISTINCT id)::UBIGINT AS txs, min(height) AS first_height, max(height) AS last_height FROM l1tags GROUP BY tag_name, tag_value ORDER BY name8, val8, name, value`, 16384);
-    const band = { version: 1, schema: 'l1-3', heightRange: [from, to], tables: { blocks: { rows: to - from + 1, rowDigest: '0'.repeat(64) }, block_transactions: { rows: txRows.length, rowDigest: '0'.repeat(64) }, transactions: { rows: txRows.length, rowDigest: '0'.repeat(64) }, tags: { rows: txTagRows.length, rowDigest: '0'.repeat(64) }, wallets: { rows: 0, rowDigest: '0'.repeat(64) } }, lookups: { tx_id: { rows: txRows.length, rowDigest: '0'.repeat(64) }, wallet: { rows: txRows.length, rowDigest: '0'.repeat(64) }, tag: { rows: 0, rowDigest: '0'.repeat(64) } }, createdAt: new Date(blockTime(to) * 1000).toISOString() };
-    const files: { name: string; bytes: Uint8Array }[] = [{ name: 'band.json', bytes: new TextEncoder().encode(JSON.stringify(band, null, 2) + '\n') }];
-    for (const f of ['blocks.parquet', 'block_transactions.parquet', 'transactions.parquet', 'tags.parquet', 'wallets.parquet', 'lookup_tx_id.parquet', 'lookup_wallet.parquet', 'lookup_tag.parquet'])
+    await copy(
+      'wallets.parquet',
+      `SELECT * FROM wallets WHERE address IN (SELECT owner_address FROM l1tx) ORDER BY address`,
+    );
+    await copy(
+      'lookup_tx_id.parquet',
+      `SELECT ${prefix64('id')} AS id8, height FROM l1tx ORDER BY id8, height`,
+      16384,
+    );
+    await copy(
+      'lookup_wallet.parquet',
+      `SELECT ${prefix64('owner_address')} AS addr8, 0::UTINYINT AS role, height, data_size FROM l1tx ORDER BY addr8, height, role, data_size`,
+      16384,
+    );
+    await copy(
+      'lookup_tag.parquet',
+      `SELECT ${sha64('tag_name')} AS name8, ${sha64('tag_value')} AS val8, tag_name AS name, tag_value AS value, count(DISTINCT id)::UBIGINT AS txs, min(height) AS first_height, max(height) AS last_height FROM l1tags GROUP BY tag_name, tag_value ORDER BY name8, val8, name, value`,
+      16384,
+    );
+    const band = {
+      version: 1,
+      schema: 'l1-3',
+      heightRange: [from, to],
+      tables: {
+        blocks: { rows: to - from + 1, rowDigest: '0'.repeat(64) },
+        block_transactions: { rows: txRows.length, rowDigest: '0'.repeat(64) },
+        transactions: { rows: txRows.length, rowDigest: '0'.repeat(64) },
+        tags: { rows: txTagRows.length, rowDigest: '0'.repeat(64) },
+        wallets: { rows: 0, rowDigest: '0'.repeat(64) },
+      },
+      lookups: {
+        tx_id: { rows: txRows.length, rowDigest: '0'.repeat(64) },
+        wallet: { rows: txRows.length, rowDigest: '0'.repeat(64) },
+        tag: { rows: 0, rowDigest: '0'.repeat(64) },
+      },
+      createdAt: new Date(blockTime(to) * 1000).toISOString(),
+    };
+    const files: { name: string; bytes: Uint8Array }[] = [
+      { name: 'band.json', bytes: new TextEncoder().encode(JSON.stringify(band, null, 2) + '\n') },
+    ];
+    for (const f of [
+      'blocks.parquet',
+      'block_transactions.parquet',
+      'transactions.parquet',
+      'tags.parquet',
+      'wallets.parquet',
+      'lookup_tx_id.parquet',
+      'lookup_wallet.parquet',
+      'lookup_tag.parquet',
+    ])
       files.push({ name: f, bytes: new Uint8Array(readFileSync(path.join(tmp, f))) });
     const id = `l1-h${from}-${to}-${PUBLISHER_TAG}-${sha256(new TextEncoder().encode('l1' + from)).slice(0, 12)}`;
     out[id] = { dir: path.join(OUT, 'parquet-l1', id), files, records: txRows.length, from, to };
@@ -410,11 +739,19 @@ async function writeBands(): Promise<Record<string, { dir: string; files: { name
 }
 
 /* ---------- the root-tx band: cdb64 partitions over the L2 items ---------- */
-function buildRootTxBand(): { files: { name: string; bytes: Uint8Array }[]; records: number; from: number; to: number } {
+function buildRootTxBand(): {
+  files: { name: string; bytes: Uint8Array }[];
+  records: number;
+  from: number;
+  to: number;
+} {
   const byPrefix = new Map<number, { key: Uint8Array; value: Uint8Array }[]>();
   for (const it of items) {
     const list = byPrefix.get(it.id[0]!) ?? [];
-    list.push({ key: it.id, value: encodeMsgpack({ r: it.root, i: it.offset, d: it.offset + 1100, s: it.size + 1100 }) });
+    list.push({
+      key: it.id,
+      value: encodeMsgpack({ r: it.root, i: it.offset, d: it.offset + 1100, s: it.size + 1100 }),
+    });
     byPrefix.set(it.id[0]!, list);
   }
   const files: { name: string; bytes: Uint8Array }[] = [];
@@ -424,21 +761,39 @@ function buildRootTxBand(): { files: { name: string; bytes: Uint8Array }[]; reco
     const bytes = writeCdb64(recs);
     const filename = p.toString(16).padStart(2, '0') + '.cdb';
     files.push({ name: filename, bytes });
-    partitions.push({ prefix: p.toString(16).padStart(2, '0'), location: { type: 'file', filename }, recordCount: recs.length, size: bytes.length, sha256: sha256(bytes) });
+    partitions.push({
+      prefix: p.toString(16).padStart(2, '0'),
+      location: { type: 'file', filename },
+      recordCount: recs.length,
+      size: bytes.length,
+      sha256: sha256(bytes),
+    });
   }
-  const manifest = { version: 1, createdAt: new Date(TIP_TIME * 1000).toISOString(), totalRecords: items.length, partitions, metadata: { heightRange: [BANDS[0]![0], TIP] } };
-  files.unshift({ name: 'manifest.json', bytes: new TextEncoder().encode(JSON.stringify(manifest, null, 2) + '\n') });
+  const manifest = {
+    version: 1,
+    createdAt: new Date(TIP_TIME * 1000).toISOString(),
+    totalRecords: items.length,
+    partitions,
+    metadata: { heightRange: [BANDS[0]![0], TIP] },
+  };
+  files.unshift({
+    name: 'manifest.json',
+    bytes: new TextEncoder().encode(JSON.stringify(manifest, null, 2) + '\n'),
+  });
   return { files, records: items.length, from: BANDS[0]![0], to: TIP };
 }
 
 /* ---------- the publication ---------- */
 async function main(): Promise<void> {
   rmSync(OUT, { recursive: true, force: true });
-  mkdirSync(path.join(OUT, 'raw'), { recursive: true });
+  mkdirSync(OUT, { recursive: true });
   mkdirSync(path.join(OUT, 'torrents'), { recursive: true });
   generate();
   console.log(`generated ${items.length} items, ${roots.size} roots, ${wallets.length} wallets`);
-  for (const it of items) if (it.json !== undefined) writeFileSync(path.join(OUT, 'raw', toBase64Url(it.id) + '.json'), it.json);
+  // Every record's JSON in one file (twenty thousand tiny files would weigh on git and the filesystem).
+  const raw: Record<string, string> = {};
+  for (const it of items) if (it.json !== undefined) raw[toBase64Url(it.id)] = it.json;
+  writeFileSync(path.join(OUT, 'raw.json'), JSON.stringify(raw) + '\n');
   const bands = await writeBands();
   const rt = buildRootTxBand();
   const rtId = `d-h${rt.from}-${rt.to}-${PUBLISHER_TAG}-${sha256(new TextEncoder().encode('rt')).slice(0, 12)}`;
@@ -447,7 +802,14 @@ async function main(): Promise<void> {
   const indexes: Record<string, { kind: string; bands: unknown[]; filter?: unknown }> = {
     'root-tx-index': { kind: 'cdb64-root-tx', bands: [] },
     'parquet-l1': { kind: 'parquet-l1', bands: [] },
-    'ardrive-l2': { kind: 'parquet-l2', bands: [], filter: { kind: 'ans104-data-items', tag: { name: 'App-Name', valuePrefix: 'ArDrive', excludeValuePrefix: 'ArDriver' } } },
+    'ardrive-l2': {
+      kind: 'parquet-l2',
+      bands: [],
+      filter: {
+        kind: 'ans104-data-items',
+        tag: { name: 'App-Name', valuePrefix: 'ArDrive', excludeValuePrefix: 'ArDriver' },
+      },
+    },
   };
   for (const [id, b] of Object.entries(bands)) {
     mkdirSync(b.dir, { recursive: true });
@@ -455,7 +817,11 @@ async function main(): Promise<void> {
     const { bytes: torrent, infohashV2 } = await buildTorrent(b.files, { name: id.slice(0, 16) });
     const infohashV1 = createHash('sha1').update(torrent).digest('hex');
     writeFileSync(path.join(OUT, 'torrents', `${infohashV1}.torrent`), torrent);
-    const index = id.startsWith('l2-') ? 'ardrive-l2' : id.startsWith('l1-') ? 'parquet-l1' : 'root-tx-index';
+    const index = id.startsWith('l2-')
+      ? 'ardrive-l2'
+      : id.startsWith('l1-')
+        ? 'parquet-l1'
+        : 'root-tx-index';
     const metadata = id.startsWith('l2-')
       ? { schema: 'l2-1', selection: indexes['ardrive-l2']!.filter }
       : id.startsWith('l1-')
@@ -466,8 +832,15 @@ async function main(): Promise<void> {
       heightRange: [b.from, b.to],
       records: b.records,
       http: { baseUrl: `/ar-io/indexes/${index}/${id}/` },
-      files: b.files.map((f) => ({ name: f.name, size: f.bytes.length, sha256: sha256(f.bytes) })).sort((x, y) => (x.name < y.name ? -1 : 1)),
-      torrent: { infohashV1, infohashV2, magnet: `magnet:?xt=urn:btih:${infohashV1}&xt=urn:btmh:1220${infohashV2}`, torrentUrl: `/ar-io/indexes/torrents/${infohashV1}.torrent` },
+      files: b.files
+        .map((f) => ({ name: f.name, size: f.bytes.length, sha256: sha256(f.bytes) }))
+        .sort((x, y) => (x.name < y.name ? -1 : 1)),
+      torrent: {
+        infohashV1,
+        infohashV2,
+        magnet: `magnet:?xt=urn:btih:${infohashV1}&xt=urn:btmh:1220${infohashV2}`,
+        torrentUrl: `/ar-io/indexes/torrents/${infohashV1}.torrent`,
+      },
       metadata,
     });
   }
@@ -483,11 +856,20 @@ async function main(): Promise<void> {
   };
   const base = new TextEncoder().encode('ar-io-index-publication/v1\n' + canonicalize(unsigned));
   const sig = ed.sign(base, PRIV);
-  const doc = { ...unsigned, signature: { alg: 'ed25519', keyId: KEY_ID, sig: Buffer.from(sig).toString('base64') } };
+  const doc = {
+    ...unsigned,
+    signature: { alg: 'ed25519', keyId: KEY_ID, sig: Buffer.from(sig).toString('base64') },
+  };
   writeFileSync(path.join(OUT, 'publication.json'), JSON.stringify(doc, null, 2) + '\n');
   const peers = {
     gateways: {
-      'fixture-gateway.invalid:443': { url: 'https://fixture-gateway.invalid', wallet: PUBLISHER, observerAddress: KEY_ID, operatorStake: 1, status: 'joined' },
+      'fixture-gateway.invalid:443': {
+        url: 'https://fixture-gateway.invalid',
+        wallet: PUBLISHER,
+        observerAddress: KEY_ID,
+        operatorStake: 1,
+        status: 'joined',
+      },
     },
   };
   writeFileSync(path.join(OUT, 'peers.json'), JSON.stringify(peers, null, 2) + '\n');
@@ -497,7 +879,14 @@ async function main(): Promise<void> {
     blocks[to] = blockTime(to);
   }
   writeFileSync(path.join(OUT, 'blocks.json'), JSON.stringify(blocks, null, 2) + '\n');
-  writeFileSync(path.join(OUT, 'known.json'), JSON.stringify({ ...KNOWN, publisher: PUBLISHER, keyId: KEY_ID, tip: TIP, bands: BANDS }, null, 2) + '\n');
+  writeFileSync(
+    path.join(OUT, 'known.json'),
+    JSON.stringify(
+      { ...KNOWN, publisher: PUBLISHER, keyId: KEY_ID, tip: TIP, bands: BANDS },
+      null,
+      2,
+    ) + '\n',
+  );
   console.log('wrote', OUT);
   console.log(KNOWN);
 }

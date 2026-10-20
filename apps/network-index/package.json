@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:e2e": "VITE_REGISTRY_GATEWAYS=http://localhost:8788 VITE_ENGINE_HOSTS=http://localhost:8787/engine/ VITE_PUBLISHERS=http://localhost:8787 vite build --outDir dist-e2e"
   },
   "dependencies": {
     "@ar-io/index-client": "workspace:*",

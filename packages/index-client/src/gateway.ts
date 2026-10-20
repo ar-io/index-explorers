@@ -23,8 +23,10 @@ export const KNOWN_PUBLISHERS = ['https://turbo-gateway.com', 'https://vilenario
  * send is used unless it matches the hash tree this publication pins; a
  * gateway without the same bytes simply answers 404 and is skipped.
  */
-export const mirrorsOf = (gw: string | null, publishers: readonly string[] = KNOWN_PUBLISHERS): string[] =>
-  publishers.filter((g) => !gw || hostOf(g) !== hostOf(gw));
+export const mirrorsOf = (
+  gw: string | null,
+  publishers: readonly string[] = KNOWN_PUBLISHERS,
+): string[] => publishers.filter((g) => !gw || hostOf(g) !== hostOf(gw));
 
 /**
  * Hosts that serve a page but are not gateways: ar.io resolves ArNS names
@@ -33,7 +35,10 @@ export const mirrorsOf = (gw: string | null, publishers: readonly string[] = KNO
 export const NOT_GATEWAYS = /(^|\.)ar\.io$|^localhost$|^127\.|^\[?::1\]?$/;
 
 /** The gateways Auto tries, in order, from the page's own location. */
-export function autoCandidates(loc: { protocol: string; hostname: string; origin: string }, publishers: readonly string[] = KNOWN_PUBLISHERS): string[] {
+export function autoCandidates(
+  loc: { protocol: string; hostname: string; origin: string },
+  publishers: readonly string[] = KNOWN_PUBLISHERS,
+): string[] {
   const out: string[] = [];
   const host = loc.hostname;
   const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':');
@@ -103,7 +108,13 @@ export async function fetchBandDates(
 ): Promise<Map<number, number>> {
   const uniq = [...new Set(heights)].sort((a, b) => a - b);
   const query =
-    '{' + uniq.map((h) => `h${h}: blocks(height:{min:${h},max:${h}},first:1){edges{node{height timestamp}}}`).join(' ') + '}';
+    '{' +
+    uniq
+      .map(
+        (h) => `h${h}: blocks(height:{min:${h},max:${h}},first:1){edges{node{height timestamp}}}`,
+      )
+      .join(' ') +
+    '}';
   const out = new Map<number, number>();
   for (const g of gateways) {
     try {
@@ -116,10 +127,13 @@ export async function fetchBandDates(
         signal: ac.signal,
       }).finally(() => clearTimeout(timer));
       if (!res.ok) continue;
-      const body = (await res.json()) as { data?: Record<string, { edges?: { node?: { height: number; timestamp: number } }[] }> };
+      const body = (await res.json()) as {
+        data?: Record<string, { edges?: { node?: { height: number; timestamp: number } }[] }>;
+      };
       for (const v of Object.values(body.data ?? {})) {
         const n = v?.edges?.[0]?.node;
-        if (n && typeof n.height === 'number' && typeof n.timestamp === 'number') out.set(n.height, n.timestamp);
+        if (n && typeof n.height === 'number' && typeof n.timestamp === 'number')
+          out.set(n.height, n.timestamp);
       }
       if (out.size) return out;
     } catch {

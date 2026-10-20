@@ -1,0 +1,105 @@
+/*
+ * Design tokens. ArDrive's brand kit (ardrive.io/brand-kit): Onyx #121212,
+ * Alabaster #FAFAFA, Primary #D31721, Ruddy #FE0230, Success #18A957, Info
+ * #3142C4; Wavehaus Sans 800 for headings, 300–600 for body. Dark by
+ * default, as the app is; a light theme follows the system or
+ * data-theme="light". A page sets data-brand="ario" for the ar.io explorers.
+ */
+:root {
+  --onyx: #121212;
+  --alabaster: #fafafa;
+  --primary: #d31721;
+  --ruddy: #fe0230;
+  --success: #18a957;
+  --info: #3142c4;
+  --ink: #080808;
+
+  --bg: var(--onyx);
+  --surface: #1b1b1b;
+  --raised: #232323;
+  --fg: var(--alabaster);
+  --muted: #a7a7a7;
+  --label: #ff6b74;
+  --line: rgba(255, 255, 255, 0.11);
+  --btn-bg: var(--primary);
+  --btn-fg: #fff;
+  --field-bg: rgba(255, 255, 255, 0.05);
+  --ok: #4fd38a;
+  --bad: #ff8a80;
+  --chip: rgba(255, 255, 255, 0.06);
+  --sel-bg: var(--alabaster);
+  --sel-fg: var(--onyx);
+  --glow: rgba(254, 2, 48, 0.28);
+
+  --headline: 'Wavehaus', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --body: 'Wavehaus', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg: var(--alabaster);
+    --surface: #ffffff;
+    --raised: #f3f3f3;
+    --fg: var(--onyx);
+    --muted: #666;
+    --label: var(--primary);
+    --line: #e6e6e6;
+    --field-bg: #fff;
+    --ok: #137a3f;
+    --bad: #b3261e;
+    --chip: #f1f1f1;
+    --sel-bg: var(--onyx);
+    --sel-fg: var(--alabaster);
+    color-scheme: light;
+  }
+}
+:root[data-theme='light'] {
+  --bg: var(--alabaster);
+  --surface: #ffffff;
+  --raised: #f3f3f3;
+  --fg: var(--onyx);
+  --muted: #666;
+  --label: var(--primary);
+  --line: #e6e6e6;
+  --field-bg: #fff;
+  --ok: #137a3f;
+  --bad: #b3261e;
+  --chip: #f1f1f1;
+  --sel-bg: var(--onyx);
+  --sel-fg: var(--alabaster);
+  color-scheme: light;
+}
+
+/* ar.io: the same structure in the network's colours. */
+:root[data-brand='ario'] {
+  --primary: #7a52f4;
+  --ruddy: #9d7cff;
+  --label: #b9a3ff;
+  --glow: rgba(122, 82, 244, 0.3);
+  --ink: #0e0a1c;
+  --bg: #120d24;
+  --surface: #191231;
+  --raised: #221a3d;
+  --line: rgba(255, 255, 255, 0.12);
+  --headline: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-brand='ario']:not([data-theme='dark']) {
+    --bg: #faf8ff;
+    --surface: #fff;
+    --raised: #f1edfb;
+    --fg: #15102a;
+    --label: #5a35d9;
+    --line: #e7e2f5;
+  }
+}
+:root[data-brand='ario'][data-theme='light'] {
+  --bg: #faf8ff;
+  --surface: #fff;
+  --raised: #f1edfb;
+  --fg: #15102a;
+  --label: #5a35d9;
+  --line: #e7e2f5;
+}

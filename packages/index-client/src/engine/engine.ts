@@ -48,7 +48,13 @@ export async function fetchVerified(
   const why: string[] = [];
   for (const host of hosts) {
     try {
-      const bytes = await fetchWithProgress(joinUrl(host, pin.path), label, pin.size, onProgress, fetchImpl);
+      const bytes = await fetchWithProgress(
+        joinUrl(host, pin.path),
+        label,
+        pin.size,
+        onProgress,
+        fetchImpl,
+      );
       onProgress?.({ busy: `Checking ${label} against its pinned SHA-256` });
       if ((await sha256Hex(bytes)) === pin.sha256) return bytes;
       why.push(`${host} sent bytes that do not match its pinned SHA-256`);
@@ -76,11 +82,27 @@ export class Engine {
   static async open(opts: EngineOptions): Promise<Engine> {
     const say = opts.onStatus ?? (() => {});
     say('Fetching the DuckDB worker from Arweave and checking its hash');
-    const workerBytes = await fetchVerified(opts.hosts, opts.pins.worker, 'the DuckDB worker', opts.onProgress, opts.fetch);
-    const workerUrl = URL.createObjectURL(new Blob([workerBytes as BlobPart], { type: 'text/javascript' }));
+    const workerBytes = await fetchVerified(
+      opts.hosts,
+      opts.pins.worker,
+      'the DuckDB worker',
+      opts.onProgress,
+      opts.fetch,
+    );
+    const workerUrl = URL.createObjectURL(
+      new Blob([workerBytes as BlobPart], { type: 'text/javascript' }),
+    );
     say('Fetching the DuckDB engine from Arweave, once per visit');
-    const wasmBytes = await fetchVerified(opts.hosts, opts.pins.wasm, 'the DuckDB engine', opts.onProgress, opts.fetch);
-    const wasmUrl = URL.createObjectURL(new Blob([wasmBytes as BlobPart], { type: 'application/wasm' }));
+    const wasmBytes = await fetchVerified(
+      opts.hosts,
+      opts.pins.wasm,
+      'the DuckDB engine',
+      opts.onProgress,
+      opts.fetch,
+    );
+    const wasmUrl = URL.createObjectURL(
+      new Blob([wasmBytes as BlobPart], { type: 'application/wasm' }),
+    );
     say('Starting the engine');
     opts.onProgress?.({ busy: 'Starting the engine' });
     // VoidLogger: ConsoleLogger writes a line to the console for every query.
@@ -89,7 +111,13 @@ export class Engine {
     // Range reads: a HEAD for the size, then ranged GETs, never a whole file.
     // forceFullHTTPReads must be said: left unset, the engine falls back to
     // whole-file reads.
-    await db.open({ filesystem: { reliableHeadRequests: true, allowFullHTTPReads: false, forceFullHTTPReads: false } });
+    await db.open({
+      filesystem: {
+        reliableHeadRequests: true,
+        allowFullHTTPReads: false,
+        forceFullHTTPReads: false,
+      },
+    });
     const conn = await db.connect();
     const engine = new Engine(db, conn, opts);
     await engine.configure(conn);
@@ -202,11 +230,19 @@ export const openEngine = (opts: EngineOptions): Promise<Engine> => Engine.open(
 
 /** Arrow rows are proxies: a spread loses fields and BigInt arithmetic throws in comparators. */
 export function rowsOf<T = Record<string, unknown>>(table: Table): T[] {
-  return table.toArray().map((r) => (r && typeof (r as { toJSON?: unknown }).toJSON === 'function' ? (r as { toJSON(): T }).toJSON() : ({ ...r } as T)));
+  return table
+    .toArray()
+    .map((r) =>
+      r && typeof (r as { toJSON?: unknown }).toJSON === 'function'
+        ? (r as { toJSON(): T }).toJSON()
+        : ({ ...r } as T),
+    );
 }
 
 export const columnsOf = (table: Table): string[] => table.schema.fields.map((f) => f.name);
 
 /** Columns Arrow hands back as epoch milliseconds. */
 export const timeColumnsOf = (table: Table): Set<string> =>
-  new Set(table.schema.fields.filter((f) => /Timestamp|Date/i.test(String(f.type))).map((f) => f.name));
+  new Set(
+    table.schema.fields.filter((f) => /Timestamp|Date/i.test(String(f.type))).map((f) => f.name),
+  );

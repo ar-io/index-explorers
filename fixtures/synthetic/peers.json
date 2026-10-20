@@ -1,0 +1,11 @@
+{
+  "gateways": {
+    "fixture-gateway.invalid:443": {
+      "url": "https://fixture-gateway.invalid",
+      "wallet": "3UWhsaYkiPHZ7G2Vvq8P261npqoGphWWEuTp322rrN4E",
+      "observerAddress": "3UWhsaYkiPHZ7G2Vvq8P261npqoGphWWEuTp322rrN4E",
+      "operatorStake": 1,
+      "status": "joined"
+    }
+  }
+}

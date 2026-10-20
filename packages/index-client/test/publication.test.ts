@@ -11,12 +11,25 @@ import {
   verifySignature,
   type Publication,
 } from '../src/index.js';
-import { fakeFetch, GATEWAY, LIVE_PEERS, LIVE_PUBLICATION, PUBLISHER, readJson } from './helpers.js';
+import {
+  fakeFetch,
+  GATEWAY,
+  LIVE_PEERS,
+  LIVE_PUBLICATION,
+  PUBLISHER,
+  readJson,
+} from './helpers.js';
 
 const raw = readJson(LIVE_PUBLICATION) as Record<string, unknown>;
 const peers = readJson(LIVE_PEERS);
-const clone = (): Record<string, unknown> => JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
-const registry = { wallet: PUBLISHER, observerAddress: PUBLISHER, url: GATEWAY, via: 'https://vilenarios.com' };
+const clone = (): Record<string, unknown> =>
+  JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+const registry = {
+  wallet: PUBLISHER,
+  observerAddress: PUBLISHER,
+  url: GATEWAY,
+  via: 'https://vilenarios.com',
+};
 
 describe('parsePublication', () => {
   it('accepts the recorded publication and keeps its shape', () => {
@@ -36,7 +49,8 @@ describe('parsePublication', () => {
     v.version = 2;
     expect(() => parsePublication(v)).toThrow(/version/);
     const d = clone();
-    ((d.indexes as { bands: { files: { sha256: string }[] }[] }[])[0]!.bands[0]!.files[0]!).sha256 = 'zz';
+    (d.indexes as { bands: { files: { sha256: string }[] }[] }[])[0]!.bands[0]!.files[0]!.sha256 =
+      'zz';
     expect(() => parsePublication(d)).toThrow(/sha256/);
     const n = clone();
     (n.indexes as { name: string }[])[0]!.name = '__proto__';
@@ -55,7 +69,8 @@ describe('signature', () => {
 
   it('refuses a tampered band digest: the digests live inside the signed document', async () => {
     const t = clone();
-    const file = (t.indexes as { bands: { files: { sha256: string }[] }[] }[])[2]!.bands[3]!.files[1]!;
+    const file = (t.indexes as { bands: { files: { sha256: string }[] }[] }[])[2]!.bands[3]!
+      .files[1]!;
     file.sha256 = file.sha256.replace(/^./, (c) => (c === 'a' ? 'b' : 'a'));
     await expect(verifySignature(parsePublication(t), PUBLISHER)).rejects.toThrow(/does not match/);
   });
@@ -75,11 +90,19 @@ describe('signature', () => {
 
   it('refuses a key the registry does not name, a wrong alg and a short signature', async () => {
     const doc = parsePublication(raw);
-    await expect(verifySignature(doc, 'HpHVKAvQTwMBHm4qEdHBbKgjsBBdwKC1YetKzdMKuWpt')).rejects.toThrow(/registry names/);
-    const a = parsePublication({ ...clone(), signature: { ...(raw.signature as object), alg: 'rsa' } });
+    await expect(
+      verifySignature(doc, 'HpHVKAvQTwMBHm4qEdHBbKgjsBBdwKC1YetKzdMKuWpt'),
+    ).rejects.toThrow(/registry names/);
+    const a = parsePublication({
+      ...clone(),
+      signature: { ...(raw.signature as object), alg: 'rsa' },
+    });
     await expect(verifySignature(a, PUBLISHER)).rejects.toThrow(/not Ed25519/);
     const sig = raw.signature as { sig: string; keyId: string };
-    const sh = parsePublication({ ...clone(), signature: { alg: 'ed25519', keyId: sig.keyId, sig: sig.sig.slice(0, 20) } });
+    const sh = parsePublication({
+      ...clone(),
+      signature: { alg: 'ed25519', keyId: sig.keyId, sig: sig.sig.slice(0, 20) },
+    });
     await expect(verifySignature(sh, PUBLISHER)).rejects.toThrow(/64 bytes/);
   });
 
@@ -106,7 +129,11 @@ describe('registry and verifyPublication', () => {
     expect(rec.via).toBe('https://vilenarios.com');
     expect(rec.url).toBe(GATEWAY);
     await expect(
-      lookupRegistry(PUBLISHER, { gateways: ['https://turbo-gateway.com'], excluding: GATEWAY, fetch: fetchImpl }),
+      lookupRegistry(PUBLISHER, {
+        gateways: ['https://turbo-gateway.com'],
+        excluding: GATEWAY,
+        fetch: fetchImpl,
+      }),
     ).rejects.toThrow(/no independent gateway/);
     await expect(
       lookupRegistry('nobody', { gateways: ['https://vilenarios.com'], fetch: fetchImpl }),
@@ -126,7 +153,11 @@ describe('registry and verifyPublication', () => {
     expect(proof.key).toBe(PUBLISHER);
     expect(proof.expired).toBe(false);
     expect(proof.publisherUrl).toBe(GATEWAY);
-    const later = await verifyPublication(doc, { registryGateways: [], registry, now: () => Date.parse('2026-10-22T00:00:00Z') });
+    const later = await verifyPublication(doc, {
+      registryGateways: [],
+      registry,
+      now: () => Date.parse('2026-10-22T00:00:00Z'),
+    });
     expect(later.expired).toBe(true);
   });
 
@@ -145,13 +176,19 @@ describe('registry and verifyPublication', () => {
 
   it('fetchPublication bounds, parses and hashes the document', async () => {
     const text = JSON.stringify(raw);
-    const got = await fetchPublication(GATEWAY, { fetch: fakeFetch({ 'https://turbo-gateway.com/ar-io/indexes': text }) });
+    const got = await fetchPublication(GATEWAY, {
+      fetch: fakeFetch({ 'https://turbo-gateway.com/ar-io/indexes': text }),
+    });
     expect(got.doc.sequence).toBe(159);
     expect(got.sha256).toMatch(/^[0-9a-f]{64}$/);
     await expect(
-      fetchPublication(GATEWAY, { fetch: fakeFetch({ 'https://turbo-gateway.com/ar-io/indexes': 'not json' }) }),
+      fetchPublication(GATEWAY, {
+        fetch: fakeFetch({ 'https://turbo-gateway.com/ar-io/indexes': 'not json' }),
+      }),
     ).rejects.toThrow(/not JSON/);
-    await expect(fetchPublication('https://nowhere.example', { fetch: fakeFetch({}) })).rejects.toThrow(/404/);
+    await expect(
+      fetchPublication('https://nowhere.example', { fetch: fakeFetch({}) }),
+    ).rejects.toThrow(/404/);
   });
 });
 
@@ -159,17 +196,24 @@ describe('selectIndex', () => {
   const doc: Publication = parsePublication(raw);
 
   it('drops empty parquet bands, sorts by height, and resolves URLs and torrents', () => {
-    const ix = selectIndex(doc, 'ardrive-l2', { gateway: GATEWAY, mirrors: ['https://vilenarios.com'] });
+    const ix = selectIndex(doc, 'ardrive-l2', {
+      gateway: GATEWAY,
+      mirrors: ['https://vilenarios.com'],
+    });
     expect(ix.kind).toBe('parquet-l2');
     expect(ix.bands.length).toBe(18);
     expect(ix.dropped.filter((d) => d.why === 'no records').length).toBe(7);
-    expect(ix.bands.map((b) => b.from)).toEqual([...ix.bands.map((b) => b.from)].sort((a, b) => a - b));
+    expect(ix.bands.map((b) => b.from)).toEqual(
+      [...ix.bands.map((b) => b.from)].sort((a, b) => a - b),
+    );
     const b = ix.bands.find((x) => x.id.startsWith('l2-h700000'))!;
     expect(b.records).toBe(2712);
     expect(b.files.get('tags.parquet')?.url).toBe(
       'https://turbo-gateway.com/ar-io/indexes/ardrive-l2/l2-h700000-799999-3078e8b8-a2a34f51df49/tags.parquet',
     );
-    expect(b.torrent?.infohashV2).toBe('fe8c79aebba7ff9b92bd75133e51084b198f982f7d0d11bf922abc10b6a7f49c');
+    expect(b.torrent?.infohashV2).toBe(
+      'fe8c79aebba7ff9b92bd75133e51084b198f982f7d0d11bf922abc10b6a7f49c',
+    );
     expect(b.torrent?.urls).toEqual([
       'https://turbo-gateway.com/ar-io/indexes/torrents/43f7de78570542926d82e9e37c45b014409c14f1.torrent',
       'https://vilenarios.com/ar-io/indexes/torrents/43f7de78570542926d82e9e37c45b014409c14f1.torrent',
@@ -188,9 +232,13 @@ describe('selectIndex', () => {
   });
 
   it('prunes a band inside another and a superseded one', () => {
-    const d = JSON.parse(JSON.stringify(raw)) as { indexes: { name: string; bands: Record<string, unknown>[] }[] };
+    const d = JSON.parse(JSON.stringify(raw)) as {
+      indexes: { name: string; bands: Record<string, unknown>[] }[];
+    };
     const l1 = d.indexes.find((i) => i.name === 'parquet-l1')!;
-    const inner = JSON.parse(JSON.stringify(l1.bands.find((b) => (b.id as string).startsWith('l1-h2000000'))!)) as Record<string, unknown>;
+    const inner = JSON.parse(
+      JSON.stringify(l1.bands.find((b) => (b.id as string).startsWith('l1-h2000000'))!),
+    ) as Record<string, unknown>;
     inner.id = 'l1-h2000000-2001999-x';
     inner.heightRange = [2000000, 2001999];
     l1.bands.push(inner);
@@ -199,7 +247,10 @@ describe('selectIndex', () => {
     l1.bands.push(old);
     const ix = selectIndex(parsePublication(d), 'parquet-l1', { gateway: GATEWAY });
     expect(ix.bands.length).toBe(25);
-    expect(ix.dropped.map((x) => x.why).sort()).toEqual(['inside l1-h2000000-2004999-3078e8b8-8c27d55aa838', 'superseded']);
+    expect(ix.dropped.map((x) => x.why).sort()).toEqual([
+      'inside l1-h2000000-2004999-3078e8b8-8c27d55aa838',
+      'superseded',
+    ]);
   });
 
   it('throws for an index the publication does not list', () => {

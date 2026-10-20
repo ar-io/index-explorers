@@ -130,12 +130,17 @@ export function bdecode(b: Uint8Array): { value: Bencoded; infoSpan: [number, nu
 }
 
 /** Root of a perfect binary tree over `leaves`, padded to `width` with `pad`. */
-export async function merkle(leaves: Uint8Array[], width: number, pad: Uint8Array): Promise<Uint8Array> {
+export async function merkle(
+  leaves: Uint8Array[],
+  width: number,
+  pad: Uint8Array,
+): Promise<Uint8Array> {
   let layer = leaves.slice();
   while (layer.length < width) layer.push(pad);
   while (layer.length > 1) {
     const next: Uint8Array[] = [];
-    for (let k = 0; k < layer.length; k += 2) next.push(await sha256(concat(layer[k]!, layer[k + 1]!)));
+    for (let k = 0; k < layer.length; k += 2)
+      next.push(await sha256(concat(layer[k]!, layer[k + 1]!)));
     layer = next;
   }
   return layer[0]!;
@@ -184,15 +189,20 @@ export async function checkTorrent(bytes: Uint8Array, ih: string): Promise<Map<s
     const root = leaf.get('pieces root');
     if (typeof size !== 'number' || !Number.isSafeInteger(size) || size < 0)
       throw new Refusal('torrent', `the torrent gives ${name} no valid length`);
-    if (size === 0) return { size, pieceLength, layer: new Uint8Array(0), rootHex: 'empty', single: true };
+    if (size === 0)
+      return { size, pieceLength, layer: new Uint8Array(0), rootHex: 'empty', single: true };
     if (!(root instanceof Uint8Array) || root.length !== 32)
       throw new Refusal('torrent', `the torrent has no pieces root for ${name}`);
     // One piece: its own subtree root is the file's root.
-    if (size <= pieceLength) return { size, pieceLength, layer: root, rootHex: hex(root), single: true };
+    if (size <= pieceLength)
+      return { size, pieceLength, layer: root, rootHex: hex(root), single: true };
     const layer = layers instanceof Map ? layers.get(latin1(root)) : undefined;
     const pieces = Math.ceil(size / pieceLength);
     if (!(layer instanceof Uint8Array) || layer.length !== pieces * 32) {
-      throw new Refusal('integrity', `has a piece layer for ${name} that is missing or the wrong size`);
+      throw new Refusal(
+        'integrity',
+        `has a piece layer for ${name} that is missing or the wrong size`,
+      );
     }
     // BEP 52 pads the leaves with zero hashes; at the piece layer that is the
     // root of an all-zero piece's subtree.
@@ -201,18 +211,27 @@ export async function checkTorrent(bytes: Uint8Array, ih: string): Promise<Map<s
     let width = 1;
     while (width < pieces) width *= 2;
     if (!bytesEqual(await merkle(list, width, pad), root)) {
-      throw new Refusal('integrity', `has a piece layer for ${name} that does not hash to the signed root`);
+      throw new Refusal(
+        'integrity',
+        `has a piece layer for ${name} that does not hash to the signed root`,
+      );
     }
     return { size, pieceLength, layer, rootHex: hex(root), single: false };
   };
   const walk = async (node: Bencoded | undefined, path: string[], depth: number): Promise<void> => {
-    if (!(node instanceof Map) || depth > 16) throw new Refusal('torrent', 'the torrent’s file tree is malformed');
+    if (!(node instanceof Map) || depth > 16)
+      throw new Refusal('torrent', 'the torrent’s file tree is malformed');
     for (const [key, child] of node) {
       if (key === '') {
-        if (!(child instanceof Map)) throw new Refusal('torrent', 'the torrent’s file tree is malformed');
+        if (!(child instanceof Map))
+          throw new Refusal('torrent', 'the torrent’s file tree is malformed');
         files.set(path.join('/'), await fileTree(child, path.join('/')));
       } else {
-        await walk(child, [...path, new TextDecoder().decode(Uint8Array.from(key, (c) => c.charCodeAt(0)))], depth + 1);
+        await walk(
+          child,
+          [...path, new TextDecoder().decode(Uint8Array.from(key, (c) => c.charCodeAt(0)))],
+          depth + 1,
+        );
       }
     }
   };
@@ -229,7 +248,8 @@ export const pieceSize = (t: FileTree, k: number): number =>
 export async function pieceOk(t: FileTree, k: number, data: Uint8Array): Promise<boolean> {
   if (data.length !== pieceSize(t, k)) return false;
   const leaves: Uint8Array[] = [];
-  for (let o = 0; o < data.length; o += BLOCK) leaves.push(await sha256(data.subarray(o, Math.min(o + BLOCK, data.length))));
+  for (let o = 0; o < data.length; o += BLOCK)
+    leaves.push(await sha256(data.subarray(o, Math.min(o + BLOCK, data.length))));
   // A full piece's subtree is pieceLength/16 KiB wide; a single-piece file's
   // tree is only as wide as its own blocks, rounded up to a power of two.
   let width = t.pieceLength / BLOCK;
@@ -274,7 +294,8 @@ export async function fileHashes(
   for (let k = 0; k < pieces; k++) {
     const piece = bytes.subarray(k * pieceLength, Math.min((k + 1) * pieceLength, bytes.length));
     const leaves: Uint8Array[] = [];
-    for (let o = 0; o < piece.length; o += BLOCK) leaves.push(await sha256(piece.subarray(o, Math.min(o + BLOCK, piece.length))));
+    for (let o = 0; o < piece.length; o += BLOCK)
+      leaves.push(await sha256(piece.subarray(o, Math.min(o + BLOCK, piece.length))));
     let width = per;
     if (pieces === 1) {
       width = 1;
@@ -316,7 +337,11 @@ export async function buildTorrent(
   ]);
   const top = new Map<string, Bencoded>([['info', info]]);
   if (layers.size) top.set('piece layers', layers);
-  if (opts.webseeds?.length) top.set('url-list', opts.webseeds.map((u) => new TextEncoder().encode(u)));
+  if (opts.webseeds?.length)
+    top.set(
+      'url-list',
+      opts.webseeds.map((u) => new TextEncoder().encode(u)),
+    );
   const bytes = bencode(top);
   return { bytes, infohashV2: hex(await sha256(bencode(info))) };
 }

@@ -4,7 +4,14 @@
  * encoded as float 64 by the reference encoder; they are exact). Anything
  * else is refused: a value is a few dozen bytes with known keys.
  */
-export type MsgValue = number | string | Uint8Array | MsgValue[] | { [k: string]: MsgValue } | null | boolean;
+export type MsgValue =
+  | number
+  | string
+  | Uint8Array
+  | MsgValue[]
+  | { [k: string]: MsgValue }
+  | null
+  | boolean;
 
 export function decodeMsgpack(b: Uint8Array): MsgValue {
   const view = new DataView(b.buffer, b.byteOffset, b.byteLength);
@@ -115,7 +122,8 @@ export function encodeMsgpack(v: MsgValue): Uint8Array {
       if (x <= 0x7f) return push(x);
       if (x <= 0xff) return push(0xcc, x);
       if (x <= 0xffff) return push(0xcd, x >> 8, x & 0xff);
-      if (x <= 0xffffffff) return push(0xce, (x >>> 24) & 0xff, (x >>> 16) & 0xff, (x >>> 8) & 0xff, x & 0xff);
+      if (x <= 0xffffffff)
+        return push(0xce, (x >>> 24) & 0xff, (x >>> 16) & 0xff, (x >>> 8) & 0xff, x & 0xff);
       const buf = new Uint8Array(8);
       new DataView(buf.buffer).setFloat64(0, x);
       return push(0xcb, ...buf);

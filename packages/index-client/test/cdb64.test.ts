@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { cdb64, decodeMsgpack, encodeMsgpack, fromBase64Url, toBase64Url, type Band } from '../src/index.js';
+import {
+  cdb64,
+  decodeMsgpack,
+  encodeMsgpack,
+  fromBase64Url,
+  toBase64Url,
+  type Band,
+} from '../src/index.js';
 import { writeCdb64 } from './cdb64-writer.js';
 
 const rnd = (seed: number, n = 32): Uint8Array => {
@@ -17,13 +24,18 @@ describe('cdb64Hash', () => {
   it('matches the reference for the empty key and a known byte string', () => {
     expect(cdb64.cdb64Hash(new Uint8Array(0))).toBe(5381n);
     // h = ((5381 << 5) + 5381) ^ 0x61 for "a"
-    expect(cdb64.cdb64Hash(new TextEncoder().encode('a'))).toBe((((5381n << 5n) + 5381n) ^ 0x61n) & 0xffffffffffffffffn);
+    expect(cdb64.cdb64Hash(new TextEncoder().encode('a'))).toBe(
+      (((5381n << 5n) + 5381n) ^ 0x61n) & 0xffffffffffffffffn,
+    );
   });
 });
 
 describe('cdb64Get over a written partition', () => {
   const keys = Array.from({ length: 500 }, (_, i) => rnd(i + 1));
-  const records = keys.map((key, i) => ({ key, value: encodeMsgpack({ r: rnd(1000 + i), i: i * 1000, d: i * 1000 + 100 }) }));
+  const records = keys.map((key, i) => ({
+    key,
+    value: encodeMsgpack({ r: rnd(1000 + i), i: i * 1000, d: i * 1000 + 100 }),
+  }));
   const file = writeCdb64(records);
   const reads: [number, number][] = [];
   const read = async (s: number, e: number) => {
@@ -50,7 +62,10 @@ describe('cdb64Get over a written partition', () => {
     new DataView(bad.buffer).setBigUint64(0, 1n << 40n, true);
     new DataView(bad.buffer).setBigUint64(8, 8n, true);
     const k = keys.find((key) => cdb64.cdb64Hash(key) % 256n === 0n);
-    if (k) await expect(cdb64.cdb64Get(async (s, e) => bad.slice(s, e + 1), bad.length, k)).rejects.toThrow(/outside/);
+    if (k)
+      await expect(
+        cdb64.cdb64Get(async (s, e) => bad.slice(s, e + 1), bad.length, k),
+      ).rejects.toThrow(/outside/);
   });
 });
 
@@ -58,10 +73,18 @@ describe('root values', () => {
   it('decodes the four shapes, with float-64 offsets past 2^32', () => {
     const r = rnd(1);
     const p = [rnd(2), rnd(3)];
-    expect(cdb64.decodeRootValue(encodeMsgpack({ r }))).toMatchObject({ rootTxId: toBase64Url(r), path: null, rootDataItemOffset: null });
+    expect(cdb64.decodeRootValue(encodeMsgpack({ r }))).toMatchObject({
+      rootTxId: toBase64Url(r),
+      path: null,
+      rootDataItemOffset: null,
+    });
     const big = 2 ** 33 + 5;
     const c = cdb64.decodeRootValue(encodeMsgpack({ r, i: big, d: big + 1100, s: 4000 }));
-    expect(c).toMatchObject({ rootDataItemOffset: big, rootDataOffset: big + 1100, dataItemSize: 4000 });
+    expect(c).toMatchObject({
+      rootDataItemOffset: big,
+      rootDataOffset: big + 1100,
+      dataItemSize: 4000,
+    });
     const pp = cdb64.decodeRootValue(encodeMsgpack({ p }));
     expect(pp.rootTxId).toBe(toBase64Url(p[0]!));
     expect(pp.path).toEqual(p.map(toBase64Url));
@@ -81,14 +104,24 @@ describe('root values', () => {
 });
 
 describe('lookupRoot across bands', () => {
-  const mkBand = (id: string, from: number, to: number | null, files: Record<string, Uint8Array>): Band => ({
+  const mkBand = (
+    id: string,
+    from: number,
+    to: number | null,
+    files: Record<string, Uint8Array>,
+  ): Band => ({
     id,
     index: 'root-tx-index',
     kind: 'cdb64-root-tx',
     from,
     to,
     records: 1,
-    files: new Map(Object.entries(files).map(([name, bytes]) => [name, { name, size: bytes.length, sha256: '0'.repeat(64), url: `https://x/${id}/${name}` }])),
+    files: new Map(
+      Object.entries(files).map(([name, bytes]) => [
+        name,
+        { name, size: bytes.length, sha256: '0'.repeat(64), url: `https://x/${id}/${name}` },
+      ]),
+    ),
     size: 0,
     torrent: null,
     schema: null,
@@ -105,27 +138,55 @@ describe('lookupRoot across bands', () => {
         version: 1,
         createdAt: 'x',
         totalRecords: 1,
-        partitions: ids.map((p) => ({ prefix: p, location: { type: 'file', filename: `${p}.cdb` }, recordCount: 1, size: part.length })),
+        partitions: ids.map((p) => ({
+          prefix: p,
+          location: { type: 'file', filename: `${p}.cdb` },
+          recordCount: 1,
+          size: part.length,
+        })),
       }),
     );
   const other = prefix === '00' ? '01' : '00';
-  const oldBand = mkBand('h-old', 0, 999, { 'manifest.json': manifest([prefix]), [`${prefix}.cdb`]: part });
-  const tipBand = mkBand('tip', 1000, null, { 'manifest.json': manifest([other]), [`${other}.cdb`]: part });
+  const oldBand = mkBand('h-old', 0, 999, {
+    'manifest.json': manifest([prefix]),
+    [`${prefix}.cdb`]: part,
+  });
+  const tipBand = mkBand('tip', 1000, null, {
+    'manifest.json': manifest([other]),
+    [`${other}.cdb`]: part,
+  });
   const store = new Map<string, Uint8Array>();
-  for (const b of [oldBand, tipBand]) for (const [n] of b.files) store.set(`${b.id}/${n}`, n === 'manifest.json' ? (b.id === 'tip' ? manifest([other]) : manifest([prefix])) : part);
-  const read = async (band: Band, file: string, s: number, e: number) => store.get(`${band.id}/${file}`)!.slice(s, e + 1);
+  for (const b of [oldBand, tipBand])
+    for (const [n] of b.files)
+      store.set(
+        `${b.id}/${n}`,
+        n === 'manifest.json' ? (b.id === 'tip' ? manifest([other]) : manifest([prefix])) : part,
+      );
+  const read = async (band: Band, file: string, s: number, e: number) =>
+    store.get(`${band.id}/${file}`)!.slice(s, e + 1);
 
   it('searches the tip first, skips bands without the prefix, and reports every read', async () => {
     const hit = await cdb64.lookupRoot(toBase64Url(key), { bands: [oldBand, tipBand], read });
     expect(hit?.band.id).toBe('h-old');
     expect(hit?.rootTxId).toBe(toBase64Url(rnd(7)));
-    expect(hit?.reads.map((r) => r.file)).toEqual(['manifest.json', `${prefix}.cdb`, `${prefix}.cdb`, `${prefix}.cdb`, `${prefix}.cdb`]);
-    expect(await cdb64.lookupRoot(toBase64Url(rnd(5)), { bands: [oldBand, tipBand], read })).toBeNull();
+    expect(hit?.reads.map((r) => r.file)).toEqual([
+      'manifest.json',
+      `${prefix}.cdb`,
+      `${prefix}.cdb`,
+      `${prefix}.cdb`,
+      `${prefix}.cdb`,
+    ]);
+    expect(
+      await cdb64.lookupRoot(toBase64Url(rnd(5)), { bands: [oldBand, tipBand], read }),
+    ).toBeNull();
   });
 
   it('refuses a manifest naming a remote partition', () => {
     expect(() =>
-      cdb64.parseCdb64Manifest({ version: 1, partitions: [{ prefix: '00', location: { type: 'http', url: 'https://evil' }, size: 1 }] }),
+      cdb64.parseCdb64Manifest({
+        version: 1,
+        partitions: [{ prefix: '00', location: { type: 'http', url: 'https://evil' }, size: 1 }],
+      }),
     ).toThrow(/not a local file/);
   });
 

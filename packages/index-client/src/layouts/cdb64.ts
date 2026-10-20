@@ -43,15 +43,19 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
  * following it lets a publisher choose what the client requests.
  */
 export function parseCdb64Manifest(raw: unknown): Cdb64Manifest {
-  if (!isObject(raw) || raw.version !== 1) throw new Error('the manifest is not a version 1 CDB64 manifest');
+  if (!isObject(raw) || raw.version !== 1)
+    throw new Error('the manifest is not a version 1 CDB64 manifest');
   if (!Array.isArray(raw.partitions)) throw new Error('the manifest lists no partitions');
   const partitions = raw.partitions.map((p): Cdb64Partition => {
     if (!isObject(p) || typeof p.prefix !== 'string' || !/^[0-9a-f]{2}$/.test(p.prefix))
       throw new Error('a partition has no two-digit hex prefix');
     const loc = p.location;
     if (!isObject(loc) || loc.type !== 'file' || typeof loc.filename !== 'string')
-      throw new Error(`partition ${p.prefix} is not a local file, so it cannot be verified against the publication`);
-    if (typeof p.size !== 'number' || !Number.isSafeInteger(p.size) || p.size < 0) throw new Error(`partition ${p.prefix}: size`);
+      throw new Error(
+        `partition ${p.prefix} is not a local file, so it cannot be verified against the publication`,
+      );
+    if (typeof p.size !== 'number' || !Number.isSafeInteger(p.size) || p.size < 0)
+      throw new Error(`partition ${p.prefix}: size`);
     return {
       prefix: p.prefix,
       filename: loc.filename,
@@ -75,7 +79,12 @@ export function parseCdb64Manifest(raw: unknown): Cdb64Manifest {
 }
 
 /** A verified range read of one band file: bytes `start..end` inclusive. */
-export type RangeRead = (band: Band, file: string, start: number, end: number) => Promise<Uint8Array>;
+export type RangeRead = (
+  band: Band,
+  file: string,
+  start: number,
+  end: number,
+) => Promise<Uint8Array>;
 
 export interface ReadLog {
   band: string;
@@ -100,7 +109,8 @@ export interface RootLocation {
 const u64 = (b: Uint8Array, at: number): bigint =>
   new DataView(b.buffer, b.byteOffset, b.byteLength).getBigUint64(at, true);
 const toNum = (v: bigint, what: string): number => {
-  if (v > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error(`${what} is beyond a safe integer: the partition is corrupt`);
+  if (v > BigInt(Number.MAX_SAFE_INTEGER))
+    throw new Error(`${what} is beyond a safe integer: the partition is corrupt`);
   return Number(v);
 };
 
@@ -125,14 +135,16 @@ export async function cdb64Get(
   fileSize: number,
   key: Uint8Array,
 ): Promise<Uint8Array | null> {
-  if (fileSize < CDB64_HEADER_BYTES) throw new Error('the partition is shorter than a CDB64 header');
+  if (fileSize < CDB64_HEADER_BYTES)
+    throw new Error('the partition is shorter than a CDB64 header');
   const h = cdb64Hash(key);
   const table = Number(h % 256n);
   const header = await read(table * 16, table * 16 + 15);
   const pos = toNum(u64(header, 0), 'table position');
   const slots = toNum(u64(header, 8), 'table length');
   if (slots === 0) return null;
-  if (pos < CDB64_HEADER_BYTES || pos + slots * 16 > fileSize) throw new Error('the hash table lies outside the partition');
+  if (pos < CDB64_HEADER_BYTES || pos + slots * 16 > fileSize)
+    throw new Error('the hash table lies outside the partition');
   const start = Number((h >> 8n) % BigInt(slots));
   let probed = 0;
   let slot = start;
@@ -145,7 +157,8 @@ export async function cdb64Get(
       if (rec === 0n) return null;
       if (slotHash === h) {
         const at = toNum(rec, 'record position');
-        if (at < CDB64_HEADER_BYTES || at + 16 > fileSize) throw new Error('a record lies outside the partition');
+        if (at < CDB64_HEADER_BYTES || at + 16 > fileSize)
+          throw new Error('a record lies outside the partition');
         const head = await read(at, at + 15);
         const klen = toNum(u64(head, 0), 'key length');
         const vlen = toNum(u64(head, 8), 'value length');
@@ -169,11 +182,14 @@ export async function cdb64Get(
 }
 
 /** Decodes a root-tx index value into its location. */
-export function decodeRootValue(value: Uint8Array): Omit<RootLocation, 'band' | 'partition' | 'reads'> {
+export function decodeRootValue(
+  value: Uint8Array,
+): Omit<RootLocation, 'band' | 'partition' | 'reads'> {
   const v = decodeMsgpack(value);
   if (!isObject(v)) throw new Error('the value is not a map');
   const id = (x: MsgValue | undefined, what: string): string => {
-    if (!(x instanceof Uint8Array) || x.length !== 32) throw new Error(`${what} is not a 32-byte id`);
+    if (!(x instanceof Uint8Array) || x.length !== 32)
+      throw new Error(`${what} is not a 32-byte id`);
     return toBase64Url(x);
   };
   const int = (x: MsgValue | undefined): number | null => (typeof x === 'number' ? x : null);
@@ -209,7 +225,10 @@ export interface LookupRootOptions {
  * the caller backs with the verified range reader. Returns null when no
  * band holds the key.
  */
-export async function lookupRoot(id: string, opts: LookupRootOptions): Promise<RootLocation | null> {
+export async function lookupRoot(
+  id: string,
+  opts: LookupRootOptions,
+): Promise<RootLocation | null> {
   const key = fromBase64Url(id);
   if (key.length !== 32) throw new Error('a data item id is 32 bytes');
   const prefix = key[0]!.toString(16).padStart(2, '0');
@@ -231,9 +250,14 @@ export async function lookupRoot(id: string, opts: LookupRootOptions): Promise<R
     const part = manifest.partitions.find((p) => p.prefix === prefix);
     if (!part) continue;
     const file = band.files.get(part.filename);
-    if (!file) throw new Error(`${band.id}: the manifest names ${part.filename}, which the publication does not list`);
+    if (!file)
+      throw new Error(
+        `${band.id}: the manifest names ${part.filename}, which the publication does not list`,
+      );
     if (file.size !== part.size)
-      throw new Error(`${band.id}: the manifest says ${part.filename} is ${part.size} bytes; the publication signed ${file.size}`);
+      throw new Error(
+        `${band.id}: the manifest says ${part.filename} is ${part.size} bytes; the publication signed ${file.size}`,
+      );
     const value = await cdb64Get((s, e) => read(part.filename, s, e), file.size, key);
     if (value) return { band, partition: part.filename, reads, ...decodeRootValue(value) };
   }

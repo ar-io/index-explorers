@@ -17,8 +17,9 @@
     "fixtures:build": "node scripts/build-fixtures.mjs",
     "fixture-gateway": "node tools/fixture-gateway/server.mjs",
     "pins:check": "node scripts/check-pins.mjs",
-    "e2e": "playwright test -c e2e/playwright.config.ts",
-    "e2e:live": "LIVE=1 playwright test -c e2e/playwright.config.ts --project live"
+    "e2e": "playwright test -c e2e/playwright.config.ts --project=fixtures",
+    "e2e:live": "LIVE=1 playwright test -c e2e/playwright.config.ts --project=live",
+    "example:lookup": "tsx examples/lookup-root.ts"
   },
   "devDependencies": {
     "@duckdb/node-api": "1.5.6-r.1",
@@ -27,7 +28,8 @@
     "tsx": "^4.23.15",
     "typescript": "5.9.3",
     "vite": "7.3.7",
-    "vitest": "3.2.7"
+    "vitest": "3.2.7",
+    "@duckdb/duckdb-wasm": "1.30.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -35,5 +37,6 @@
       "@duckdb/node-bindings",
       "@duckdb/node-bindings-linux-x64"
     ]
-  }
+  },
+  "type": "module"
 }
