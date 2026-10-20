@@ -1,0 +1,30 @@
+{
+  "name": "@ar-io/index-client",
+  "version": "0.1.0",
+  "description": "Verifiable index client: signed publication verification, range reads checked against BitTorrent v2 hash trees, a pinned DuckDB-WASM engine, and the parquet-l1, parquet-l2 and cdb64 layouts",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./sw": "./src/range/sw.ts",
+    "./engine.lock.json": "../../engine.lock.json"
+  },
+  "files": ["src", "dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "1.30.0",
+    "@noble/ed25519": "3.2.0",
+    "apache-arrow": "17.0.0",
+    "canonicalize": "5.1.0"
+  },
+  "devDependencies": {
+    "@duckdb/node-api": "1.5.6-r.1"
+  }
+}
