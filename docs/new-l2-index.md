@@ -19,7 +19,9 @@ a new selection is a new index under a new name.
 { "kind": "ans104-data-items", "tag": { "name": "App-Name", "valuePrefix": "MyApp" } }
 ```
 
-Pick a name matching `[a-z0-9-]{1,64}`, by convention `<app>-l2`.
+Pick a name matching `[a-z0-9-]{1,64}`, by convention `<app>-l2`. The
+export is in gateway Release 85 (2026-10-17); the key lookup and stats of
+layout `l2-2` (below) are on `develop`.
 
 Reference: ar-io-node `docs/index-publication.md` § "L2 bands" (the format,
 `band.json`, the lookup files) and `src/lib/parquet-l2/layout.ts`
@@ -55,6 +57,9 @@ come from", "Checks before publishing", "Lifecycle" and "Running L2 exports";
 and a torrent.
 
 ## 3. Verify what was published (anyone)
+
+Release 85 ships the export; the standalone verifier is on ar-io-node's
+`develop` branch and will be in the next release:
 
 ```bash
 ./tools/ar-io-node index-l2-verify --bands-dir data/indexes/installed/myapp-l2 --publisher <publisher wallet>
@@ -137,11 +142,22 @@ numbers hold.
 Add the app under `apps/`, its tag prefix to the Deploy workflow, and the
 ArNS name. Deploys run only from a tag after the live E2E passes.
 
-## What to ask upstream rather than work around
+## What the next layout brings, and what to ask upstream
 
-The gaps the ArDrive page lives with are tracked in ar-io/ar-io-node and
-apply to any selection: a key-tag lookup per band (so a group of items costs
-one row group per band instead of a window scan), a per-band `stats.parquet`
-(so "over all history" questions need no scan), and band dates in
-`band.json`. Use the lookups where a band lists them; fall back to windows
-otherwise; do not paper over a gap in the app.
+Layout `l2-2` (ar-io-node `develop`, after Release 85) adds two derived
+files per band, for tag names the publisher chooses in
+`INDEX_EXPORT_L2_INDEXES`: `lookup_key.parquet` (`keyTags`: for each value
+of a key tag, the heights at which items carry it and how many, so a group
+spread over a band costs a row group or two instead of a window scan) and
+`stats.parquet` (`statTags`: items and bytes per 1,000 heights, in all and
+per value, so "over all history" questions need no scan). Neither enters a
+band's id, and a published `l2-1` band is upgraded in place. The client
+reads the five `l2-1` files by name and ignores others, so an `l2-2` band
+works today; using the two new files is the next step for any selection
+layer (ArDrive's `drive_window` is the first candidate). When defining a
+selection, name the tags that identify a group (`keyTags`) and the ones you
+will count by (`statTags`) from the start.
+
+Beyond that, gaps are asked for in ar-io/ar-io-node, not papered over in
+the app: band dates in `band.json` is the open one. Use a lookup where a
+band lists it; fall back to windows otherwise.

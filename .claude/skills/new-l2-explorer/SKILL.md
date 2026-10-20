@@ -15,7 +15,9 @@ it cites the gateway-side documentation in ar-io/ar-io-node.
    `/ar-io/indexes` and look for an index of `kind: parquet-l2` whose
    `filter`/`metadata.selection` is the app's tag. If none, the operator
    publishes one: `INDEX_EXPORT_KINDS` and `INDEX_EXPORT_L2_INDEXES` in
-   ar-io-node (`docs/index-export.md` § "L2 bands"). Do not invent bands.
+   ar-io-node (`docs/index-export.md` § "L2 bands"; Release 85 or later).
+   Do not invent bands. Ask for `keyTags`/`statTags` (layout `l2-2`, on
+   `develop`) naming the app's group and count tags.
 2. **Learn the app's tags.** Query the selection's `tags` over a small window
    with the client (or DuckDB over one band's `tags.parquet`): which tags
    identify an object, a group, a version, a time. Write them down with
@@ -47,5 +49,6 @@ it cites the gateway-side documentation in ar-io/ar-io-node.
 - Never weaken a check. Names from record JSON are labelled as not covered
   by the signature and size-checked against the index.
 - Layout knowledge lives in the client's `layouts/`, not in the app.
-- Gaps in the index (no key-tag lookup, no stats band) are asked for
-  upstream in ar-io/ar-io-node, not papered over.
+- Gaps in the index are asked for upstream in ar-io/ar-io-node, not
+  papered over. The key lookup and stats exist in layout `l2-2`: use them
+  when the band lists the tag, fall back to windows otherwise.
