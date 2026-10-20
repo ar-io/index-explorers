@@ -17,13 +17,22 @@ const csvCell = (v: unknown): string => {
   return /[",\n\r]/.test(t) ? '"' + t.replaceAll('"', '""') + '"' : t;
 };
 
-export function toCsv(cols: string[], rows: Record<string, unknown>[], isTime: Set<string>): string {
+export function toCsv(
+  cols: string[],
+  rows: Record<string, unknown>[],
+  isTime: Set<string>,
+): string {
   const out = [cols.map(csvCell).join(',')];
-  for (const r of rows) out.push(cols.map((c) => csvCell(exportValue(r[c], isTime.has(c)))).join(','));
+  for (const r of rows)
+    out.push(cols.map((c) => csvCell(exportValue(r[c], isTime.has(c)))).join(','));
   return out.join('\r\n') + '\r\n';
 }
 
-export function toJson(cols: string[], rows: Record<string, unknown>[], isTime: Set<string>): string {
+export function toJson(
+  cols: string[],
+  rows: Record<string, unknown>[],
+  isTime: Set<string>,
+): string {
   return (
     JSON.stringify(
       rows.map((r) => {

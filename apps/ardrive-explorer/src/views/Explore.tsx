@@ -20,7 +20,9 @@ export function Explore() {
     if (!per) return label;
     const whole = session.wholeSize(per.bands);
     if (whole > 100e6) return `${label} · ${mb(whole)}, too big to download`;
-    return per.bands.every((b) => session.isRangeable(b)) ? `${label} · ~${mb(per.size)}` : `${label} · ${mb(whole)} to download`;
+    return per.bands.every((b) => session.isRangeable(b))
+      ? `${label} · ~${mb(per.size)}`
+      : `${label} · ${mb(whole)} to download`;
   };
   const onPeriod = (id: string) => {
     store.periodId.value = id;
@@ -58,7 +60,11 @@ export function Explore() {
           <label for="scope" class="period-label">
             Period
           </label>
-          <select id="scope" value={store.periodId.value} onChange={(e) => onPeriod((e.target as HTMLSelectElement).value)}>
+          <select
+            id="scope"
+            value={store.periodId.value}
+            onChange={(e) => onPeriod((e.target as HTMLSelectElement).value)}
+          >
             {periods.length ? (
               periods.map((per) => (
                 <option key={per.id} value={per.id} disabled={session.periodDisabled(per)}>
@@ -75,7 +81,13 @@ export function Explore() {
         </div>
       </div>
       <div class="filters" id="filters">
-        <button type="button" class="secondary chipbtn" id="browse" aria-pressed={view.kind === 'browse' ? 'true' : 'false'} onClick={() => void flows.browse(true)}>
+        <button
+          type="button"
+          class="secondary chipbtn"
+          id="browse"
+          aria-pressed={view.kind === 'browse' ? 'true' : 'false'}
+          onClick={() => void flows.browse(true)}
+        >
           Newest drives
         </button>
         <select
@@ -83,7 +95,10 @@ export function Explore() {
           aria-label="Privacy"
           value={store.privacy.value}
           onChange={(e) => {
-            store.privacy.value = (e.target as HTMLSelectElement).value as 'any' | 'public' | 'private';
+            store.privacy.value = (e.target as HTMLSelectElement).value as
+              | 'any'
+              | 'public'
+              | 'private';
             if (view.kind === 'browse') void flows.browse(true);
           }}
         >
@@ -113,7 +128,10 @@ export function Explore() {
               ? 'Nothing can load: the publication did not verify.'
               : 'Checking the publication first…'
             : store.rangeOk.value.ok
-              ? 'Each listing reads only what it needs; pieces already checked are reused.' + (store.extFallback.value ? ' (Parquet reader from duckdb.org, signature checked.)' : '')
+              ? 'Each listing reads only what it needs; pieces already checked are reused.' +
+                (store.extFallback.value
+                  ? ' (Parquet reader from duckdb.org, signature checked.)'
+                  : '')
               : `Downloads ${p ? mb(session.wholeSize(p.bands)) : ''} once, checked against the signed digests.`}
         </span>
       </div>

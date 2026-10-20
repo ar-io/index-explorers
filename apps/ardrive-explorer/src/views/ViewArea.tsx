@@ -12,7 +12,17 @@ import { DriveBrowser } from './DriveBrowser.js';
 import type { WalletDrive } from '../data/wallet.js';
 
 /** A clickable id or address that opens its own view. */
-export function RowLink({ text, go, mono, children }: { text?: string; go: () => void; mono?: boolean; children?: ComponentChildren }) {
+export function RowLink({
+  text,
+  go,
+  mono,
+  children,
+}: {
+  text?: string;
+  go: () => void;
+  mono?: boolean;
+  children?: ComponentChildren;
+}) {
   return (
     <button type="button" class={`rowlink${mono ? ' mono' : ''}`} onClick={go}>
       {children}
@@ -22,7 +32,17 @@ export function RowLink({ text, go, mono, children }: { text?: string; go: () =>
 }
 
 /** A name from a record: as it arrives, or its fallback, or struck through when the bytes did not match the index. */
-export function Name({ id, size, fallback, isPrivate }: { id: string; size: number | null; fallback: string; isPrivate?: boolean }) {
+export function Name({
+  id,
+  size,
+  fallback,
+  isPrivate,
+}: {
+  id: string;
+  size: number | null;
+  fallback: string;
+  isPrivate?: boolean;
+}) {
   const { store, session } = useApp();
   void store.namesTick.value;
   if (isPrivate) return <span class="name">{fallback}</span>;
@@ -68,13 +88,22 @@ function DrivesTable({ rows }: { rows: EntityRecord[] }) {
                 <div class="namewrap">
                   <RowLink go={open}>
                     <Icon name={r.privacy === 'private' ? 'lock' : 'drive'} />
-                    <Name id={r.id} size={r.record_size} fallback={r.privacy === 'private' ? 'Private drive' : 'Unnamed drive'} isPrivate={r.privacy === 'private'} />
+                    <Name
+                      id={r.id}
+                      size={r.record_size}
+                      fallback={r.privacy === 'private' ? 'Private drive' : 'Unnamed drive'}
+                      isPrivate={r.privacy === 'private'}
+                    />
                   </RowLink>
                   <span class="sub">{r.drive_id}</span>
                 </div>
               </td>
               <td>
-                <RowLink go={() => void flows.openWallet(r.owner, false)} mono text={shortId(r.owner)}>
+                <RowLink
+                  go={() => void flows.openWallet(r.owner, false)}
+                  mono
+                  text={shortId(r.owner)}
+                >
                   <OwnerDot addr={r.owner} />
                 </RowLink>
               </td>
@@ -108,12 +137,23 @@ function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
       </thead>
       <tbody>
         {rows.map((d) => (
-          <tr key={d.drive_id} onClick={(e) => ((e.target as HTMLElement).closest('button, a') ? null : void flows.openDrive(d.drive_id, false, null))}>
+          <tr
+            key={d.drive_id}
+            onClick={(e) =>
+              (e.target as HTMLElement).closest('button, a')
+                ? null
+                : void flows.openDrive(d.drive_id, false, null)
+            }
+          >
             <td>
               <div class="namewrap">
                 <RowLink go={() => void flows.openDrive(d.drive_id, false, null)}>
                   {d.privacy === 'private' || !d.drive ? (
-                    <span class="name pending">{d.privacy === 'private' ? 'private drive' : 'drive (record not in this stretch)'}</span>
+                    <span class="name pending">
+                      {d.privacy === 'private'
+                        ? 'private drive'
+                        : 'drive (record not in this stretch)'}
+                    </span>
                   ) : (
                     <Name id={d.drive.id} size={d.drive.record_size} fallback="unnamed drive" />
                   )}
@@ -125,7 +165,11 @@ function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
               <Badge text={d.privacy} kind={d.privacy} />
             </td>
             <td class="num">{num(d.records)}</td>
-            <td>{Number(d.last.created_at) > 0 ? fmtWhen(d.last.created_at) : `block ${num(d.last.height)}`}</td>
+            <td>
+              {Number(d.last.created_at) > 0
+                ? fmtWhen(d.last.created_at)
+                : `block ${num(d.last.height)}`}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -136,14 +180,27 @@ function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
 function GenericTable({ table }: { table: TableContent }) {
   const { flows } = useApp();
   const isTime = table.isTime ?? new Set<string>();
-  const cell = (c: Column, v: unknown, row: Record<string, unknown>): { node: ComponentChildren; num: boolean } => {
+  const cell = (
+    c: Column,
+    v: unknown,
+    row: Record<string, unknown>,
+  ): { node: ComponentChildren; num: boolean } => {
     if (c.render) return { node: c.render(v, row), num: !!c.num };
     if (v === null || v === undefined) return { node: '', num: false };
     if (isTime.has(c.key)) return { node: Number(v) > 0 ? fmtWhen(v) : '', num: false };
     const text = String(v);
-    if (c.key === 'owner' && isId43(text)) return { node: <RowLink text={text} mono go={() => void flows.openWallet(text, false)} />, num: false };
-    if (c.key === 'drive_id' && isUuid(text)) return { node: <RowLink text={text} mono go={() => void flows.openDrive(text, false, null)} />, num: false };
-    if ((c.key === 'id' || c.key === 'name_id') && isId43(text)) return { node: <RowLink text={text} mono go={() => void flows.openId(text)} />, num: false };
+    if (c.key === 'owner' && isId43(text))
+      return {
+        node: <RowLink text={text} mono go={() => void flows.openWallet(text, false)} />,
+        num: false,
+      };
+    if (c.key === 'drive_id' && isUuid(text))
+      return {
+        node: <RowLink text={text} mono go={() => void flows.openDrive(text, false, null)} />,
+        num: false,
+      };
+    if ((c.key === 'id' || c.key === 'name_id') && isId43(text))
+      return { node: <RowLink text={text} mono go={() => void flows.openId(text)} />, num: false };
     const wide = typeof v === 'object' && /^-?\d+(\.\d+)?$/.test(text);
     const isNum = typeof v === 'bigint' || typeof v === 'number' || wide;
     if (isNum || c.num) return { node: num(wide ? Number(text) : (v as number)), num: true };
@@ -191,7 +248,17 @@ function TitleName() {
   return (
     <>
       {t.prefix}
-      {!r ? <span class="name pending">fetching name…</span> : r.ok && r.name ? <span class="name">{r.name}</span> : r.ok ? <span class="name pending">{t.fallback}</span> : <span class="name mismatch" title={r.why ?? ''}>{t.fallback}</span>}
+      {!r ? (
+        <span class="name pending">fetching name…</span>
+      ) : r.ok && r.name ? (
+        <span class="name">{r.name}</span>
+      ) : r.ok ? (
+        <span class="name pending">{t.fallback}</span>
+      ) : (
+        <span class="name mismatch" title={r.why ?? ''}>
+          {t.fallback}
+        </span>
+      )}
     </>
   );
 }
@@ -204,12 +271,15 @@ function OpenFileLink() {
   if (!t) return null;
   const r = session.names.cache.get(t.id);
   const meta = r?.ok ? r.meta : null;
-  const dataTxId = meta && typeof meta.dataTxId === 'string' && isId43(meta.dataTxId) ? meta.dataTxId : null;
+  const dataTxId =
+    meta && typeof meta.dataTxId === 'string' && isId43(meta.dataTxId) ? meta.dataTxId : null;
   if (!dataTxId) return null;
   return (
     <a href={`${session.gateway}/${dataTxId}`} target="_blank" rel="noopener">
       Open the file
-      {meta!.size != null ? ` (${bytesText(meta!.size)}${typeof meta!.dataContentType === 'string' ? ', ' + meta!.dataContentType : ''})` : ''}
+      {meta!.size != null
+        ? ` (${bytesText(meta!.size)}${typeof meta!.dataContentType === 'string' ? ', ' + meta!.dataContentType : ''})`
+        : ''}
     </a>
   );
 }
@@ -221,14 +291,23 @@ export function ViewArea() {
   const view = store.view.value;
   const exp = c.exportable;
   const copyLink = async () => {
-    const v = view.kind === 'drive' && drive ? { ...view, folder: store.driveUi.value.path.at(-1) ?? null } : view;
+    const v =
+      view.kind === 'drive' && drive
+        ? { ...view, folder: store.driveUi.value.path.at(-1) ?? null }
+        : view;
     const url = session.shareUrl(v);
     history.replaceState(v, '', url);
     try {
       await navigator.clipboard.writeText(url);
-      store.say('Link copied. The gateway, period and view ride in the fragment, so none of it is sent to a server.', 'ok');
+      store.say(
+        'Link copied. The gateway, period and view ride in the fragment, so none of it is sent to a server.',
+        'ok',
+      );
     } catch {
-      store.say('The browser would not give clipboard access, so the link is in the address bar instead.', 'bad');
+      store.say(
+        'The browser would not give clipboard access, so the link is in the address bar instead.',
+        'bad',
+      );
     }
   };
   return (
@@ -252,10 +331,38 @@ export function ViewArea() {
           {c.titleName ? <TitleName /> : c.title}
         </h3>
         <div class="result-actions" id="resultactions" hidden={!exp && !drive && c.title === ''}>
-          <button type="button" class="secondary" id="csv" disabled={!exp || !exp.rows.length} onClick={() => exp && (saveFile(`ardrive-${exp.slug}.csv`, 'text/csv;charset=utf-8', toCsv(exp.cols, exp.rows, exp.isTime)), store.say(`Saved ${num(exp.rows.length)} rows as CSV.`, 'ok'))}>
+          <button
+            type="button"
+            class="secondary"
+            id="csv"
+            disabled={!exp || !exp.rows.length}
+            onClick={() =>
+              exp &&
+              (saveFile(
+                `ardrive-${exp.slug}.csv`,
+                'text/csv;charset=utf-8',
+                toCsv(exp.cols, exp.rows, exp.isTime),
+              ),
+              store.say(`Saved ${num(exp.rows.length)} rows as CSV.`, 'ok'))
+            }
+          >
             CSV
           </button>
-          <button type="button" class="secondary" id="json" disabled={!exp || !exp.rows.length} onClick={() => exp && (saveFile(`ardrive-${exp.slug}.json`, 'application/json', toJson(exp.cols, exp.rows, exp.isTime)), store.say(`Saved ${num(exp.rows.length)} rows as JSON.`, 'ok'))}>
+          <button
+            type="button"
+            class="secondary"
+            id="json"
+            disabled={!exp || !exp.rows.length}
+            onClick={() =>
+              exp &&
+              (saveFile(
+                `ardrive-${exp.slug}.json`,
+                'application/json',
+                toJson(exp.cols, exp.rows, exp.isTime),
+              ),
+              store.say(`Saved ${num(exp.rows.length)} rows as JSON.`, 'ok'))
+            }
+          >
             JSON
           </button>
           <button type="button" class="secondary" id="copylink" onClick={() => void copyLink()}>
@@ -280,7 +387,11 @@ export function ViewArea() {
         {c.cost ? (
           <>
             <span>
-              {Array.isArray(c.cost.text) ? c.cost.text.map((t, i) => (i === 1 ? <strong key={i}>{t}</strong> : <span key={i}>{t}</span>)) : c.cost.text}
+              {Array.isArray(c.cost.text)
+                ? c.cost.text.map((t, i) =>
+                    i === 1 ? <strong key={i}>{t}</strong> : <span key={i}>{t}</span>,
+                  )
+                : c.cost.text}
             </span>
             {c.cost.action ? (
               <button type="button" onClick={c.cost.action.go}>
@@ -291,7 +402,11 @@ export function ViewArea() {
         ) : null}
       </div>
       <p class="caption" id="caption" hidden={!c.caption}>
-        {c.caption ? captionSegments(c.caption).map((sgm, i) => (sgm.strong ? <strong key={i}>{sgm.text}</strong> : <span key={i}>{sgm.text}</span>)) : null}
+        {c.caption
+          ? captionSegments(c.caption).map((sgm, i) =>
+              sgm.strong ? <strong key={i}>{sgm.text}</strong> : <span key={i}>{sgm.text}</span>,
+            )
+          : null}
       </p>
       <div class="tablewrap" hidden={!c.table || !c.table.rows.length}>
         {c.table && c.table.rows.length ? (
@@ -321,14 +436,18 @@ export function ViewArea() {
           ),
         )}
         {c.portalWallet ? (
-          <a href={`${CONFIG.portalUrl}/#/balances/${c.portalWallet}`} target="_blank" rel="noopener">
+          <a
+            href={`${CONFIG.portalUrl}/#/balances/${c.portalWallet}`}
+            target="_blank"
+            rel="noopener"
+          >
             On the Network Portal
           </a>
         ) : null}
       </div>
       <p class="names-note" id="namesnote" hidden={!c.namesNote}>
-        Names are read from the gateway's copy of each entity's metadata and checked for size against the signed index; everything else
-        here is from the index.
+        Names are read from the gateway's copy of each entity's metadata and checked for size
+        against the signed index; everything else here is from the index.
       </p>
     </article>
   );

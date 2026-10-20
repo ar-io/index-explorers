@@ -119,7 +119,10 @@ function parseBand(raw: unknown, where: string): PublicationBand {
       typeof hr[0] !== 'number' ||
       !Number.isSafeInteger(hr[0]) ||
       hr[0] < 0 ||
-      !(hr[1] === null || (typeof hr[1] === 'number' && Number.isSafeInteger(hr[1]) && hr[1] >= hr[0]))
+      !(
+        hr[1] === null ||
+        (typeof hr[1] === 'number' && Number.isSafeInteger(hr[1]) && hr[1] >= hr[0])
+      )
     )
       bad(`${where}/${id}: heightRange`);
     band.heightRange = [hr[0], hr[1] as number | null];
@@ -255,13 +258,22 @@ export interface FetchOptions {
 }
 
 /** `GET /ar-io/indexes`, bounded, parsed and validated (not yet verified). */
-export async function fetchPublication(gateway: string, opts: FetchOptions = {}): Promise<FetchedPublication> {
+export async function fetchPublication(
+  gateway: string,
+  opts: FetchOptions = {},
+): Promise<FetchedPublication> {
   const origin = gateway.replace(/\/+$/, '');
   const init: RequestInit = opts.signal ? { signal: opts.signal } : {};
-  const res = await fetchWithTimeout(origin + '/ar-io/indexes', opts.timeoutMs ?? 15000, init, opts.fetch ?? fetch);
+  const res = await fetchWithTimeout(
+    origin + '/ar-io/indexes',
+    opts.timeoutMs ?? 15000,
+    init,
+    opts.fetch ?? fetch,
+  );
   if (!res.ok) throw new HttpError(res.status, describeStatus(res.status, 'the publication'));
   const len = Number(res.headers.get('content-length'));
-  if (len > PUBLICATION_MAX_BYTES) throw new Error('the publication is larger than the protocol allows (4 MiB)');
+  if (len > PUBLICATION_MAX_BYTES)
+    throw new Error('the publication is larger than the protocol allows (4 MiB)');
   const bytes = new Uint8Array(await res.arrayBuffer());
   if (bytes.length > PUBLICATION_MAX_BYTES)
     throw new Error('the publication is larger than the protocol allows (4 MiB)');
@@ -297,10 +309,14 @@ export interface RegistryOptions {
  * is not the data gateway. Throws when no independent gateway could answer or
  * the publisher is not registered.
  */
-export async function lookupRegistry(publisher: string, opts: RegistryOptions): Promise<RegistryRecord> {
+export async function lookupRegistry(
+  publisher: string,
+  opts: RegistryOptions,
+): Promise<RegistryRecord> {
   const ex = opts.excluding ? hostOf(opts.excluding) : null;
   const hosts = opts.gateways.filter((g) => hostOf(g) !== ex);
-  if (!hosts.length) throw new Error('no independent gateway is available to read the registry from');
+  if (!hosts.length)
+    throw new Error('no independent gateway is available to read the registry from');
   let lastErr: unknown = null;
   for (const host of hosts) {
     try {
@@ -313,7 +329,11 @@ export async function lookupRegistry(publisher: string, opts: RegistryOptions): 
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const body: unknown = await res.json();
       const list = isObject(body) && isObject(body.gateways) ? body.gateways : body;
-      const values: unknown[] = isObject(list) ? Object.values(list) : Array.isArray(list) ? list : [];
+      const values: unknown[] = isObject(list)
+        ? Object.values(list)
+        : Array.isArray(list)
+          ? list
+          : [];
       const rec = values.find((g) => isObject(g) && g.wallet === publisher);
       if (!isObject(rec) || typeof rec.observerAddress !== 'string' || !rec.observerAddress)
         throw new Error('publisher is not in the registry');
@@ -328,7 +348,8 @@ export async function lookupRegistry(publisher: string, opts: RegistryOptions): 
     }
   }
   throw new Error(
-    'could not read the registry independently: ' + (lastErr instanceof Error ? lastErr.message : String(lastErr)),
+    'could not read the registry independently: ' +
+      (lastErr instanceof Error ? lastErr.message : String(lastErr)),
   );
 }
 
@@ -361,7 +382,9 @@ export async function verifySignature(doc: Publication, keyId: string): Promise<
   const sig = doc.signature;
   if (sig.alg !== 'ed25519') throw new Error('the publication is not Ed25519 signed');
   if (sig.keyId !== keyId)
-    throw new Error(`the publication is signed by ${sig.keyId}, but the registry names ${keyId} for this gateway`);
+    throw new Error(
+      `the publication is signed by ${sig.keyId}, but the registry names ${keyId} for this gateway`,
+    );
   let pub: Uint8Array;
   try {
     pub = base58Decode(sig.keyId);
@@ -508,14 +531,17 @@ export function selectIndex(pub: Publication, name: string, opts: SelectOptions)
   const ix = pub.indexes.find((i) => i.name === name);
   if (!ix) throw new Error(`this gateway publishes no ${name} index`);
   const gw = opts.gateway.replace(/\/+$/, '');
-  const mirrors = (opts.mirrors ?? []).map((m) => m.replace(/\/+$/, '')).filter((m) => hostOf(m) !== hostOf(gw));
+  const mirrors = (opts.mirrors ?? [])
+    .map((m) => m.replace(/\/+$/, ''))
+    .filter((m) => hostOf(m) !== hostOf(gw));
   const parquet = ix.kind.startsWith('parquet');
   const dropEmpty = opts.dropEmpty ?? parquet;
   const pruneOverlaps = opts.pruneOverlaps ?? parquet;
   const dropped: { id: string; why: string }[] = [];
   let bands: Band[] = ix.bands.map((b) => {
     const base = b.http?.baseUrl || `/ar-io/indexes/${name}/${b.id}/`;
-    const at = (n: string) => new URL(base.endsWith('/') ? base + n : `${base}/${n}`, gw + '/').toString();
+    const at = (n: string) =>
+      new URL(base.endsWith('/') ? base + n : `${base}/${n}`, gw + '/').toString();
     const files = new Map<string, BandFile>();
     for (const f of b.files) files.set(f.name, { ...f, url: at(f.name) });
     const ih2 = b.torrent?.infohashV2 ?? null;
@@ -540,7 +566,9 @@ export function selectIndex(pub: Publication, name: string, opts: SelectOptions)
       files,
       size: b.files.reduce((t, f) => t + f.size, 0),
       torrent:
-        ih2 && urls.length ? { infohashV1: ih1, infohashV2: ih2, magnet: b.torrent?.magnet ?? null, urls } : null,
+        ih2 && urls.length
+          ? { infohashV1: ih1, infohashV2: ih2, magnet: b.torrent?.magnet ?? null, urls }
+          : null,
       schema: typeof md.schema === 'string' ? md.schema : null,
       supersedes,
       metadata: md,

@@ -43,7 +43,12 @@ render(
 // For tests and the curious; read-only by convention.
 declare global {
   interface Window {
-    __explorer: { store: Store; session: Session; trace: string[]; nameCache: Map<string, unknown> };
+    __explorer: {
+      store: Store;
+      session: Session;
+      trace: string[];
+      nameCache: Map<string, unknown>;
+    };
   }
 }
 window.__explorer = { store, session, trace: store.trace, nameCache: session.names.cache };

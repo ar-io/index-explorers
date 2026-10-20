@@ -3,7 +3,9 @@
 export const num = (n: number | bigint | string): string => Number(n).toLocaleString();
 
 export const mb = (n: number): string =>
-  n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : (n / 1e6).toFixed(n < 1e7 ? 2 : n < 1e8 ? 1 : 0) + ' MB';
+  n >= 1e9
+    ? (n / 1e9).toFixed(1) + ' GB'
+    : (n / 1e6).toFixed(n < 1e7 ? 2 : n < 1e8 ? 1 : 0) + ' MB';
 
 export function bytesText(v: unknown): string {
   const n = Number(v);
@@ -27,7 +29,10 @@ export const fmtDay = (secs: number): string =>
     timeZone: 'UTC',
   });
 
-export const fmtRange = (a: number | null | undefined, b: number | null | undefined): string | null =>
+export const fmtRange = (
+  a: number | null | undefined,
+  b: number | null | undefined,
+): string | null =>
   a && b ? (fmtDay(a) === fmtDay(b) ? fmtDay(a) : `${fmtDay(a)} to ${fmtDay(b)}`) : null;
 
 /** `YYYY-MM-DD HH:MMZ` from epoch milliseconds; '' for anything a Date cannot hold. */
@@ -66,7 +71,9 @@ function fmtDateRaw(n: number, now: number): string {
     if (now - n < day && now >= n) return d.toISOString().slice(11, 16) + ' UTC';
     if (now - n < 7 * day && now >= n)
       return (
-        d.toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }) + ' ' + d.toISOString().slice(11, 16)
+        d.toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }) +
+        ' ' +
+        d.toISOString().slice(11, 16)
       );
     return d.toLocaleDateString(undefined, {
       day: 'numeric',

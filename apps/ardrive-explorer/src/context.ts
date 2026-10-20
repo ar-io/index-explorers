@@ -9,7 +9,12 @@ export interface Flows {
   openDrive: (id: string, confirmed: boolean, folder: string | null) => Promise<void>;
   openWallet: (addr: string, everything: boolean) => Promise<void>;
   openId: (id: string) => Promise<void>;
-  runQuery: (opts: { title?: string | null; caption?: string | null; confirmed?: boolean; sql?: string }) => Promise<void>;
+  runQuery: (opts: {
+    title?: string | null;
+    caption?: string | null;
+    confirmed?: boolean;
+    sql?: string;
+  }) => Promise<void>;
   ask: (i: number) => Promise<void>;
   find: (raw: string) => void;
   setFolder: (path: string[], replace?: boolean) => void;

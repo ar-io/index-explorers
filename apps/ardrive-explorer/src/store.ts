@@ -170,12 +170,25 @@ export class Store {
   readonly view = signal<ViewState>({ kind: 'browse' });
   readonly content = signal<ViewContent>(emptyContent());
   readonly status = signal<StatusLine>({ text: '', cls: '' });
-  readonly progress = signal<ProgressState>({ visible: false, indeterminate: false, pct: 0, note: '', stop: false, stopDisabled: false });
+  readonly progress = signal<ProgressState>({
+    visible: false,
+    indeterminate: false,
+    pct: 0,
+    note: '',
+    stop: false,
+    stopDisabled: false,
+  });
   readonly rangeOk = signal<{ ok: boolean; why: string | null }>({ ok: false, why: 'starting' });
   readonly engineBooted = signal(false);
   readonly extFallback = signal(false);
   readonly drive = signal<DriveModel | null>(null);
-  readonly driveUi = signal<DriveUi>({ path: [], sort: { key: 'name', dir: 1 }, filter: '', selected: null, allNames: false });
+  readonly driveUi = signal<DriveUi>({
+    path: [],
+    sort: { key: 'name', dir: 1 },
+    filter: '',
+    selected: null,
+    allNames: false,
+  });
   /** Bumped (throttled) as names land, so the list re-renders in batches. */
   readonly namesTick = signal(0);
   readonly namesProgress = signal<{ wanted: number; loaded: number }>({ wanted: 0, loaded: 0 });
@@ -211,16 +224,30 @@ export class Store {
       visible: true,
       indeterminate: false,
       pct,
-      note: total > 0 ? `${label}: ${mb(got)} of ${mb(total)}, ${pct.toFixed(0)}%` : `${label}: ${mb(got)}`,
+      note:
+        total > 0
+          ? `${label}: ${mb(got)} of ${mb(total)}, ${pct.toFixed(0)}%`
+          : `${label}: ${mb(got)}`,
     };
   }
 
   barBusy(label: string): void {
-    this.progress.value = { ...this.progress.value, visible: true, indeterminate: true, note: label };
+    this.progress.value = {
+      ...this.progress.value,
+      visible: true,
+      indeterminate: true,
+      note: label,
+    };
   }
 
   barHide(): void {
-    this.progress.value = { ...this.progress.value, visible: false, indeterminate: false, pct: 0, note: '' };
+    this.progress.value = {
+      ...this.progress.value,
+      visible: false,
+      indeterminate: false,
+      pct: 0,
+      note: '',
+    };
   }
 
   showStop(on: boolean): void {

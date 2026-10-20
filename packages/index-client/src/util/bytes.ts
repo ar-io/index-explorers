@@ -49,7 +49,8 @@ const B64U_RE = /^[A-Za-z0-9_-]+$/;
 /** base64url without padding, as Arweave writes ids and addresses. */
 export function toBase64Url(bytes: Uint8Array): string {
   let bin = '';
-  for (let k = 0; k < bytes.length; k += 8192) bin += String.fromCharCode(...bytes.subarray(k, k + 8192));
+  for (let k = 0; k < bytes.length; k += 8192)
+    bin += String.fromCharCode(...bytes.subarray(k, k + 8192));
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 

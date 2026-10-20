@@ -1,0 +1,98 @@
+/**
+ * The L1 explorer on the client: the publication verifies, a question answers
+ * over the period with a receipt, a block height and a wallet are found through
+ * the lookups, and a preset runs. Served from the fixture gateway as
+ * /l1/ (dist-e2e of apps/arweave-l1-explorer) and against turbo-gateway.com live.
+ */
+import { expect, test } from '@playwright/test';
+
+import { GW, LIVE, until } from './helpers.js';
+
+const BASE = process.env.L1_BASE || (LIVE ? '/l1/' : '/l1/');
+
+test.describe('arweave-l1-explorer', () => {
+  test('verifies, answers a question, finds a block and a wallet, runs a preset', async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await page.goto(`${BASE}#gw=${encodeURIComponent(GW)}&scope=latest`);
+    await until(
+      page,
+      async () => (await page.locator('#proof').getAttribute('data-state')) !== 'run',
+      90_000,
+      'proof',
+    );
+    expect(
+      await page.locator('#proof').getAttribute('data-state'),
+      await page.locator('#proof-text').innerText(),
+    ).toBe('ok');
+    expect(await page.evaluate(() => !!navigator.serviceWorker?.controller)).toBe(true);
+    const status = () =>
+      page
+        .locator('#status')
+        .innerText()
+        .catch(() => '');
+    const rows = () => page.locator('#results tbody tr').count();
+    const answered = () =>
+      until(
+        page,
+        async () => /rows? in|Read |Nothing new|Answered|error|could not/i.test(await status()),
+        LIVE ? 300_000 : 120_000,
+        'answer',
+      );
+    // A question: apps writing to Arweave, from the tag lookup.
+    await page.locator('#asks button').nth(0).click();
+    await answered();
+    expect(await status()).not.toMatch(/error|could not/i);
+    expect(await rows()).toBeGreaterThan(0);
+    expect(await page.locator('#caption').innerText()).toMatch(/Apps that sent transactions/);
+    // A block height.
+    const tip = await page.evaluate(() => {
+      const s = (
+        window as unknown as { __explorer: { session: { bands: { to: number | null }[] } } }
+      ).__explorer.session;
+      return s.bands[s.bands.length - 1]!.to;
+    });
+    await page.fill('#find', String(tip));
+    await page.click('#findgo');
+    await answered();
+    expect(await page.locator('#answertitle').innerText()).toMatch(/Block/);
+    // A wallet, taken from the first row's owner column, through the lookups.
+    const owner = await page.evaluate(() => {
+      const r = (
+        window as unknown as {
+          __explorer: {
+            store: {
+              result: { value: { rows: Record<string, unknown>[]; cols: string[] } | null };
+            };
+          };
+        }
+      ).__explorer.store.result.value;
+      return r && r.cols.includes('owner') && r.rows[0] ? String(r.rows[0].owner) : null;
+    });
+    if (owner) {
+      await page.fill('#find', owner);
+      await page.click('#findgo');
+      await answered();
+      expect(await page.locator('#answertitle').innerText()).toMatch(/Wallet/);
+      expect(await rows()).toBe(1);
+    }
+    // A preset.
+    await page.locator('#editor > summary').click();
+    await page.locator('#presets button', { hasText: 'Busiest blocks' }).click();
+    await page.click('#run');
+    await answered();
+    expect(await rows()).toBeGreaterThan(0);
+    // Exports and the share link.
+    const [dl] = await Promise.all([
+      page.waitForEvent('download', { timeout: 20_000 }),
+      page.click('#csv'),
+    ]);
+    expect(await dl.suggestedFilename()).toMatch(/^arweave-l1-.*\.csv$/);
+    await page.click('#copylink');
+    expect(await page.evaluate(() => location.hash)).toMatch(/sql=/);
+    expect(errors).toEqual([]);
+    await page.screenshot({ path: 'e2e/out/l1.png', fullPage: true });
+  });
+});

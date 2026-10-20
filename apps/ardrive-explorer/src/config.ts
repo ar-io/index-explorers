@@ -8,8 +8,15 @@ import { KNOWN_PUBLISHERS, MIN_WINDOW_COST, REGISTRY_GATEWAYS } from '@ar-io/ind
 import lock from '../../../engine.lock.json';
 
 const env = import.meta.env as Record<string, string | undefined>;
-const list = (v: string | undefined): string[] | null => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : null);
-const number = (v: string | undefined, def: number): number => (v && Number.isFinite(Number(v)) ? Number(v) : def);
+const list = (v: string | undefined): string[] | null =>
+  v
+    ? v
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : null;
+const number = (v: string | undefined, def: number): number =>
+  v && Number.isFinite(Number(v)) ? Number(v) : def;
 
 export const CONFIG = {
   /** The index this page reads, as the publication names it. */
@@ -48,4 +55,12 @@ export const CONFIG = {
   portalUrl: 'https://gateways.ar.io',
 } as const;
 
-export const APPS = ['ArDrive-App', 'ArDrive-Web', 'ArDrive-CLI', 'ArDrive-Core', 'ArDrive-Desktop', 'ArDrive-Mobile', 'ArDrive-Sync'];
+export const APPS = [
+  'ArDrive-App',
+  'ArDrive-Web',
+  'ArDrive-CLI',
+  'ArDrive-Core',
+  'ArDrive-Desktop',
+  'ArDrive-Mobile',
+  'ArDrive-Sync',
+];

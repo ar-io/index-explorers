@@ -2,9 +2,13 @@ import { expect, test } from '@playwright/test';
 
 import { driveRows, KNOWN, openPage, pageErrors, rows, status, until } from './helpers.js';
 
-test('the page verifies the publication, lists drives with names, and opens a drive', async ({ page }) => {
+test('the page verifies the publication, lists drives with names, and opens a drive', async ({
+  page,
+}) => {
   await openPage(page);
-  expect(await page.evaluate(() => !!(navigator.serviceWorker && navigator.serviceWorker.controller))).toBe(true);
+  expect(
+    await page.evaluate(() => !!(navigator.serviceWorker && navigator.serviceWorker.controller)),
+  ).toBe(true);
   await until(page, async () => (await rows(page)) > 0, 120_000, 'browse');
   expect(await rows(page)).toBeGreaterThan(0);
   console.log('browse:', await status(page));
@@ -15,9 +19,15 @@ test('the page verifies the publication, lists drives with names, and opens a dr
   await page.fill('#find', KNOWN.typicalDrive);
   await page.click('#findgo');
   await until(page, async () => (await driveRows(page)) > 0, 60_000, 'drive');
-  console.log('drive head:', (await page.locator('.b-head').innerText()).replace(/\n/g, ' | ').slice(0, 200));
+  console.log(
+    'drive head:',
+    (await page.locator('.b-head').innerText()).replace(/\n/g, ' | ').slice(0, 200),
+  );
   await page.waitForTimeout(2000);
   console.log('crumbs:', await page.locator('#b-crumbs').innerText());
-  console.log('first rows:', (await page.locator('#b-list tbody tr.b-row').allInnerTexts()).slice(0, 3));
+  console.log(
+    'first rows:',
+    (await page.locator('#b-list tbody tr.b-row').allInnerTexts()).slice(0, 3),
+  );
   expect(pageErrors(page)).toEqual([]);
 });

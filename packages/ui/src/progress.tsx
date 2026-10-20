@@ -33,7 +33,14 @@ export function ProgressBar({ state, onStop }: { state: ProgressState; onStop: (
       </div>
       <div class="barrow">
         <p id="barnote">{state.note}</p>
-        <button id="stop" type="button" class="secondary" hidden={!state.stop} disabled={state.stopDisabled} onClick={onStop}>
+        <button
+          id="stop"
+          type="button"
+          class="secondary"
+          hidden={!state.stop}
+          disabled={state.stopDisabled}
+          onClick={onStop}
+        >
           Stop
         </button>
       </div>

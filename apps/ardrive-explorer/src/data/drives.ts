@@ -3,7 +3,19 @@
  * drive: its window from the tag lookup, owner narrowing when cheaper, slices
  * so memory stays flat, then the browser.
  */
-import { clusterHeights, fmtDay, fmtRange, mb, num, parquetL2, rowsOf, sliceWindow, sq, timeAt, windowCost } from '@ar-io/index-client';
+import {
+  clusterHeights,
+  fmtDay,
+  fmtRange,
+  mb,
+  num,
+  parquetL2,
+  rowsOf,
+  sliceWindow,
+  sq,
+  timeAt,
+  windowCost,
+} from '@ar-io/index-client';
 
 import { CONFIG } from '../config.js';
 import { buildDriveModel, type EntityRecord, toRecord } from '../model/arfs.js';
@@ -46,7 +58,11 @@ export function createDriveFlows(s: Session) {
     if (reset || !browseState || browseState.period !== p.id) {
       s.clearView();
       const when = fmtRange(timeAt(s.bands, p.lo), timeAt(s.bands, p.hi));
-      st.content.value = { ...emptyContent(), title: 'Newest drives', sub: `Drives created ${when ?? p.label.toLowerCase()}, newest first.` };
+      st.content.value = {
+        ...emptyContent(),
+        title: 'Newest drives',
+        sub: `Drives created ${when ?? p.label.toLowerCase()}, newest first.`,
+      };
       browseState = { period: p.id, hi: p.hi, rows: [], step: 1000, done: false };
     }
     const bs = browseState;
@@ -58,7 +74,9 @@ export function createDriveFlows(s: Session) {
       // nearly empty is doubled, so a quiet period does not cost many requests.
       while (got.length < CONFIG.page && bs.hi >= p.lo) {
         const lo = Math.max(p.lo, bs.hi - bs.step + 1);
-        const rows = rowsOf(await s.engine!.query(parquetL2.newestDrivesSql(s.registeredBands(), lo, bs.hi, where))).map(toRecord);
+        const rows = rowsOf(
+          await s.engine!.query(parquetL2.newestDrivesSql(s.registeredBands(), lo, bs.hi, where)),
+        ).map(toRecord);
         got.push(...rows);
         bs.hi = lo - 1;
         if (rows.length < CONFIG.page / 4) bs.step = Math.min(bs.step * 2, 64000);
@@ -74,16 +92,33 @@ export function createDriveFlows(s: Session) {
       table: { cols: [], rows: bs.rows as unknown as Record<string, unknown>[], preset: 'drives' },
       namesNote: true,
       more: bs.done
-        ? [{ kind: 'text', label: `${num(bs.rows.length)} drive${bs.rows.length === 1 ? '' : 's'} in this period.` }]
+        ? [
+            {
+              kind: 'text',
+              label: `${num(bs.rows.length)} drive${bs.rows.length === 1 ? '' : 's'} in this period.`,
+            },
+          ]
         : [
             { kind: 'button', label: 'Show older drives', go: () => void browse(false) },
             {
               kind: 'text',
-              label: `${num(bs.rows.length)} so far, back to block ${num(bs.hi + 1)}` + (timeAt(s.bands, bs.hi + 1) ? ` (${fmtDay(timeAt(s.bands, bs.hi + 1)!)})` : ''),
+              label:
+                `${num(bs.rows.length)} so far, back to block ${num(bs.hi + 1)}` +
+                (timeAt(s.bands, bs.hi + 1) ? ` (${fmtDay(timeAt(s.bands, bs.hi + 1)!)})` : ''),
             },
           ],
       exportable: {
-        cols: ['drive_id', 'id', 'owner', 'privacy', 'created_at', 'app', 'app_version', 'arfs', 'versions'],
+        cols: [
+          'drive_id',
+          'id',
+          'owner',
+          'privacy',
+          'created_at',
+          'app',
+          'app_version',
+          'arfs',
+          'versions',
+        ],
         rows: bs.rows as unknown as Record<string, unknown>[],
         isTime: new Set(['created_at']),
         slug: 'drives',
@@ -108,7 +143,10 @@ export function createDriveFlows(s: Session) {
    * the wallet lookup: one cheap read for the owner, one for the heights, then
    * clusters of blocks instead of the whole span. Null when it would not help.
    */
-  async function narrowByOwner(driveId: string, w: DriveWindow): Promise<{ owner: string; clusters: [number, number][]; cost: number } | null> {
+  async function narrowByOwner(
+    driveId: string,
+    w: DriveWindow,
+  ): Promise<{ owner: string; clusters: [number, number][]; cost: number } | null> {
     const bands = s.registeredBands();
     const [first] = rowsOf(
       await s.engine!.query(
@@ -124,11 +162,18 @@ export function createDriveFlows(s: Session) {
     ).map((r) => Number(r.height));
     if (!heights.length) return null;
     const clusters = clusterHeights(heights, CONFIG.clusterGap);
-    const cost = clusters.reduce((t, [a, z]) => t + windowCost(s.bands, a, z, { min: CONFIG.costMin }), 0);
+    const cost = clusters.reduce(
+      (t, [a, z]) => t + windowCost(s.bands, a, z, { min: CONFIG.costMin }),
+      0,
+    );
     return { owner: String(first.owner), clusters, cost };
   }
 
-  async function openDrive(driveIdRaw: string, confirmed: boolean, folder: string | null): Promise<void> {
+  async function openDrive(
+    driveIdRaw: string,
+    confirmed: boolean,
+    folder: string | null,
+  ): Promise<void> {
     const my = ++s.nav;
     const driveId = driveIdRaw.toLowerCase();
     if (!confirmed) s.pushHistory({ kind: 'drive', key: driveId, folder });
@@ -156,7 +201,10 @@ export function createDriveFlows(s: Session) {
     // A wide window is read as slices of blocks, one small scan each, so the
     // memory a listing needs stays flat however wide the drive. Narrowing to
     // the stretches its owner wrote in is taken whenever it reads less.
-    let plan: { clusters: [number, number][]; cost: number; owner?: string } = { clusters: sliceWindow(w.lo, w.hi, CONFIG.slice), cost: windowCost(s.bands, w.lo, w.hi, { min: CONFIG.costMin }) };
+    let plan: { clusters: [number, number][]; cost: number; owner?: string } = {
+      clusters: sliceWindow(w.lo, w.hi, CONFIG.slice),
+      cost: windowCost(s.bands, w.lo, w.hi, { min: CONFIG.costMin }),
+    };
     if (plan.cost > CONFIG.askFirstBytes && s.hasLookups) {
       const n = await narrowByOwner(driveId, w).catch(() => null);
       if (s.overtaken(my)) return;
@@ -170,12 +218,22 @@ export function createDriveFlows(s: Session) {
         `Listing this drive reads about `,
         mb(plan.cost),
         ` of the index` +
-          (plan.owner ? ` (narrowed to the ${num(plan.clusters.length)} stretches of blocks its owner wrote in)` : ` (its records are spread over ${num(w.hi - w.lo + 1)} blocks)`) +
-          ((w.records ?? 0) > 2e6 ? `. With ${num(w.records!)} records it is too large to show as a tree; the list is capped at ${num(CONFIG.listCap)} files.` : '.'),
+          (plan.owner
+            ? ` (narrowed to the ${num(plan.clusters.length)} stretches of blocks its owner wrote in)`
+            : ` (its records are spread over ${num(w.hi - w.lo + 1)} blocks)`) +
+          ((w.records ?? 0) > 2e6
+            ? `. With ${num(w.records!)} records it is too large to show as a tree; the list is capped at ${num(CONFIG.listCap)} files.`
+            : '.'),
       ];
       st.content.value = {
         ...st.content.value,
-        cost: { text, action: { label: `Read ${mb(plan.cost)} and list it`, go: () => void openDrive(driveId, true, folder) } },
+        cost: {
+          text,
+          action: {
+            label: `Read ${mb(plan.cost)} and list it`,
+            go: () => void openDrive(driveId, true, folder),
+          },
+        },
       };
       return;
     }
@@ -199,7 +257,8 @@ export function createDriveFlows(s: Session) {
       capped: recs.length === CONFIG.listCap,
       note:
         `${num(recs.length)} records between blocks ${num(w.lo)} and ${num(w.hi)}${when ? ` (${when})` : ''}` +
-        (recs.some((x) => x.privacy === 'private') && !recs.some((x) => x.privacy === 'public' && x.kind === 'drive')
+        (recs.some((x) => x.privacy === 'private') &&
+        !recs.some((x) => x.privacy === 'public' && x.kind === 'drive')
           ? '. A private drive: names and contents are encrypted, so only its shape is shown'
           : ''),
     });
@@ -208,7 +267,18 @@ export function createDriveFlows(s: Session) {
       ...emptyContent(),
       crumbs: [...crumbs, { label: privacy === 'private' ? 'Private drive' : 'Drive', go: null }],
       exportable: {
-        cols: ['kind', 'id', 'entity_id', 'parent_folder_id', 'owner', 'created_at', 'height', 'app', 'app_version', 'record_size'],
+        cols: [
+          'kind',
+          'id',
+          'entity_id',
+          'parent_folder_id',
+          'owner',
+          'created_at',
+          'height',
+          'app',
+          'app_version',
+          'record_size',
+        ],
         rows: recs as unknown as Record<string, unknown>[],
         isTime: new Set(['created_at']),
         slug: `drive-${driveId.slice(0, 8)}`,
@@ -244,7 +314,10 @@ export function createDriveFlows(s: Session) {
     const d = st.drive.value;
     if (!d) return;
     st.driveUi.value = { ...st.driveUi.value, path, selected: null, filter: '' };
-    s.pushHistory({ kind: 'drive', key: d.driveId, folder: path.length ? path[path.length - 1]! : null }, replace);
+    s.pushHistory(
+      { kind: 'drive', key: d.driveId, folder: path.length ? path[path.length - 1]! : null },
+      replace,
+    );
   }
 
   return { browse, openDrive, setFolder, driveWindow };

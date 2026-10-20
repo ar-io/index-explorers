@@ -1,0 +1,75 @@
+name: Deploy
+
+# Only from a tag, and only after the live E2E passed on that commit:
+#   pin check against two gateways → build → live E2E → ario-deploy (Turbo
+#   upload-folder + the ArNS record) → the manifest id written to DEPLOYS.md.
+#
+# Secrets (repository environment "arweave"):
+#   DEPLOY_KEY  the upload key that pays for the upload: the Arweave JWK of the
+#               wallet that deployed arweave-l1-search, base64-encoded
+#   ARNS_KEY    the Solana key that controls the ArNS name (ArNS records live
+#               on the Solana ARIO programs)
+on:
+  push:
+    tags:
+      - 'ardrive-explorer-v*'
+      - 'arweave-l1-explorer-v*'
+      - 'network-index-v*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: arweave
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Which app and name
+        id: app
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          app="${tag%-v*}"
+          echo "name=${app}" >> "$GITHUB_OUTPUT"
+          echo "version=${tag##*-v}" >> "$GITHUB_OUTPUT"
+          case "$app" in
+            ardrive-explorer)    echo "arns=ardrive"            >> "$GITHUB_OUTPUT"; echo "undername=explore" >> "$GITHUB_OUTPUT"; echo "url=https://explore_ardrive.ar.io" >> "$GITHUB_OUTPUT" ;;
+            arweave-l1-explorer) echo "arns=arweave-l1-search"  >> "$GITHUB_OUTPUT"; echo "undername=@"       >> "$GITHUB_OUTPUT"; echo "url=https://arweave-l1-search.ar.io" >> "$GITHUB_OUTPUT" ;;
+            network-index)       echo "arns=cdb64"              >> "$GITHUB_OUTPUT"; echo "undername=@"       >> "$GITHUB_OUTPUT"; echo "url=https://cdb64.ar.io" >> "$GITHUB_OUTPUT" ;;
+            *) echo "unknown app $app" >&2; exit 1 ;;
+          esac
+      - run: pnpm pins:check
+      - name: Build
+        run: pnpm --filter "./apps/${{ steps.app.outputs.name }}" run build
+      - run: npx playwright install --with-deps chromium
+      - name: Live E2E on this commit
+        run: pnpm e2e:live
+        env:
+          GW: https://turbo-gateway.com
+      - name: Upload with Turbo and set the ArNS record
+        id: deploy
+        uses: ar-io/ar-io-deploy@v2.0.0
+        with:
+          deploy-key: ${{ secrets.DEPLOY_KEY }}
+          arns-key: ${{ secrets.ARNS_KEY }}
+          arns-name: ${{ steps.app.outputs.arns }}
+          undername: ${{ steps.app.outputs.undername }}
+          deploy-folder: apps/${{ steps.app.outputs.name }}/dist
+          fallback-file: index.html
+          ttl-seconds: '900'
+      - name: Record the manifest id
+        run: |
+          node scripts/record-deploy.mjs --app "${{ steps.app.outputs.name }}" --version "${{ steps.app.outputs.version }}" \
+            --manifest "${{ steps.deploy.outputs.tx-id }}" --url "${{ steps.app.outputs.url }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DEPLOYS.md
+          git commit -m "deploy(${{ steps.app.outputs.name }}): ${{ steps.app.outputs.version }} is ${{ steps.deploy.outputs.tx-id }}"
+          git push origin HEAD:main

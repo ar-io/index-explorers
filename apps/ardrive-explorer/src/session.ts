@@ -83,7 +83,8 @@ export class Session {
   async start(): Promise<void> {
     const link = parseFragment(location.hash);
     if (link.gw) {
-      if (CONFIG.publishers.includes(link.gw) || link.gw === 'auto') this.store.gatewayChoice.value = link.gw;
+      if (CONFIG.publishers.includes(link.gw) || link.gw === 'auto')
+        this.store.gatewayChoice.value = link.gw;
       else {
         this.store.gatewayChoice.value = 'custom';
         this.store.customGateway.value = link.gw;
@@ -113,15 +114,26 @@ export class Session {
     const my = ++this.nav;
     let checking = false;
     const st = this.store;
-    st.pub.value = { ...st.pub.value, status: 'reading', checks: { registry: '', signature: '', engine: st.pub.value.checks.engine, pieces: '' }, verified: false };
+    st.pub.value = {
+      ...st.pub.value,
+      status: 'reading',
+      checks: { registry: '', signature: '', engine: st.pub.value.checks.engine, pieces: '' },
+      verified: false,
+    };
     await this.forgetLoaded();
     try {
       st.say(`Finding a gateway that publishes ${CONFIG.indexName}`);
-      const choice = st.gatewayChoice.value === 'custom' ? st.customGateway.value : st.gatewayChoice.value;
-      const picked = await pickGateway({ choice, indexName: CONFIG.indexName, candidates: autoCandidates(location, CONFIG.publishers) });
+      const choice =
+        st.gatewayChoice.value === 'custom' ? st.customGateway.value : st.gatewayChoice.value;
+      const picked = await pickGateway({
+        choice,
+        indexName: CONFIG.indexName,
+        candidates: autoCandidates(location, CONFIG.publishers),
+      });
       this.gateway = picked.gateway;
       const fetched = picked.publication ?? (await fetchPublication(picked.gateway));
-      if (!fetched.doc.indexes.some((i) => i.name === CONFIG.indexName)) throw new Error(`this gateway publishes no ${CONFIG.indexName} index`);
+      if (!fetched.doc.indexes.some((i) => i.name === CONFIG.indexName))
+        throw new Error(`this gateway publishes no ${CONFIG.indexName} index`);
       st.setProof('run', "Checking the publisher's signature…");
       st.say('Verifying the publication signature against the gateway registry');
       checking = true;
@@ -133,23 +145,34 @@ export class Session {
       if (this.overtaken(my)) return;
       this.publication = fetched;
       this.proof = proof;
-      const ix = selectIndex(fetched.doc, CONFIG.indexName, { gateway: picked.gateway, mirrors: this.mirrors });
+      const ix = selectIndex(fetched.doc, CONFIG.indexName, {
+        gateway: picked.gateway,
+        mirrors: this.mirrors,
+      });
       if (!ix.bands.length) throw new Error('the publication lists no bands with records');
       this.bands = ix.bands;
       const last = this.bands[this.bands.length - 1]!;
       const tip = tipOf(this.bands) ?? last.from;
       // Dates for every band edge: one GraphQL call, cosmetic.
-      const dates = await fetchBandDates([picked.gateway, ...this.mirrors], this.bands.flatMap((b) => [b.from, b.to ?? b.from]));
+      const dates = await fetchBandDates(
+        [picked.gateway, ...this.mirrors],
+        this.bands.flatMap((b) => [b.from, b.to ?? b.from]),
+      );
       for (const b of this.bands) {
         const f = dates.get(b.from);
         const t = dates.get(b.to ?? b.from);
         if (f) b.fromTime = f;
         if (t) b.toTime = t;
       }
-      const periods = buildPeriods(this.bands, { tip, scanFiles: ['tags.parquet', 'data_items.parquet'] });
+      const periods = buildPeriods(this.bands, {
+        tip,
+        scanFiles: ['tags.parquet', 'data_items.parquet'],
+      });
       st.periods.value = periods;
       const wantPeriod = this.pendingLink?.period ?? st.periodId.value;
-      st.periodId.value = periods.some((p) => p.id === wantPeriod && wantPeriod !== 'all') ? wantPeriod : 'month';
+      st.periodId.value = periods.some((p) => p.id === wantPeriod && wantPeriod !== 'all')
+        ? wantPeriod
+        : 'month';
       const publisherName = proof.publisherUrl ? hostOf(proof.publisherUrl) : null;
       const records = this.bands.reduce((t, b) => t + b.records, 0);
       const first = this.bands[0]!;
@@ -157,14 +180,19 @@ export class Session {
       st.hero.value = {
         ...st.hero.value,
         items: records ? num(records) : '—',
-        span: first.fromTime && last.toTime ? `${yr(first.fromTime)}–${yr(last.toTime)}` : `${num(first.from)}–${num(tip)}`,
+        span:
+          first.fromTime && last.toTime
+            ? `${yr(first.fromTime)}–${yr(last.toTime)}`
+            : `${num(first.from)}–${num(tip)}`,
       };
       st.pub.value = {
         ...st.pub.value,
         status: 'ok',
         gateway: picked.gateway,
         auto: picked.auto,
-        gatewayNote: picked.auto ? `Reading ${publisherName ? publisherName + '’s' : 'this gateway’s'} publication.` : '',
+        gatewayNote: picked.auto
+          ? `Reading ${publisherName ? publisherName + '’s' : 'this gateway’s'} publication.`
+          : '',
         publisher: fetched.doc.publisher,
         publisherName,
         publisherUrl: proof.publisherUrl,
@@ -174,12 +202,20 @@ export class Session {
         bands: this.bands,
         tip,
         verified: true,
-        hasLookups: this.bands.every((b) => ['lookup_id.parquet', 'lookup_wallet.parquet', 'lookup_tag.parquet'].every((f) => b.files.has(f))),
+        hasLookups: this.bands.every((b) =>
+          ['lookup_id.parquet', 'lookup_wallet.parquet', 'lookup_tag.parquet'].every((f) =>
+            b.files.has(f),
+          ),
+        ),
       };
       st.setProof(
         'ok',
-        (publisherName ? `Verified · signed by ${publisherName}` : 'Verified · signed by its publisher') +
-          (proof.expired ? ' · this publication has expired; the publisher may have gone quiet' : ''),
+        (publisherName
+          ? `Verified · signed by ${publisherName}`
+          : 'Verified · signed by its publisher') +
+          (proof.expired
+            ? ' · this publication has expired; the publisher may have gone quiet'
+            : ''),
       );
       st.asksEnabled.value = true;
       st.say('');
@@ -191,10 +227,21 @@ export class Session {
       if (this.overtaken(my)) return;
       this.bands = [];
       const checks = st.pub.value.checks;
-      for (const k of ['registry', 'signature', 'engine'] as const) if (checks[k] === 'run') st.setCheck(k, 'bad');
+      for (const k of ['registry', 'signature', 'engine'] as const)
+        if (checks[k] === 'run') st.setCheck(k, 'bad');
       st.hero.value = { drives: '—', files: '—', items: '—', span: '—' };
-      const msg = e instanceof Error && e.name === 'AbortError' ? 'the gateway did not answer within 15 seconds' : e instanceof TypeError ? 'the gateway could not be reached' : e instanceof Error ? e.message : String(e);
-      st.setProof('bad', (checking ? 'Not verified · ' : 'Could not read the publication · ') + msg);
+      const msg =
+        e instanceof Error && e.name === 'AbortError'
+          ? 'the gateway did not answer within 15 seconds'
+          : e instanceof TypeError
+            ? 'the gateway could not be reached'
+            : e instanceof Error
+              ? e.message
+              : String(e);
+      st.setProof(
+        'bad',
+        (checking ? 'Not verified · ' : 'Could not read the publication · ') + msg,
+      );
       st.pub.value = { ...st.pub.value, status: 'bad', verified: false, bands: [] };
       st.asksEnabled.value = false;
       st.say('Refusing this publication: ' + msg, 'bad');
@@ -207,7 +254,8 @@ export class Session {
     this.heroDone = false;
     if (this.engine) {
       for (const s of parquetL2.l2DropSql()) await this.engine.query(s).catch(() => {});
-      for (const r of this.registered.values()) for (const n of Object.values(r.names)) if (n) await this.engine.dropFile(n);
+      for (const r of this.registered.values())
+        for (const n of Object.values(r.names)) if (n) await this.engine.dropFile(n);
     }
     this.registered.clear();
     this.names.clear();
@@ -231,7 +279,8 @@ export class Session {
         hosts: CONFIG.engineHosts,
         pins: CONFIG.pins,
         onStatus: (m) => st.say(m),
-        onProgress: (p) => ('busy' in p ? st.barBusy(p.busy) : st.barShow(p.got, p.total, p.label, mb)),
+        onProgress: (p) =>
+          'busy' in p ? st.barBusy(p.busy) : st.barShow(p.got, p.total, p.label, mb),
       });
       st.extFallback.value = this.engine.extFallback;
       st.setCheck('engine', 'ok');
@@ -248,7 +297,15 @@ export class Session {
   }
 
   wholeSize(list: readonly Band[]): number {
-    return list.filter((b) => !this.isRangeable(b)).reduce((t, b) => t + (b.files.get('tags.parquet')?.size ?? 0) + (b.files.get('data_items.parquet')?.size ?? 0), 0);
+    return list
+      .filter((b) => !this.isRangeable(b))
+      .reduce(
+        (t, b) =>
+          t +
+          (b.files.get('tags.parquet')?.size ?? 0) +
+          (b.files.get('data_items.parquet')?.size ?? 0),
+        0,
+      );
   }
 
   periodDisabled(p: { bands: Band[] }): boolean {
@@ -263,21 +320,36 @@ export class Session {
     await this.boot();
     const engine = this.engine!;
     const ranged = sel.filter((b) => this.isRangeable(b));
-    if (ranged.length && !this.reader?.controlled()) throw new Error('the range reader stopped controlling this page; reload it');
+    if (ranged.length && !this.reader?.controlled())
+      throw new Error('the range reader stopped controlling this page; reload it');
     const missing = sel.filter((b) => !this.registered.has(b.id));
     this.store.tr(`missing ${missing.length}`);
     if (!missing.length) return;
     for (const band of missing.filter((b) => this.isRangeable(b))) {
       const names: L2Band['names'] = {};
-      const kinds = [...parquetL2.L2_TABLE_KINDS, ...(parquetL2.L2_LOOKUP_KINDS.every((k) => band.files.has(parquetL2.L2_FILES[k])) ? parquetL2.L2_LOOKUP_KINDS : [])];
+      const kinds = [
+        ...parquetL2.L2_TABLE_KINDS,
+        ...(parquetL2.L2_LOOKUP_KINDS.every((k) => band.files.has(parquetL2.L2_FILES[k]))
+          ? parquetL2.L2_LOOKUP_KINDS
+          : []),
+      ];
       for (const kind of kinds) {
         const file = band.files.get(parquetL2.L2_FILES[kind]);
         if (!file) continue;
         const name = engine.freshName(kind);
-        await engine.registerUrl(name, this.reader!.url(rangeSpec(band, file, { mirrors: this.mirrors })));
+        await engine.registerUrl(
+          name,
+          this.reader!.url(rangeSpec(band, file, { mirrors: this.mirrors })),
+        );
         names[kind] = name;
       }
-      this.registered.set(band.id, { id: band.id, from: band.from, to: band.to ?? this.store.pub.value.tip, names, ranged: true });
+      this.registered.set(band.id, {
+        id: band.id,
+        from: band.from,
+        to: band.to ?? this.store.pub.value.tip,
+        names,
+        ranged: true,
+      });
       this.store.tr(`registered ${band.id.slice(0, 14)}`);
     }
     const whole = missing.filter((b) => !this.isRangeable(b));
@@ -291,14 +363,23 @@ export class Session {
         done += 1;
         const what = `${fmtRange(band.fromTime, band.toTime) || 'band ' + band.from + '–' + band.to}, file ${done} of ${total}`;
         this.store.say(`Downloading ${done} of ${total}, ${mb(f.size)}`);
-        const bytes = await fetchWithProgress(f.url, what, f.size, (p) => this.store.barShow(p.got, p.total, p.label, mb));
+        const bytes = await fetchWithProgress(f.url, what, f.size, (p) =>
+          this.store.barShow(p.got, p.total, p.label, mb),
+        );
         this.store.barBusy(`Checking ${what} against its signed SHA-256`);
-        if ((await sha256Hex(bytes)) !== f.sha256) throw new Error(`${band.id} does not match its signed SHA-256`);
+        if ((await sha256Hex(bytes)) !== f.sha256)
+          throw new Error(`${band.id} does not match its signed SHA-256`);
         const name = engine.freshName(kind);
         await engine.registerBuffer(name, bytes);
         names[kind] = name;
       }
-      this.registered.set(band.id, { id: band.id, from: band.from, to: band.to ?? this.store.pub.value.tip, names, ranged: false });
+      this.registered.set(band.id, {
+        id: band.id,
+        from: band.from,
+        to: band.to ?? this.store.pub.value.tip,
+        names,
+        ranged: false,
+      });
     }
     this.store.tr('defineBase');
     await engine.exec(parquetL2.l2BaseSql(this.registeredBands()));
@@ -306,7 +387,9 @@ export class Session {
   }
 
   registeredBands(): L2Band[] {
-    return this.bands.filter((b) => this.registered.has(b.id)).map((b) => this.registered.get(b.id)!);
+    return this.bands
+      .filter((b) => this.registered.has(b.id))
+      .map((b) => this.registered.get(b.id)!);
   }
 
   get hasLookups(): boolean {
@@ -324,12 +407,16 @@ export class Session {
       return false;
     }
     if (this.periodDisabled(p)) {
-      st.say(`${p.label} is ${mb(this.wholeSize(p.bands))} to download whole, too much for a tab. Pick a shorter period.`, 'bad');
+      st.say(
+        `${p.label} is ${mb(this.wholeSize(p.bands))} to download whole, too much for a tab. Pick a shorter period.`,
+        'bad',
+      );
       return false;
     }
     // Range reads: register every band once, so Find and Browse can reach any
     // height. Whole downloads: only the period's bands.
-    const sel = this.reader?.ok && this.bands.every((b) => this.isRangeable(b)) ? this.bands : p.bands;
+    const sel =
+      this.reader?.ok && this.bands.every((b) => this.isRangeable(b)) ? this.bands : p.bands;
     try {
       // After a Stop the range reader refuses every read until it is told to
       // resume; the views below read file headers through it, so resume first.
@@ -376,7 +463,10 @@ export class Session {
     const st = this.store;
     const ranged = this.bands.some((b) => this.isRangeable(b));
     if (ranged && !this.reader?.controlled()) {
-      st.say('The range reader stopped controlling this page, so nothing would be checked. Reload the page.', 'bad');
+      st.say(
+        'The range reader stopped controlling this page, so nothing would be checked. Reload the page.',
+        'bad',
+      );
       return null;
     }
     const watch = ranged && this.reader ? await this.reader.watch(label) : null;
@@ -388,15 +478,24 @@ export class Session {
     try {
       const out = await work();
       read = watch ? await watch.done() : null;
-      if (read && watch && !watch.fail && (read.checked > 0 || read.reused > 0)) st.setCheck('pieces', 'ok');
+      if (read && watch && !watch.fail && (read.checked > 0 || read.reused > 0))
+        st.setCheck('pieces', 'ok');
       st.lastReceipt.value = read;
-      return { out, receipt: receiptText(read, mb) + (watch?.notes.length ? ' ' + watch.notes.join(' ') : ''), read };
+      return {
+        out,
+        receipt: receiptText(read, mb) + (watch?.notes.length ? ' ' + watch.notes.join(' ') : ''),
+        read,
+      };
     } catch (e) {
       if (watch) await watch.done();
       const why = explainReadError(e, watch, this.mirrors);
       if (why.integrity) st.setCheck('pieces', 'bad');
       if (why.oom) await this.resetAfterOom();
-      else if (watch?.fail || /magic bytes|IO Error|HTTP|too small/i.test(e instanceof Error ? e.message : String(e))) await this.forgetRanged();
+      else if (
+        watch?.fail ||
+        /magic bytes|IO Error|HTTP|too small/i.test(e instanceof Error ? e.message : String(e))
+      )
+        await this.forgetRanged();
       st.say(why.stopped ? why.msg : 'Could not read: ' + why.msg, 'bad');
       return null;
     } finally {
@@ -416,7 +515,9 @@ export class Session {
     this.store.barBusy(
       `${w.label}: ${mb(fetched)} fetched, ${num(checked)} piece${checked === 1 ? '' : 's'} checked` +
         (reused ? `, ${num(reused)} reused` : '') +
-        (fetched > 500e6 ? '. This one reads much of the period; Stop if that was not the plan' : ''),
+        (fetched > 500e6
+          ? '. This one reads much of the period; Stop if that was not the plan'
+          : ''),
     );
   }
 
@@ -474,7 +575,8 @@ export class Session {
     if (d) {
       const item = d.byRecordId.get(id);
       if (item) applyMeta(d, item, r);
-      else if (d.driveRec && d.driveRec.id === id) setDriveMeta(d, r.ok ? r.meta : null, r.ok ? r.name : null);
+      else if (d.driveRec && d.driveRec.id === id)
+        setDriveMeta(d, r.ok ? r.meta : null, r.ok ? r.name : null);
     }
     this.scheduleTick();
   }
@@ -492,7 +594,11 @@ export class Session {
   wantNames(d: DriveModel, items: readonly DriveItem[], front: boolean): void {
     if (d.privacy === 'private') return;
     let applied = false;
-    for (let i = front ? items.length - 1 : 0; front ? i >= 0 : i < items.length; front ? i-- : i++) {
+    for (
+      let i = front ? items.length - 1 : 0;
+      front ? i >= 0 : i < items.length;
+      front ? i-- : i++
+    ) {
       const x = items[i]!;
       if (x.name !== null || x.failed !== null) continue;
       const r = this.names.want(x.latest.id, x.latest.record_size, front);
@@ -518,8 +624,12 @@ export class Session {
 
   shareUrl(view: ViewState): string {
     const st = this.store;
-    const gw = st.pub.value.gateway ?? (['auto', 'custom'].includes(st.gatewayChoice.value) ? null : st.gatewayChoice.value);
-    return location.origin + location.pathname + encodeFragment({ gw, period: st.periodId.value, view });
+    const gw =
+      st.pub.value.gateway ??
+      (['auto', 'custom'].includes(st.gatewayChoice.value) ? null : st.gatewayChoice.value);
+    return (
+      location.origin + location.pathname + encodeFragment({ gw, period: st.periodId.value, view })
+    );
   }
 
   pushHistory(view: ViewState, replace = false): void {
@@ -536,7 +646,12 @@ export class Session {
     openDrive: (id: string, confirmed: boolean, folder: string | null) => Promise<void>;
     openWallet: (addr: string, everything: boolean) => Promise<void>;
     openId: (id: string) => Promise<void>;
-    runQuery: (opts: { title?: string | null; caption?: string | null; confirmed?: boolean; sql?: string }) => Promise<void>;
+    runQuery: (opts: {
+      title?: string | null;
+      caption?: string | null;
+      confirmed?: boolean;
+      sql?: string;
+    }) => Promise<void>;
     setFolder: (path: string[]) => void;
   } | null = null;
 
@@ -562,7 +677,10 @@ export class Session {
     this.fromHistory = true;
     try {
       const d = this.store.drive.value;
-      if (st.kind === 'drive' && d && d.driveId === st.key) this.flows!.setFolder(st.folder && d.folders.has(st.folder) ? this.pathFor(d, st.folder) : []);
+      if (st.kind === 'drive' && d && d.driveId === st.key)
+        this.flows!.setFolder(
+          st.folder && d.folders.has(st.folder) ? this.pathFor(d, st.folder) : [],
+        );
       else await this.openFromLink(st);
     } finally {
       this.fromHistory = false;

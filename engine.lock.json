@@ -2,7 +2,11 @@
   "comment": "DuckDB-WASM, pinned by SHA-256 of the decompressed bytes. The engine computes every answer, so these are checked before the engine starts, on every visit. scripts/check-pins.mjs compares them against node_modules and two gateways.",
   "package": "@duckdb/duckdb-wasm",
   "version": "1.30.0",
-  "hosts": ["https://duck-db-wasm.ar.io/", "https://duck-db-wasm.vilenarios.com/", "https://duck-db-wasm.turbo-gateway.com/"],
+  "hosts": [
+    "https://duck-db-wasm.ar.io/",
+    "https://duck-db-wasm.vilenarios.com/",
+    "https://duck-db-wasm.turbo-gateway.com/"
+  ],
   "worker": {
     "path": "gzip/duckdb-browser-eh.worker.js",
     "npm": "dist/duckdb-browser-eh.worker.js",

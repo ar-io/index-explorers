@@ -36,8 +36,31 @@ export interface RegisteredL2Band {
 
 /** The views, macros and base objects this layout creates, for a clean drop. */
 export const L2_OBJECTS = {
-  views: ['uploads', 'tags', 'entities', 'drives', 'folders', 'files', 'uploads_all', 'tags_all', 'items_all', 'lookup_id', 'lookup_wallet', 'lookup_tag'],
-  macros: ['items_between', 'owners_between', 'entities_between', 'uploads_between', 'drive_window', 'drive', 'wallet_totals', 'find_id', 'tag_counts'],
+  views: [
+    'uploads',
+    'tags',
+    'entities',
+    'drives',
+    'folders',
+    'files',
+    'uploads_all',
+    'tags_all',
+    'items_all',
+    'lookup_id',
+    'lookup_wallet',
+    'lookup_tag',
+  ],
+  macros: [
+    'items_between',
+    'owners_between',
+    'entities_between',
+    'uploads_between',
+    'drive_window',
+    'drive',
+    'wallet_totals',
+    'find_id',
+    'tag_counts',
+  ],
 };
 
 export const l2DropSql = (): string[] => [
@@ -49,8 +72,11 @@ const namesOf = (bands: readonly RegisteredL2Band[], kind: L2Kind): string[] =>
   bands.map((b) => b.names[kind]).filter((n): n is string => !!n);
 
 /** The bands a height window touches. */
-export const bandsInWindow = (bands: readonly RegisteredL2Band[], lo: number, hi: number): RegisteredL2Band[] =>
-  bands.filter((b) => b.to >= lo && b.from <= hi);
+export const bandsInWindow = (
+  bands: readonly RegisteredL2Band[],
+  lo: number,
+  hi: number,
+): RegisteredL2Band[] => bands.filter((b) => b.to >= lo && b.from <= hi);
 
 /** Whether every band carries its three lookup files, so the lookup paths can be used. */
 export const hasLookups = (bands: readonly RegisteredL2Band[]): boolean =>
@@ -75,7 +101,12 @@ export function tagsSql(bands: readonly RegisteredL2Band[], lo: number, hi: numb
  * window function is used so the height filter reaches the Parquet reader.
  * `slim` reads two columns instead of five: about half the bytes of a row group.
  */
-export function itemsSql(bands: readonly RegisteredL2Band[], lo: number, hi: number, slim: boolean): string {
+export function itemsSql(
+  bands: readonly RegisteredL2Band[],
+  lo: number,
+  hi: number,
+  slim: boolean,
+): string {
   const f = namesOf(bandsInWindow(bands, lo, hi), 'it');
   if (!f.length) return EMPTY_ITEMS;
   const cols = slim
@@ -105,7 +136,8 @@ const ENTITY_PIVOT = (tagsSource: string) => `WITH e AS (
  * A Unix-Time stamped in milliseconds (some apps did) would throw in
  * Date#toISOString; the value is bounded here so no formatter ever sees it.
  */
-const CREATED_AT = (expr: string) => `CASE WHEN ${expr} BETWEEN 1000000000 AND 4000000000 THEN epoch_ms(${expr} * 1000) END`;
+const CREATED_AT = (expr: string) =>
+  `CASE WHEN ${expr} BETWEEN 1000000000 AND 4000000000 THEN epoch_ms(${expr} * 1000) END`;
 
 /**
  * Every ArFS record in a window, one row each, its tags as columns, with its
@@ -229,7 +261,11 @@ export function l2BaseSql(bands: readonly RegisteredL2Band[]): string[] {
  * folder or file (`drives`, `folders`, `files`: the newest record wins, as
  * ArFS says, with `versions` counting the records in the period).
  */
-export function l2PeriodViewsSql(bands: readonly RegisteredL2Band[], lo: number, hi: number): string[] {
+export function l2PeriodViewsSql(
+  bands: readonly RegisteredL2Band[],
+  lo: number,
+  hi: number,
+): string[] {
   const latest = (kind: string, key: string) => `SELECT * EXCLUDE (rn) FROM (
       SELECT *, entity_id AS ${key}, id AS name_id, row_number() OVER (PARTITION BY entity_id ORDER BY height DESC, unix_time DESC NULLS LAST) AS rn,
              count(*) OVER (PARTITION BY entity_id) AS versions
@@ -245,7 +281,12 @@ export function l2PeriodViewsSql(bands: readonly RegisteredL2Band[], lo: number,
 }
 
 /** Drive records of a window, the newest version per Drive-Id, newest first. */
-export function newestDrivesSql(bands: readonly RegisteredL2Band[], lo: number, hi: number, where = ''): string {
+export function newestDrivesSql(
+  bands: readonly RegisteredL2Band[],
+  lo: number,
+  hi: number,
+  where = '',
+): string {
   return `SELECT id, height, created_at, owner, drive_id, privacy, app, app_version, arfs, record_size, versions
         FROM (SELECT *, count(*) OVER (PARTITION BY drive_id) AS versions, row_number() OVER (PARTITION BY drive_id ORDER BY height DESC, unix_time DESC NULLS LAST) AS rn
               FROM ${entitiesSql(bands, lo, hi)} WHERE kind = 'drive'${where})
@@ -253,8 +294,14 @@ export function newestDrivesSql(bands: readonly RegisteredL2Band[], lo: number, 
 }
 
 /** Entities of several height stretches at once, as one source. */
-export const clusterSql = (bands: readonly RegisteredL2Band[], clusters: readonly [number, number][], where: string): string =>
-  clusters.map(([a, z]) => `SELECT * FROM ${entitiesSql(bands, a, z)} WHERE ${where}`).join(' UNION ALL ');
+export const clusterSql = (
+  bands: readonly RegisteredL2Band[],
+  clusters: readonly [number, number][],
+  where: string,
+): string =>
+  clusters
+    .map(([a, z]) => `SELECT * FROM ${entitiesSql(bands, a, z)} WHERE ${where}`)
+    .join(' UNION ALL ');
 
 /** The exact counts of a tag's values over every band, from the tag lookup: kilobytes. */
 export const tagCountsSql = (name: string): string =>

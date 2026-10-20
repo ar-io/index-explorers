@@ -44,7 +44,12 @@ describe('the recorded torrent', () => {
 
   it('accepts each real band file as its own single piece and refuses a flipped byte', async () => {
     const files = await checkTorrent(torrent, LIVE_TORRENT_IH2);
-    for (const name of ['data_items.parquet', 'tags.parquet', 'lookup_wallet.parquet', 'parents.parquet']) {
+    for (const name of [
+      'data_items.parquet',
+      'tags.parquet',
+      'lookup_wallet.parquet',
+      'parents.parquet',
+    ]) {
       const t = files.get(name)!;
       const bytes = readBytes(path.join(LIVE_BAND_DIR, name));
       expect(bytes.length).toBe(t.size);
@@ -102,6 +107,8 @@ describe('a built multi-piece torrent', () => {
     const broken = layer.slice();
     broken[5]! ^= 0xff;
     layers.set(key, broken);
-    await expect(checkTorrent(bencode(value as never), infohashV2)).rejects.toThrow(/does not hash to the signed root/);
+    await expect(checkTorrent(bencode(value as never), infohashV2)).rejects.toThrow(
+      /does not hash to the signed root/,
+    );
   });
 });

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyMeta, buildDriveModel, type EntityRecord, pathTo, setDriveMeta, sortItems, toRecord, visibleItems } from './arfs.js';
+import {
+  applyMeta,
+  buildDriveModel,
+  type EntityRecord,
+  pathTo,
+  setDriveMeta,
+  sortItems,
+  toRecord,
+  visibleItems,
+} from './arfs.js';
 
 const rec = (over: Partial<EntityRecord>): EntityRecord => ({
   id: 'id',
@@ -30,7 +39,14 @@ const records: EntityRecord[] = [
   rec({ id: 'f1', kind: 'file', entity_id: 'f', parent_folder_id: 'b', height: 12, unix_time: 5 }),
   rec({ id: 'f2', kind: 'file', entity_id: 'f', parent_folder_id: 'b', height: 13, unix_time: 1 }),
   rec({ id: 'f3', kind: 'file', entity_id: 'f', parent_folder_id: 'b', height: 13, unix_time: 9 }),
-  rec({ id: 'g1', kind: 'file', entity_id: 'g', parent_folder_id: 'root', height: 11, is_hidden: 'true' }),
+  rec({
+    id: 'g1',
+    kind: 'file',
+    entity_id: 'g',
+    parent_folder_id: 'root',
+    height: 11,
+    is_hidden: 'true',
+  }),
   rec({ id: 'orphan', kind: 'file', entity_id: 'h', parent_folder_id: 'missing', height: 11 }),
   rec({ id: 'snap', kind: 'snapshot', entity_id: null, height: 11 }),
 ];
@@ -50,7 +66,11 @@ describe('buildDriveModel', () => {
 
   it('finds the single root, nests children and puts orphans at the root', () => {
     expect(m.roots.map((r) => r.entityId)).toEqual(['root']);
-    expect(visibleItems(m, [], '').map((x) => x.entityId).sort()).toEqual(['a', 'g', 'h']);
+    expect(
+      visibleItems(m, [], '')
+        .map((x) => x.entityId)
+        .sort(),
+    ).toEqual(['a', 'g', 'h']);
     expect(visibleItems(m, ['a'], '').map((x) => x.entityId)).toEqual(['b']);
     expect(visibleItems(m, ['a', 'b'], '').map((x) => x.entityId)).toEqual(['f']);
     expect(m.byId.get('g')!.hidden).toBe(true);
@@ -63,7 +83,12 @@ describe('buildDriveModel', () => {
 
   it('applies metadata: names, sizes, types, and failures shown as such', () => {
     const f = m.byId.get('f')!;
-    applyMeta(m, f, { ok: true, name: 'Holiday.jpg', meta: { size: 1234, dataContentType: 'image/jpeg', lastModifiedDate: 1700000000000 }, why: null });
+    applyMeta(m, f, {
+      ok: true,
+      name: 'Holiday.jpg',
+      meta: { size: 1234, dataContentType: 'image/jpeg', lastModifiedDate: 1700000000000 },
+      why: null,
+    });
     expect(f.name).toBe('Holiday.jpg');
     expect(f.size).toBe(1234);
     expect(f.type).toBe('image/jpeg');
@@ -72,7 +97,12 @@ describe('buildDriveModel', () => {
     expect(m.sizeKnown).toBe(1);
     expect(m.bytes).toBe(1234);
     const g = m.byId.get('g')!;
-    applyMeta(m, g, { ok: false, name: null, meta: null, why: 'the record is 5 bytes; the index says 100' });
+    applyMeta(m, g, {
+      ok: false,
+      name: null,
+      meta: null,
+      why: 'the record is 5 bytes; the index says 100',
+    });
     expect(g.failed).toMatch(/index says/);
     expect(g.name).toBeNull();
     const h = m.byId.get('h')!;
@@ -95,7 +125,10 @@ describe('buildDriveModel', () => {
   });
 
   it('puts the drive record’s root folder first', () => {
-    const two = buildDriveModel([...records, rec({ id: 'r2', kind: 'folder', entity_id: 'root2', height: 9 })], { driveId: 'd', capped: false });
+    const two = buildDriveModel(
+      [...records, rec({ id: 'r2', kind: 'folder', entity_id: 'root2', height: 9 })],
+      { driveId: 'd', capped: false },
+    );
     expect(two.roots.length).toBe(2);
     setDriveMeta(two, { name: 'Mine', rootFolderId: 'root2' }, 'Mine');
     expect(two.roots[0]!.entityId).toBe('root2');
@@ -103,7 +136,15 @@ describe('buildDriveModel', () => {
   });
 
   it('converts Arrow-like rows with BigInts at the boundary', () => {
-    const r = toRecord({ id: 'x', height: 12n, created_at: 1700000000000n, owner: 'o', kind: 'file', record_size: 99n, unix_time: 1700000000n });
+    const r = toRecord({
+      id: 'x',
+      height: 12n,
+      created_at: 1700000000000n,
+      owner: 'o',
+      kind: 'file',
+      record_size: 99n,
+      unix_time: 1700000000n,
+    });
     expect(r.height).toBe(12);
     expect(r.record_size).toBe(99);
     expect(r.created_at).toBe(1700000000000);

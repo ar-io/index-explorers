@@ -17,7 +17,9 @@ export function toRecords(table: Table, from = 0, to = table.numRows): EntityRec
   // decode only its own rows, not the whole column each time.
   const col = (name: string): unknown[] => {
     const v = table.getChild(name);
-    return v ? (v.slice(from, to).toArray() as unknown as ArrayLike<unknown> as unknown[]) : new Array<unknown>(n).fill(null);
+    return v
+      ? (v.slice(from, to).toArray() as unknown as ArrayLike<unknown> as unknown[])
+      : new Array<unknown>(n).fill(null);
   };
   const id = col('id');
   const height = col('height');
@@ -68,7 +70,11 @@ export const yieldToBrowser = (): Promise<void> => new Promise((r) => setTimeout
  * The same, a few thousand rows per task: decoding twenty thousand rows of
  * strings in one go is a long task, and the main thread is also drawing.
  */
-export async function toRecordsChunked(table: Table, chunk = 4000, onChunk?: () => void): Promise<EntityRecord[]> {
+export async function toRecordsChunked(
+  table: Table,
+  chunk = 4000,
+  onChunk?: () => void,
+): Promise<EntityRecord[]> {
   const out: EntityRecord[] = [];
   for (let at = 0; at < table.numRows; at += chunk) {
     if (at > 0) await yieldToBrowser();

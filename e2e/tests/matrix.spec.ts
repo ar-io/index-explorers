@@ -6,7 +6,21 @@
 import { expect, test, type Page } from '@playwright/test';
 import fs from 'node:fs';
 
-import { clearStatus, driveRows, GW, KNOWN, LIVE, openPage, pageErrors, rows, status, title, until, url, waitAnswer } from './helpers.js';
+import {
+  clearStatus,
+  driveRows,
+  GW,
+  KNOWN,
+  LIVE,
+  openPage,
+  pageErrors,
+  rows,
+  status,
+  title,
+  until,
+  url,
+  waitAnswer,
+} from './helpers.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -25,11 +39,19 @@ test('publication verifies, the range reader controls the page, drives list with
   expect(await page.evaluate(() => !!navigator.serviceWorker?.controller)).toBe(true);
   await until(page, async () => (await rows(page)) > 0, 240_000, 'browse');
   expect(await rows(page)).toBeGreaterThan(0);
-  await until(page, async () => !/—/.test(await page.locator('#stats').innerText()), 30_000, 'hero');
+  await until(
+    page,
+    async () => !/—/.test(await page.locator('#stats').innerText()),
+    30_000,
+    'hero',
+  );
   expect(await page.locator('#stats').innerText()).not.toMatch(/—/);
   await page.waitForTimeout(LIVE ? 6000 : 2000);
   const names = await page.locator('#results tbody .name').allInnerTexts();
-  expect(names.some((n) => !/fetching|unnamed|private|unavailable/i.test(n)), names.slice(0, 5).join(' | ')).toBe(true);
+  expect(
+    names.some((n) => !/fetching|unnamed|private|unavailable/i.test(n)),
+    names.slice(0, 5).join(' | '),
+  ).toBe(true);
   expect(await page.locator('#scopedates').innerText()).toMatch(/\d{4}/);
   expect(await page.locator('#namesnote').isVisible()).toBe(true);
 });
@@ -37,32 +59,69 @@ test('publication verifies, the range reader controls the page, drives list with
 test('filters: privacy, app and period reload the listing', async () => {
   await clearStatus(page);
   await page.selectOption('#privacy', 'public');
-  await until(page, async () => /Read|Nothing new|Answered/.test(await status(page)), 120_000, 'public filter');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'public filter',
+  );
   const badges = await page.locator('#results tbody .badge').allInnerTexts();
   expect(badges.length).toBeGreaterThan(0);
   expect(badges.every((b) => /public/i.test(b))).toBe(true);
   await clearStatus(page);
   await page.selectOption('#privacy', 'private');
-  await until(page, async () => /Read|Nothing new|Answered/.test(await status(page)), 120_000, 'private filter');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'private filter',
+  );
   const pb = await page.locator('#results tbody .badge').allInnerTexts();
   expect(pb.length).toBeGreaterThan(0);
   expect(pb.every((b) => /private/i.test(b))).toBe(true);
   await clearStatus(page);
   await page.selectOption('#privacy', 'any');
-  await until(page, async () => /Read|Nothing new|Answered/.test(await status(page)), 120_000, 'any filter');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'any filter',
+  );
   await clearStatus(page);
   await page.selectOption('#app', 'ArDrive-CLI');
-  await until(page, async () => /Read|Nothing new|Answered|drives? in this period/.test((await status(page)) + (await page.locator('#more').innerText().catch(() => ''))), 180_000, 'app filter');
+  await until(
+    page,
+    async () =>
+      /Read|Nothing new|Answered|drives? in this period/.test(
+        (await status(page)) +
+          (await page
+            .locator('#more')
+            .innerText()
+            .catch(() => '')),
+      ),
+    180_000,
+    'app filter',
+  );
   const apps = await page.locator('#results tbody td:nth-child(5)').allInnerTexts();
   expect(apps.every((a) => /CLI/.test(a))).toBe(true);
   await page.selectOption('#app', 'any');
   await clearStatus(page);
   await page.selectOption('#scope', 'week');
-  await until(page, async () => /Read|Nothing new|Answered/.test(await status(page)), 120_000, 'week');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'week',
+  );
   expect(await page.locator('#viewsub').innerText()).toMatch(/Drives created/);
   expect(await page.locator('#runscope').textContent()).toMatch(/Last 7 days/);
   await page.selectOption('#scope', 'month');
-  await until(page, async () => /Read|Nothing new|Answered/.test(await status(page)), 120_000, 'month again');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'month again',
+  );
 });
 
 test('show older adds rows, and exports carry every row', async () => {
@@ -74,11 +133,17 @@ test('show older adds rows, and exports carry every row', async () => {
     await until(page, async () => (await rows(page)) > before, 120_000, 'older');
     expect(await rows(page)).toBeGreaterThan(before);
   }
-  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 20_000 }), page.click('#csv')]);
+  const [dl] = await Promise.all([
+    page.waitForEvent('download', { timeout: 20_000 }),
+    page.click('#csv'),
+  ]);
   const csv = fs.readFileSync((await dl.path())!, 'utf8');
   expect(csv.split('\n').length).toBeGreaterThan(2);
   expect(csv.split('\n')[0]).toMatch(/drive_id/);
-  const [dj] = await Promise.all([page.waitForEvent('download', { timeout: 20_000 }), page.click('#json')]);
+  const [dj] = await Promise.all([
+    page.waitForEvent('download', { timeout: 20_000 }),
+    page.click('#json'),
+  ]);
   const js = JSON.parse(fs.readFileSync((await dj.path())!, 'utf8')) as { drive_id: string }[];
   expect(Array.isArray(js) && js.length > 2 && !!js[0]!.drive_id).toBe(true);
 });
@@ -123,7 +188,12 @@ test('every preset runs; a bad query is reported; a drive_id link opens the driv
   await page.click('#run');
   await waitAnswer(page);
   await page.locator('#results tbody tr').first().locator('.rowlink').first().click();
-  await until(page, async () => (await driveRows(page)) > 0 || (await page.locator('#cost').isVisible()), 120_000, 'drive from query link');
+  await until(
+    page,
+    async () => (await driveRows(page)) > 0 || (await page.locator('#cost').isVisible()),
+    120_000,
+    'drive from query link',
+  );
   expect((await driveRows(page)) > 0 || (await page.locator('#cost').isVisible())).toBe(true);
 });
 
@@ -133,7 +203,14 @@ test('a share link carries the drive and opens it in a new tab', async ({ browse
   expect(href).toMatch(/#.*drive=/);
   const p2 = await browser.newPage({ colorScheme: 'dark' });
   await p2.goto(href);
-  const ok = await until(p2, async () => (await p2.locator('#b-list tbody tr.b-row').count()) > 0 || (await p2.locator('#cost').isVisible()), 180_000, 'shared drive');
+  const ok = await until(
+    p2,
+    async () =>
+      (await p2.locator('#b-list tbody tr.b-row').count()) > 0 ||
+      (await p2.locator('#cost').isVisible()),
+    180_000,
+    'shared drive',
+  );
   expect(ok).toBe(true);
   await p2.close();
 });
@@ -143,7 +220,18 @@ test('a private drive shows its shape only', async () => {
   await page.locator('#browse').click();
   await until(page, async () => (await rows(page)) > 0, 120_000, 'private browse');
   await page.locator('#results tbody tr').first().locator('.rowlink').first().click();
-  await until(page, async () => /Private drive/.test(await page.locator('.b-head').innerText().catch(() => '')), 120_000, 'private drive');
+  await until(
+    page,
+    async () =>
+      /Private drive/.test(
+        await page
+          .locator('.b-head')
+          .innerText()
+          .catch(() => ''),
+      ),
+    120_000,
+    'private drive',
+  );
   const head = await page.locator('.b-head').innerText();
   expect(head).toMatch(/Private drive/);
   expect(head).toMatch(/encrypted/);
@@ -153,7 +241,19 @@ test('a private drive shows its shape only', async () => {
 
 test('the wallet view: totals, stretches, and every drive on request', async () => {
   await page.locator('.b-owner').first().click();
-  await until(page, async () => /Wallet/.test(await title(page)) && /stretch/.test(await page.locator('#viewsub').innerText().catch(() => '')), 180_000, 'wallet');
+  await until(
+    page,
+    async () =>
+      /Wallet/.test(await title(page)) &&
+      /stretch/.test(
+        await page
+          .locator('#viewsub')
+          .innerText()
+          .catch(() => ''),
+      ),
+    180_000,
+    'wallet',
+  );
   expect(await title(page)).toMatch(/Wallet/);
   expect(await page.locator('#viewfacts').innerText()).toMatch(/uploads/i);
   const every = page.locator('#more button', { hasText: /Find/ });
@@ -164,7 +264,18 @@ test('the wallet view: totals, stretches, and every drive on request', async () 
     if (mbs < 300) {
       await clearStatus(page);
       await every.click();
-      await until(page, async () => /Every drive|newest/.test(await page.locator('#viewsub').innerText().catch(() => '')), 600_000, 'every drive');
+      await until(
+        page,
+        async () =>
+          /Every drive|newest/.test(
+            await page
+              .locator('#viewsub')
+              .innerText()
+              .catch(() => ''),
+          ),
+        600_000,
+        'every drive',
+      );
       expect(await page.locator('#viewsub').innerText()).toMatch(/Every drive|newest/);
     }
   }
@@ -181,12 +292,32 @@ test('find: a file record, file data, a wallet, a drive id; rejects nonsense; an
     await page.fill('#find', input);
     await clearStatus(page);
     await page.click('#findgo');
-    const where = async () => (name === 'drive id' ? ((await driveRows(page)) > 0 ? 'Drives' : '') : await title(page));
-    await until(page, async () => re.test(await where()) && !/Looking up|Finding/.test(await page.locator('#viewsub').innerText().catch(() => '')), 180_000, name);
+    const where = async () =>
+      name === 'drive id' ? ((await driveRows(page)) > 0 ? 'Drives' : '') : await title(page);
+    await until(
+      page,
+      async () =>
+        re.test(await where()) &&
+        !/Looking up|Finding/.test(
+          await page
+            .locator('#viewsub')
+            .innerText()
+            .catch(() => ''),
+        ),
+      180_000,
+      name,
+    );
     expect(await where(), `${name}: ${await status(page)}`).toMatch(re);
     if (name === 'file record') {
-      await until(page, async () => (await page.locator('#more a', { hasText: 'Open the file' }).count()) > 0, 20_000, 'open the file link');
-      expect(await page.locator('#more a', { hasText: 'Open the file' }).count()).toBeGreaterThan(0);
+      await until(
+        page,
+        async () => (await page.locator('#more a', { hasText: 'Open the file' }).count()) > 0,
+        20_000,
+        'open the file link',
+      );
+      expect(await page.locator('#more a', { hasText: 'Open the file' }).count()).toBeGreaterThan(
+        0,
+      );
     }
   }
   for (const [input, re] of [
@@ -209,7 +340,12 @@ test('find: a file record, file data, a wallet, a drive id; rejects nonsense; an
 test('a wide drive says its cost first, Stop cancels, and browsing works after a stop', async () => {
   await page.fill('#find', KNOWN.wideDrive);
   await page.click('#findgo');
-  const gated = await until(page, async () => (await page.locator('#cost button').count()) > 0, 60_000, 'cost card');
+  const gated = await until(
+    page,
+    async () => (await page.locator('#cost button').count()) > 0,
+    60_000,
+    'cost card',
+  );
   expect(gated, await status(page)).toBe(true);
   expect(await page.locator('#cost').innerText()).toMatch(/reads about/);
   await page.locator('#cost button').click();
@@ -221,7 +357,12 @@ test('a wide drive says its cost first, Stop cancels, and browsing works after a
     expect(await status(page)).toMatch(/Stopped/);
   } else {
     // The fixture's wide drive reads in a moment; a Stop here races the listing, so the listing is accepted too.
-    await until(page, async () => (await driveRows(page)) > 0 || /Stopped/.test(await status(page)), 60_000, 'wide drive');
+    await until(
+      page,
+      async () => (await driveRows(page)) > 0 || /Stopped/.test(await status(page)),
+      60_000,
+      'wide drive',
+    );
   }
   await clearStatus(page);
   await page.locator('#browse').click();
@@ -238,30 +379,59 @@ test('periods: all history asks first for a question; a calendar year browses', 
   } else {
     await waitAnswer(page);
   }
-  const yr = await page.locator('#scope option').evaluateAll((os) => (os as HTMLOptionElement[]).map((o) => o.value).find((v) => /^y\d{4}$/.test(v)));
+  const yr = await page
+    .locator('#scope option')
+    .evaluateAll((os) =>
+      (os as HTMLOptionElement[]).map((o) => o.value).find((v) => /^y\d{4}$/.test(v)),
+    );
   if (yr) {
     await page.selectOption('#scope', yr);
     await clearStatus(page);
     await page.locator('#browse').click();
-    await until(page, async () => /Read|Nothing new|Answered|drives? in this period/.test((await status(page)) + (await page.locator('#more').innerText().catch(() => ''))), 180_000, 'year browse');
+    await until(
+      page,
+      async () =>
+        /Read|Nothing new|Answered|drives? in this period/.test(
+          (await status(page)) +
+            (await page
+              .locator('#more')
+              .innerText()
+              .catch(() => '')),
+        ),
+      180_000,
+      'year browse',
+    );
   }
   await page.selectOption('#scope', 'month');
 });
 
 test('the data-source drawer: another gateway is refused with a reason, switching back re-verifies', async () => {
   await page.locator('#datadrawer > summary').click();
-  const options = await page.locator('#gwsel option').evaluateAll((os) => (os as HTMLOptionElement[]).map((o) => o.value));
+  const options = await page
+    .locator('#gwsel option')
+    .evaluateAll((os) => (os as HTMLOptionElement[]).map((o) => o.value));
   const other = options.find((o) => o !== 'auto' && o !== 'custom' && o !== GW);
   if (other) {
     await page.selectOption('#gwsel', other);
-    await until(page, async () => ['bad', 'ok'].includes((await page.locator('#proof').getAttribute('data-state')) ?? ''), 60_000, 'other gateway');
+    await until(
+      page,
+      async () =>
+        ['bad', 'ok'].includes((await page.locator('#proof').getAttribute('data-state')) ?? ''),
+      60_000,
+      'other gateway',
+    );
     const txt = await page.locator('#proof-text').innerText();
     expect(/no ardrive-l2|Refusing|not|Verified/i.test(txt), txt).toBe(true);
   }
   await page.selectOption('#gwsel', 'custom');
   await page.fill('#gw', GW);
   await page.click('#connect');
-  await until(page, async () => (await page.locator('#proof').getAttribute('data-state')) === 'ok', 60_000, 'back');
+  await until(
+    page,
+    async () => (await page.locator('#proof').getAttribute('data-state')) === 'ok',
+    60_000,
+    'back',
+  );
   await until(page, async () => (await rows(page)) > 0, 180_000, 'browse after switch');
   expect(await rows(page)).toBeGreaterThan(0);
 });
@@ -272,9 +442,19 @@ test('light theme renders; phone width has no horizontal scroll', async ({ brows
   await page.emulateMedia({ colorScheme: 'dark' });
   const m = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
   await m.goto(url(''));
-  await until(m, async () => (await m.locator('#results tbody tr').count()) > 0, 180_000, 'mobile browse');
-  const overflow = await m.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
-  expect(overflow, `scrollWidth ${await m.evaluate(() => document.documentElement.scrollWidth)}`).toBe(false);
+  await until(
+    m,
+    async () => (await m.locator('#results tbody tr').count()) > 0,
+    180_000,
+    'mobile browse',
+  );
+  const overflow = await m.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  );
+  expect(
+    overflow,
+    `scrollWidth ${await m.evaluate(() => document.documentElement.scrollWidth)}`,
+  ).toBe(false);
   await m.screenshot({ path: 'e2e/out/mobile.png', fullPage: true });
   await m.close();
 });

@@ -102,13 +102,21 @@ export interface DriveModel {
 
 export const ROOT_KEY = '(root)';
 
-const later = (a: EntityRecord, b: EntityRecord): number => b.height - a.height || (b.unix_time ?? 0) - (a.unix_time ?? 0);
+const later = (a: EntityRecord, b: EntityRecord): number =>
+  b.height - a.height || (b.unix_time ?? 0) - (a.unix_time ?? 0);
 
-export const sortKeyOf = (name: string | null, entityId: string): string => (name ? name.toLowerCase() : '￿' + entityId);
+export const sortKeyOf = (name: string | null, entityId: string): string =>
+  name ? name.toLowerCase() : '￿' + entityId;
 
 /** Builds the model from a drive's records (every version). */
-export function buildDriveModel(recs: EntityRecord[], opts: { driveId: string; capped: boolean; note?: string }): DriveModel {
-  const byEntity = new Map<string, { kind: 'file' | 'folder'; id: string; versions: EntityRecord[] }>();
+export function buildDriveModel(
+  recs: EntityRecord[],
+  opts: { driveId: string; capped: boolean; note?: string },
+): DriveModel {
+  const byEntity = new Map<
+    string,
+    { kind: 'file' | 'folder'; id: string; versions: EntityRecord[] }
+  >();
   for (const r of recs) {
     if (!r.entity_id || (r.kind !== 'file' && r.kind !== 'folder')) continue;
     const key = `${r.kind}:${r.entity_id}`;
@@ -117,7 +125,13 @@ export function buildDriveModel(recs: EntityRecord[], opts: { driveId: string; c
     byEntity.set(key, e);
   }
   const driveRec = recs.filter((x) => x.kind === 'drive').sort(later)[0] ?? null;
-  const privacy: 'public' | 'private' = driveRec ? (driveRec.privacy === 'private' ? 'private' : 'public') : recs.some((x) => x.cipher) ? 'private' : 'public';
+  const privacy: 'public' | 'private' = driveRec
+    ? driveRec.privacy === 'private'
+      ? 'private'
+      : 'public'
+    : recs.some((x) => x.cipher)
+      ? 'private'
+      : 'public';
   const items: DriveItem[] = [];
   for (const e of byEntity.values()) {
     e.versions.sort(later);
@@ -183,7 +197,11 @@ export function setDriveMeta(m: DriveModel, meta: RecordMeta | null, name: strin
 }
 
 /** One record landed: the item's name, size, type and date. */
-export function applyMeta(m: DriveModel, x: DriveItem, r: { ok: boolean; name: string | null; meta: RecordMeta | null; why: string | null }): void {
+export function applyMeta(
+  m: DriveModel,
+  x: DriveItem,
+  r: { ok: boolean; name: string | null; meta: RecordMeta | null; why: string | null },
+): void {
   if (!r.ok) {
     x.failed = r.why || 'not readable';
     x.meta = null;
@@ -201,7 +219,8 @@ export function applyMeta(m: DriveModel, x: DriveItem, r: { ok: boolean; name: s
       }
       x.type = typeof r.meta.dataContentType === 'string' ? r.meta.dataContentType : null;
       const lm = Number(r.meta.lastModifiedDate);
-      x.modified = r.meta.lastModifiedDate != null && Number.isFinite(lm) && lm > 0 && lm < 4e12 ? lm : null;
+      x.modified =
+        r.meta.lastModifiedDate != null && Number.isFinite(lm) && lm > 0 && lm < 4e12 ? lm : null;
     }
   }
   x.sortKey = sortKeyOf(x.name, x.entityId);
@@ -229,7 +248,9 @@ export function visibleItems(m: DriveModel, path: readonly string[], filter: str
     const f = filter.toLowerCase();
     // Ids match only for something id-like: one letter is in nearly every uuid.
     const byId = f.length >= 6 && /^[0-9a-f-]+$/.test(f);
-    return m.items.filter((x) => (x.name || '').toLowerCase().includes(f) || (byId && x.entityId.includes(f)));
+    return m.items.filter(
+      (x) => (x.name || '').toLowerCase().includes(f) || (byId && x.entityId.includes(f)),
+    );
   }
   const cur = currentFolder(m, path);
   if (!cur) {
@@ -247,13 +268,19 @@ export type SortKey = 'name' | 'modified' | 'size' | 'type';
  * Folders first, then by the key. One collator for every sort: localeCompare
  * with options builds one per call, seconds over twenty thousand rows.
  */
-export function sortItems(m: DriveModel, list: DriveItem[], key: SortKey, dir: 1 | -1, collator: Intl.Collator): DriveItem[] {
+export function sortItems(
+  m: DriveModel,
+  list: DriveItem[],
+  key: SortKey,
+  dir: 1 | -1,
+  collator: Intl.Collator,
+): DriveItem[] {
   const numeric = key === 'modified' || key === 'size';
   const val = (x: DriveItem): string | number =>
     key === 'modified'
-      ? x.modified ?? x.latest.created_at ?? 0
+      ? (x.modified ?? x.latest.created_at ?? 0)
       : key === 'size'
-        ? x.size ?? 0
+        ? (x.size ?? 0)
         : key === 'type'
           ? x.kind === 'folder'
             ? ''
@@ -262,7 +289,11 @@ export function sortItems(m: DriveModel, list: DriveItem[], key: SortKey, dir: 1
   const out = list.slice();
   out.sort((a, b) => {
     if ((a.kind === 'folder') !== (b.kind === 'folder')) return a.kind === 'folder' ? -1 : 1;
-    return (numeric ? (val(a) as number) - (val(b) as number) : collator.compare(val(a) as string, val(b) as string)) * dir;
+    return (
+      (numeric
+        ? (val(a) as number) - (val(b) as number)
+        : collator.compare(val(a) as string, val(b) as string)) * dir
+    );
   });
   void m;
   return out;

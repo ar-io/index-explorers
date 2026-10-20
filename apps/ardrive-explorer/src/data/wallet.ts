@@ -2,7 +2,16 @@
  * A wallet: totals from the lookup, then the drives it wrote to in its most
  * recent stretches of activity; everything only on request, with its cost said.
  */
-import { clusterHeights, mb, num, parquetL2, rowsOf, shortId, sq, windowCost } from '@ar-io/index-client';
+import {
+  clusterHeights,
+  mb,
+  num,
+  parquetL2,
+  rowsOf,
+  shortId,
+  sq,
+  windowCost,
+} from '@ar-io/index-client';
 
 import { CONFIG } from '../config.js';
 import { type EntityRecord, toRecord } from '../model/arfs.js';
@@ -17,7 +26,13 @@ export interface WalletDrive {
   drive: EntityRecord | null;
 }
 
-export function createWalletFlow(s: Session, go: { browse: (reset: boolean) => Promise<void>; openDrive: (id: string, confirmed: boolean, folder: string | null) => Promise<void> }) {
+export function createWalletFlow(
+  s: Session,
+  go: {
+    browse: (reset: boolean) => Promise<void>;
+    openDrive: (id: string, confirmed: boolean, folder: string | null) => Promise<void>;
+  },
+) {
   const st = s.store;
 
   async function openWallet(addr: string, everything: boolean): Promise<void> {
@@ -29,7 +44,12 @@ export function createWalletFlow(s: Session, go: { browse: (reset: boolean) => P
       { label: 'Drives', go: () => void go.browse(true) },
       { label: `Wallet ${shortId(addr)}`, go: null },
     ];
-    st.content.value = { ...emptyContent(), crumbs, title: `Wallet ${shortId(addr)}`, sub: 'Totals from the index’s wallet lookup…' };
+    st.content.value = {
+      ...emptyContent(),
+      crumbs,
+      title: `Wallet ${shortId(addr)}`,
+      sub: 'Totals from the index’s wallet lookup…',
+    };
     const r = await s.measured('Reading the wallet', async () => {
       const [t] = rowsOf(await s.engine!.query(`SELECT * FROM wallet_totals(${sq(addr)})`));
       if (!t || !Number(t.uploads)) return null;
@@ -37,20 +57,34 @@ export function createWalletFlow(s: Session, go: { browse: (reset: boolean) => P
       const bands = s.registeredBands();
       const heights = (
         s.hasLookups
-          ? rowsOf(await s.engine!.query(`SELECT DISTINCT height FROM lookup_wallet WHERE addr8 = key64(unb64u(${sq(addr)})) AND role = 0 ORDER BY 1`))
-          : rowsOf(await s.engine!.query(`SELECT DISTINCT height FROM ${parquetL2.itemsSql(bands, p.lo, p.hi, true)} WHERE owner_address = unb64u(${sq(addr)}) ORDER BY 1`))
+          ? rowsOf(
+              await s.engine!.query(
+                `SELECT DISTINCT height FROM lookup_wallet WHERE addr8 = key64(unb64u(${sq(addr)})) AND role = 0 ORDER BY 1`,
+              ),
+            )
+          : rowsOf(
+              await s.engine!.query(
+                `SELECT DISTINCT height FROM ${parquetL2.itemsSql(bands, p.lo, p.hi, true)} WHERE owner_address = unb64u(${sq(addr)}) ORDER BY 1`,
+              ),
+            )
       ).map((x) => Number(x.height));
       const clusters = clusterHeights(heights, CONFIG.clusterGap);
       // Recent activity first: the last few stretches of blocks reveal the
       // drives in use. At most 400 stretches in one question, newest first.
-      const use = everything ? clusters.slice(-CONFIG.walletMax) : clusters.slice(-CONFIG.walletRecent);
+      const use = everything
+        ? clusters.slice(-CONFIG.walletMax)
+        : clusters.slice(-CONFIG.walletRecent);
       const recs = rowsOf(
-        await s.engine!.query(`SELECT * FROM (${parquetL2.clusterSql(bands, use, `owner = ${sq(addr)}`)}) ORDER BY height DESC LIMIT ${CONFIG.walletRows}`),
+        await s.engine!.query(
+          `SELECT * FROM (${parquetL2.clusterSql(bands, use, `owner = ${sq(addr)}`)}) ORDER BY height DESC LIMIT ${CONFIG.walletRows}`,
+        ),
       ).map(toRecord);
       return {
         t,
         clusters,
-        cost: clusters.slice(-CONFIG.walletMax).reduce((sum, [a, z]) => sum + windowCost(s.bands, a, z, { min: CONFIG.costMin }), 0),
+        cost: clusters
+          .slice(-CONFIG.walletMax)
+          .reduce((sum, [a, z]) => sum + windowCost(s.bands, a, z, { min: CONFIG.costMin }), 0),
         used: use.length,
         capped: everything && clusters.length > CONFIG.walletMax,
         recs,
@@ -58,7 +92,10 @@ export function createWalletFlow(s: Session, go: { browse: (reset: boolean) => P
     });
     if (!r || s.overtaken(my)) return;
     if (!r.out) {
-      st.content.value = { ...st.content.value, sub: 'This wallet has no ArDrive uploads in the index.' };
+      st.content.value = {
+        ...st.content.value,
+        sub: 'This wallet has no ArDrive uploads in the index.',
+      };
       st.say(r.receipt, 'ok');
       return;
     }
@@ -66,7 +103,13 @@ export function createWalletFlow(s: Session, go: { browse: (reset: boolean) => P
     const driveIds = new Map<string, WalletDrive>();
     for (const x of recs) {
       if (!x.drive_id) continue;
-      const d = driveIds.get(x.drive_id) || { drive_id: x.drive_id, records: 0, privacy: x.privacy, last: x, drive: null };
+      const d = driveIds.get(x.drive_id) || {
+        drive_id: x.drive_id,
+        records: 0,
+        privacy: x.privacy,
+        last: x,
+        drive: null,
+      };
       d.records += 1;
       if (x.kind === 'drive' && (!d.drive || x.height > d.drive.height)) d.drive = x;
       driveIds.set(x.drive_id, d);
@@ -91,7 +134,11 @@ export function createWalletFlow(s: Session, go: { browse: (reset: boolean) => P
       title: `Wallet ${shortId(addr)}`,
       sub: sub + (list.length ? '' : ' No drive records in those stretches.'),
       facts,
-      table: { cols: [], rows: list as unknown as Record<string, unknown>[], preset: 'walletDrives' },
+      table: {
+        cols: [],
+        rows: list as unknown as Record<string, unknown>[],
+        preset: 'walletDrives',
+      },
       more: [
         ...(!everything && clusters.length > used
           ? [
@@ -106,13 +153,25 @@ export function createWalletFlow(s: Session, go: { browse: (reset: boolean) => P
       portalWallet: addr,
       namesNote: list.some((d) => d.privacy !== 'private' && d.drive),
       exportable: {
-        cols: ['id', 'kind', 'drive_id', 'entity_id', 'parent_folder_id', 'created_at', 'height', 'privacy', 'app', 'app_version'],
+        cols: [
+          'id',
+          'kind',
+          'drive_id',
+          'entity_id',
+          'parent_folder_id',
+          'created_at',
+          'height',
+          'privacy',
+          'app',
+          'app_version',
+        ],
         rows: recs as unknown as Record<string, unknown>[],
         isTime: new Set(['created_at']),
         slug: `wallet-${addr.slice(0, 8)}`,
       },
     };
-    for (const d of list) if (d.drive && d.privacy !== 'private') s.names.want(d.drive.id, d.drive.record_size, false);
+    for (const d of list)
+      if (d.drive && d.privacy !== 'private') s.names.want(d.drive.id, d.drive.record_size, false);
     st.say(r.receipt, 'ok');
   }
 

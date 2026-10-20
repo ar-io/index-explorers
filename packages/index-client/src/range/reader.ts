@@ -72,7 +72,11 @@ class Reader implements RangeReader {
   private listeners = new Set<(e: RangeEvent) => void>();
 
   controlled(): boolean {
-    return !!(typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.controller);
+    return !!(
+      typeof navigator !== 'undefined' &&
+      navigator.serviceWorker &&
+      navigator.serviceWorker.controller
+    );
   }
 
   url(spec: RangeSpec): string {
@@ -172,19 +176,34 @@ export async function registerRangeReader(opts: RangeReaderOptions = {}): Promis
       throw new Error('this browser has no service workers');
     if (!window.isSecureContext) throw new Error('the page is not served over https');
     const sw = navigator.serviceWorker;
-    const reg = await sw.register(opts.scriptUrl ?? './sw.js', { scope: opts.scope ?? './', updateViaCache: 'none' });
-    await withTimeout(sw.ready, 6000, 'this browser did not start the range reader; service workers may be blocked here');
+    const reg = await sw.register(opts.scriptUrl ?? './sw.js', {
+      scope: opts.scope ?? './',
+      updateViaCache: 'none',
+    });
+    await withTimeout(
+      sw.ready,
+      6000,
+      'this browser did not start the range reader; service workers may be blocked here',
+    );
     if (!sw.controller) {
       // First visit: the worker claims the page as it activates. After a hard
       // reload it is asked to claim it again.
-      const claimed = new Promise<void>((res) => sw.addEventListener('controllerchange', () => res(), { once: true }));
+      const claimed = new Promise<void>((res) =>
+        sw.addEventListener('controllerchange', () => res(), { once: true }),
+      );
       if (reg.active) reg.active.postMessage({ type: 'claim' });
-      await withTimeout(claimed, 4000, 'a hard reload bypasses the range reader; reload normally to turn it on');
+      await withTimeout(
+        claimed,
+        4000,
+        'a hard reload bypasses the range reader; reload normally to turn it on',
+      );
     }
     type Ping = { ok?: boolean; version?: number };
     let body: Ping | null = null;
     try {
-      body = (await (await fetchWithTimeout(new URL('__bt__/ping', reg.scope).toString(), 5000)).json()) as Ping;
+      body = (await (
+        await fetchWithTimeout(new URL('__bt__/ping', reg.scope).toString(), 5000)
+      ).json()) as Ping;
     } catch {
       /* below */
     }
@@ -218,7 +237,8 @@ export interface RangeUrlOptions {
 
 /** The spec one band file is read through, carrying everything the worker checks against. */
 export function rangeSpec(band: Band, file: BandFile, opts: RangeUrlOptions = {}): RangeSpec {
-  if (!band.torrent) throw new Error(`band ${band.id} has no torrent, so it cannot be read in ranges`);
+  if (!band.torrent)
+    throw new Error(`band ${band.id} has no torrent, so it cannot be read in ranges`);
   const to = band.to === null ? 'the tip' : num(band.to);
   return {
     v: RANGE_VERSION,
@@ -226,13 +246,19 @@ export function rangeSpec(band: Band, file: BandFile, opts: RangeUrlOptions = {}
     f: file.name,
     n: file.size,
     label: opts.label ?? `${file.name} for blocks ${num(band.from)}–${to}`,
-    u: [file.url, ...(opts.mirrors ?? []).map((g) => `${g.replace(/\/+$/, '')}/ar-io/indexes/blob/${file.sha256}`)],
+    u: [
+      file.url,
+      ...(opts.mirrors ?? []).map(
+        (g) => `${g.replace(/\/+$/, '')}/ar-io/indexes/blob/${file.sha256}`,
+      ),
+    ],
     t: band.torrent.urls,
   };
 }
 
 /** Whether a band can be read in ranges: the reader is on and the publication pins a v2 infohash. */
-export const rangeable = (reader: RangeReader | null, band: Band): boolean => !!reader?.ok && !!band.torrent;
+export const rangeable = (reader: RangeReader | null, band: Band): boolean =>
+  !!reader?.ok && !!band.torrent;
 
 /**
  * A worker refusal, in words, in place of DuckDB's "HTTP GET error ... (502)".
@@ -255,7 +281,8 @@ export function explainReadError(
   }
   const f = watch?.fail;
   if (!f) return { msg: message };
-  if (f.code === 'cancelled') return { msg: 'Stopped. Nothing partial is shown; ask again any time.', stopped: true };
+  if (f.code === 'cancelled')
+    return { msg: 'Stopped. Nothing partial is shown; ask again any time.', stopped: true };
   const first = f.msg.charAt(0).toUpperCase() + f.msg.slice(1);
   const switchTo = mirrors[0];
   const out: { msg: string; switchTo?: string; integrity?: boolean } = { msg: `${first}.` };
@@ -281,6 +308,7 @@ export function receiptText(read: Receipt | null, mbText: (n: number) => string)
       (read.reused ? `, ${num(read.reused)} reused` : '') +
       '.'
     );
-  if (read.reused > 0) return `Nothing new to fetch: ${num(read.reused)} checked piece${read.reused === 1 ? '' : 's'} reused.`;
+  if (read.reused > 0)
+    return `Nothing new to fetch: ${num(read.reused)} checked piece${read.reused === 1 ? '' : 's'} reused.`;
   return 'Answered from pieces already read and checked.';
 }
