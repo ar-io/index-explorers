@@ -3,7 +3,8 @@
  * ArNS name now points at, and every uploaded file's SHA-256, so a rebuild on
  * the same commit can be compared with what is live.
  *
- *   node scripts/record-deploy.mjs --app ardrive-explorer --version 1.0.0 --manifest <id> --url https://explore_ardrive.ar.io
+ *   node scripts/record-deploy.mjs --app ardrive-explorer --version 1.0.0 --manifest <id> \
+ *     --url https://explore_ardrive.ar.io --previous <id the name pointed at> --commit <sha>
  *
  * The upload itself is ario-deploy's (ar-io/ar-io-deploy), run by the Deploy
  * workflow; this only records what it did.
@@ -20,6 +21,7 @@ const APP = opt('--app');
 const VERSION = opt('--version') ?? 'dev';
 const MANIFEST = opt('--manifest');
 const URL_ = opt('--url') ?? '';
+const PREVIOUS = opt('--previous') ?? 'none';
 if (!APP || !MANIFEST) {
   console.error('usage: --app <name> --version <v> --manifest <id> [--url <url>]');
   process.exit(2);
@@ -36,7 +38,7 @@ function hashes(dir, base = '') {
   return out;
 }
 const files = existsSync(dist) ? hashes(dist) : {};
-const commit = process.env.GITHUB_SHA?.slice(0, 7) ?? 'local';
+const commit = opt('--commit') ?? process.env.GITHUB_SHA?.slice(0, 7) ?? 'local';
 const date = new Date().toISOString().slice(0, 10);
 const deploys = path.join(ROOT, 'DEPLOYS.md');
 const header =
@@ -46,7 +48,7 @@ const prev = existsSync(deploys)
   : '';
 const entry =
   `## ${date} · ${APP} ${VERSION}\n\n` +
-  `- manifest: \`${MANIFEST}\`\n- name: ${URL_}\n- commit: ${commit}\n- files:\n` +
+  `- manifest: \`${MANIFEST}\`\n- name: ${URL_}\n- before: \`${PREVIOUS}\` (point the record back at it to roll back)\n- commit: ${commit}\n- files:\n` +
   Object.entries(files)
     .map(([f, h]) => `  - \`${f}\` ${h}`)
     .join('\n') +

@@ -1,14 +1,24 @@
 name: Deploy
 
 # Only from a tag, and only after the live E2E passed on that commit:
-#   pin check against two gateways → build → live E2E → ario-deploy (Turbo
-#   upload-folder + the ArNS record) → the manifest id written to DEPLOYS.md.
+#   which app → secrets present → pin check → build → live E2E →
+#   ario-deploy (Turbo upload-folder + the ArNS record) → DEPLOYS.md, with
+#   the record's previous target so a rollback is one record update.
 #
-# Secrets (repository environment "arweave"):
-#   DEPLOY_KEY  the upload key that pays for the upload: the Arweave JWK of the
-#               wallet that deployed arweave-l1-search, base64-encoded
-#   ARNS_KEY    the Solana key that controls the ArNS name (ArNS records live
-#               on the Solana ARIO programs)
+# Each ArNS name is controlled by its own Solana key, so each deploy runs in
+# the GitHub environment of that name's controller and reads the secrets of
+# that environment only:
+#
+#   environment  names                       ARNS_KEY controls (ANT controller)
+#   arweave      cdb64, arweave-l1-search    2DXykUor86ZNK2Wfy9VVWFmQdvwRx8eteu1jJFPDrqeV
+#   ardrive      ardrive (undername explore) CUweBonZX6VGHqNM1RDP7AtjTKg7hcsn2VXtsJeempst
+#
+# Both environments hold:
+#   DEPLOY_KEY  the upload key that pays: an Arweave JWK, base64-encoded
+#   ARNS_KEY    the base58 Solana secret key of the name's controller
+# A controller can set every record of its name, `@` included, so the
+# ardrive environment's key can change ardrive.ar.io itself: give that
+# environment required reviewers.
 on:
   push:
     tags:
@@ -17,12 +27,54 @@ on:
       - 'network-index-v*'
 
 jobs:
-  deploy:
+  plan:
     runs-on: ubuntu-latest
-    environment: arweave
+    outputs:
+      app: ${{ steps.app.outputs.app }}
+      version: ${{ steps.app.outputs.version }}
+      environment: ${{ steps.app.outputs.environment }}
+      arns: ${{ steps.app.outputs.arns }}
+      undername: ${{ steps.app.outputs.undername }}
+      url: ${{ steps.app.outputs.url }}
+    steps:
+      - name: Which app, name and environment
+        id: app
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          app="${tag%-v*}"
+          {
+            echo "app=${app}"
+            echo "version=${tag##*-v}"
+            case "$app" in
+              ardrive-explorer)    echo "environment=ardrive"; echo "arns=ardrive";            echo "undername=explore"; echo "url=https://explore_ardrive.ar.io" ;;
+              arweave-l1-explorer) echo "environment=arweave"; echo "arns=arweave-l1-search";  echo "undername=@";       echo "url=https://arweave-l1-search.ar.io" ;;
+              network-index)       echo "environment=arweave"; echo "arns=cdb64";              echo "undername=@";       echo "url=https://cdb64.ar.io" ;;
+              *) echo "unknown app $app" >&2; exit 1 ;;
+            esac
+          } >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: ${{ needs.plan.outputs.environment }}
     permissions:
       contents: write
+    env:
+      APP: ${{ needs.plan.outputs.app }}
+      URL: ${{ needs.plan.outputs.url }}
     steps:
+      - name: Secrets present
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          ARNS_KEY: ${{ secrets.ARNS_KEY }}
+        run: |
+          missing=""
+          [ -n "$DEPLOY_KEY" ] || missing="$missing DEPLOY_KEY"
+          [ -n "$ARNS_KEY" ] || missing="$missing ARNS_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::environment ${{ needs.plan.outputs.environment }} lacks:$missing"
+            exit 1
+          fi
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -32,44 +84,42 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Which app and name
-        id: app
-        run: |
-          tag="${GITHUB_REF_NAME}"
-          app="${tag%-v*}"
-          echo "name=${app}" >> "$GITHUB_OUTPUT"
-          echo "version=${tag##*-v}" >> "$GITHUB_OUTPUT"
-          case "$app" in
-            ardrive-explorer)    echo "arns=ardrive"            >> "$GITHUB_OUTPUT"; echo "undername=explore" >> "$GITHUB_OUTPUT"; echo "url=https://explore_ardrive.ar.io" >> "$GITHUB_OUTPUT" ;;
-            arweave-l1-explorer) echo "arns=arweave-l1-search"  >> "$GITHUB_OUTPUT"; echo "undername=@"       >> "$GITHUB_OUTPUT"; echo "url=https://arweave-l1-search.ar.io" >> "$GITHUB_OUTPUT" ;;
-            network-index)       echo "arns=cdb64"              >> "$GITHUB_OUTPUT"; echo "undername=@"       >> "$GITHUB_OUTPUT"; echo "url=https://cdb64.ar.io" >> "$GITHUB_OUTPUT" ;;
-            *) echo "unknown app $app" >&2; exit 1 ;;
-          esac
       - run: pnpm pins:check
-      - name: Build
-        run: pnpm --filter "./apps/${{ steps.app.outputs.name }}" run build
+      - name: Build every app (the live suites open all three)
+        run: pnpm --filter "./apps/*" run build
       - run: npx playwright install --with-deps chromium
       - name: Live E2E on this commit
         run: pnpm e2e:live
         env:
           GW: https://turbo-gateway.com
+      - name: What the name points at now (the rollback target)
+        id: before
+        run: |
+          prev=$(curl -s -o /dev/null -D - --max-time 30 "$URL/" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-arns-resolved-id"{print $2}')
+          echo "previous=${prev:-none}" >> "$GITHUB_OUTPUT"
+          echo "$URL resolves to ${prev:-nothing}"
       - name: Upload with Turbo and set the ArNS record
         id: deploy
         uses: ar-io/ar-io-deploy@v2.0.0
         with:
           deploy-key: ${{ secrets.DEPLOY_KEY }}
           arns-key: ${{ secrets.ARNS_KEY }}
-          arns-name: ${{ steps.app.outputs.arns }}
-          undername: ${{ steps.app.outputs.undername }}
-          deploy-folder: apps/${{ steps.app.outputs.name }}/dist
+          arns-name: ${{ needs.plan.outputs.arns }}
+          undername: ${{ needs.plan.outputs.undername }}
+          deploy-folder: apps/${{ needs.plan.outputs.app }}/dist
           fallback-file: index.html
           ttl-seconds: '900'
-      - name: Record the manifest id
+      - name: Record the manifest id on main
+        # main's DEPLOYS.md, not the tag's: the tag may predate other deploys.
+        # apps/*/dist is ignored by git, so it survives the checkout.
         run: |
-          node scripts/record-deploy.mjs --app "${{ steps.app.outputs.name }}" --version "${{ steps.app.outputs.version }}" \
-            --manifest "${{ steps.deploy.outputs.tx-id }}" --url "${{ steps.app.outputs.url }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B record origin/main
+          node scripts/record-deploy.mjs --app "$APP" --version "${{ needs.plan.outputs.version }}" \
+            --manifest "${{ steps.deploy.outputs.tx-id }}" --url "$URL" --previous "${{ steps.before.outputs.previous }}" \
+            --commit "${GITHUB_SHA::7}"
           git add DEPLOYS.md
-          git commit -m "deploy(${{ steps.app.outputs.name }}): ${{ steps.app.outputs.version }} is ${{ steps.deploy.outputs.tx-id }}"
+          git commit -m "deploy(${APP}): ${{ needs.plan.outputs.version }} is ${{ steps.deploy.outputs.tx-id }}"
           git push origin HEAD:main
