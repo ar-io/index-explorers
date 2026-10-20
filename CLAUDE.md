@@ -40,6 +40,10 @@ spec: `npx playwright test -c e2e/playwright.config.ts --project=fixtures nav`.
   it; run it before and after touching the drive-browser path.
 - Layout knowledge lives in the client's `layouts/`, not in an app. Apps keep
   one store, one session, pure models, no module-scope state, no string DOM.
+- `parquet-l2` is generic; ArDrive is one selection. What is ArFS lives in
+  `layouts/arfs.ts` and the ArDrive app, never in `layouts/parquet-l2.ts`.
+  A new selection gets its own layer: `docs/new-l2-index.md`, skill
+  `new-l2-explorer`.
 - Deploys only from a tag through the Deploy workflow (ario-deploy). Never
   from a machine, never without the live E2E passing on that commit.
 - Never run the suites on a gateway server.

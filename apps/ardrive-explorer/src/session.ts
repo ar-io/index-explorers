@@ -19,6 +19,7 @@ import {
   mirrorsOf,
   num,
   openEngine,
+  arfs,
   parquetL2,
   pickGateway,
   type Proof,
@@ -253,7 +254,8 @@ export class Session {
     this.loadedPeriod = null;
     this.heroDone = false;
     if (this.engine) {
-      for (const s of parquetL2.l2DropSql()) await this.engine.query(s).catch(() => {});
+      for (const s of [...arfs.arfsDropSql(), ...parquetL2.l2DropSql()])
+        await this.engine.query(s).catch(() => {});
       for (const r of this.registered.values())
         for (const n of Object.values(r.names)) if (n) await this.engine.dropFile(n);
     }
@@ -382,7 +384,10 @@ export class Session {
       });
     }
     this.store.tr('defineBase');
-    await engine.exec(parquetL2.l2BaseSql(this.registeredBands()));
+    await engine.exec([
+      ...parquetL2.l2BaseSql(this.registeredBands()),
+      ...arfs.arfsBaseSql(this.registeredBands()),
+    ]);
     this.store.tr('defineBase done');
   }
 
@@ -426,7 +431,10 @@ export class Session {
       st.tr('ensured');
       if (this.loadedPeriod !== p.id) {
         st.tr('periodViews');
-        await this.engine!.exec(parquetL2.l2PeriodViewsSql(this.registeredBands(), p.lo, p.hi));
+        await this.engine!.exec([
+          ...parquetL2.l2PeriodViewsSql(this.registeredBands(), p.lo, p.hi),
+          ...arfs.arfsPeriodViewsSql(this.registeredBands(), p.lo, p.hi),
+        ]);
         this.loadedPeriod = p.id;
         st.tr('periodViews done');
       }

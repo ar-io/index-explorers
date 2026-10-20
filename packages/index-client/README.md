@@ -34,7 +34,8 @@ The formats are documented in ar-io/ar-io-node under `docs/`
 | `range/sw.ts` | the service worker (built to `sw.js` by the Vite plugin in `vite.ts`) |
 | `range/reader.ts` | `registerRangeReader`, `rangeSpec`, `rangeable`, receipts (`Watch`, `receiptText`), `explainReadError` |
 | `engine/engine.ts` | `openEngine`/`Engine` (one serialised connection, `registerUrl`, `resetConnection`), `rowsOf`, `columnsOf`, `timeColumnsOf` |
-| `layouts/parquet-l2.ts` | the ArFS pivot and views for `parquet-l2` bands: `l2BaseSql`, `l2PeriodViewsSql`, `entitiesSql`, `uploadsSql`, `newestDrivesSql`, `clusterSql`, `tagCountsSql` |
+| `layouts/parquet-l2.ts` | the generic `parquet-l2` layout, any selection: `l2BaseSql` (items, tags, lookups, `uploads_between`, `find_id`, `wallet_totals`, `tag_counts`), `l2PeriodViewsSql` (`uploads`, `tags`), `itemsSql`, `tagsSql`, `uploadsSql`, `tagCountsSql` |
+| `layouts/arfs.ts` | ArDrive's layer over it, the worked example of a selection layer: `entitiesSql`, `arfsBaseSql` (`entities_between`, `drive_window`, `drive`), `arfsPeriodViewsSql` (`entities`, `drives`, `folders`, `files`), `newestDrivesSql`, `clusterSql` |
 | `layouts/parquet-l1.ts` | `l1PeriodSql` (`blocks`, `rawtx`, `txs`, `tags`), `l1LookupSql` (`find_tx`, `wallet_totals`, `tag_counts`), `txLookupSql` |
 | `layouts/cdb64.ts` | `lookupRoot`, `cdb64Get`, `cdb64Hash`, `parseCdb64Manifest`, `decodeRootValue` |
 | `cost.ts` | `windowCost`, `buildPeriods`, `heightAt`/`timeAt`, `clusterHeights`, `sliceWindow` |
