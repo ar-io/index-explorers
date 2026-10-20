@@ -112,7 +112,9 @@ describe('buildDriveModel', () => {
 
   it('searches names and ids across folders', () => {
     expect(visibleItems(m, [], 'holiday').map((x) => x.entityId)).toEqual(['f']);
-    expect(visibleItems(m, [], 'g').map((x) => x.entityId)).toContain('g');
+    // A short filter matches names only (Holiday.jpg has a g; the id 'g' does not count): one letter is in nearly every uuid.
+    expect(visibleItems(m, [], 'g').map((x) => x.entityId)).toEqual(['f']);
+    expect(visibleItems(m, [], 'zz').map((x) => x.entityId)).toEqual([]);
   });
 
   it('sorts folders first, then by the chosen key, with one collator', () => {
