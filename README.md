@@ -17,6 +17,12 @@ The design and the acceptance numbers are in
 and `DESIGN.md` beside it in ar-io/permaweb-services; the index formats in
 ar-io/ar-io-node under `docs/`.
 
+## Start here
+
+- Using the client in your own page or script: [`packages/index-client/README.md`](packages/index-client/README.md) and the runnable [`examples/`](examples/README.md) (`pnpm example:lookup <data-item-id>` verifies a publication and resolves an item to its root transaction from Node).
+- The smallest page built on it: [`apps/network-index`](apps/network-index/README.md). The full product: [`apps/ardrive-explorer`](apps/ardrive-explorer/README.md).
+- Working on the repo: [`CONTRIBUTING.md`](CONTRIBUTING.md); agents: [`CLAUDE.md`](CLAUDE.md).
+
 ## Trust
 
 1. The publication (`/ar-io/indexes`) is Ed25519-signed by the gateway; the key
@@ -67,3 +73,7 @@ file's SHA-256 into `DEPLOYS.md`. The workflow needs two secrets in the
 `arweave` environment: `DEPLOY_KEY` (the upload wallet's Arweave JWK, base64)
 and `ARNS_KEY` (the Solana key that controls the names). Nothing deploys from
 a developer machine.
+
+## License
+
+AGPL-3.0-or-later (see `LICENSE`), matching ar-io/ar-io-node, whose index formats this implements.

@@ -18,7 +18,8 @@
     "fixture-gateway": "node tools/fixture-gateway/server.mjs",
     "pins:check": "node scripts/check-pins.mjs",
     "e2e": "playwright test -c e2e/playwright.config.ts --project=fixtures",
-    "e2e:live": "LIVE=1 playwright test -c e2e/playwright.config.ts --project=live"
+    "e2e:live": "LIVE=1 playwright test -c e2e/playwright.config.ts --project=live",
+    "example:lookup": "tsx examples/lookup-root.ts"
   },
   "devDependencies": {
     "@duckdb/node-api": "1.5.6-r.1",
