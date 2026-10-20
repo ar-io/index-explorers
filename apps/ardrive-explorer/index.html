@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ArDrive Explorer</title>
+    <link rel="canonical" href="https://explore_ardrive.ar.io" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23121212%22%2F%3E%3Cpath%20d%3D%22M8%2021.5a8%208%200%201%201%2013.9-5.5h2.1V9.5l-3.5%203.2A8%208%200%200%200%208%2021.5z%22%20fill%3D%22%23D31721%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%222.6%22%20fill%3D%22%23FAFAFA%22%2F%3E%3C%2Fsvg%3E"
+    />
+    <meta name="theme-color" content="#121212" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="Browse every public drive, folder and file on ArDrive, newest first, or ask the whole data set anything with SQL in your browser. The index is signed by the gateway that built it, and every byte is checked before it is used."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ArDrive Explorer" />
+    <meta
+      property="og:description"
+      content="Browse every public drive, folder and file on ArDrive, or query the whole data set with SQL in your browser, against a gateway-signed index verified byte by byte."
+    />
+    <meta property="og:url" content="https://explore_ardrive.ar.io" />
+    <meta property="og:site_name" content="ArDrive" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@ardriveapp" />
+    <meta name="twitter:title" content="ArDrive Explorer" />
+    <meta name="twitter:description" content="Every drive, folder and file on ArDrive, verified in your browser." />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ArDrive Explorer",
+        "url": "https://explore_ardrive.ar.io",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any browser",
+        "browserRequirements": "WebAssembly and SubtleCrypto",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "publisher": { "@type": "Organization", "name": "ArDrive", "url": "https://ardrive.io" },
+        "description": "Browse and query every ArDrive drive, folder and file in the browser, against a gateway's cryptographically signed ardrive-l2 index.",
+        "about": {
+          "@type": "Dataset",
+          "name": "ardrive-l2",
+          "description": "ArDrive's ANS-104 data items (drives, folders, files and their data) as Apache Parquet, partitioned by block height and signed by the publishing gateway.",
+          "encodingFormat": "application/vnd.apache.parquet",
+          "isAccessibleForFree": true,
+          "creator": { "@type": "Organization", "name": "ar.io" }
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="page"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@duckdb/duckdb-wasm':
+        specifier: 1.30.0
+        version: 1.30.0
       '@duckdb/node-api':
         specifier: 1.5.6-r.1
         version: 1.5.6-r.1
@@ -114,6 +117,9 @@ importers:
       '@duckdb/node-api':
         specifier: 1.5.6-r.1
         version: 1.5.6-r.1
+      vite:
+        specifier: 7.3.7
+        version: 7.3.7(@types/node@20.19.43)(tsx@4.23.15)
 
   packages/ui:
     dependencies:

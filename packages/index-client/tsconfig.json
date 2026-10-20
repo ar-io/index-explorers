@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "noEmit": true, "types": ["vite/client"] },
-  "include": ["src", "test", "../../engine.lock.json"]
+  "include": ["src", "test", "vite.ts", "../../engine.lock.json"]
 }

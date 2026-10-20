@@ -43,10 +43,22 @@ export function fmtWhen(ms: unknown): string {
   }
 }
 
-/** A date as a file browser shows one: time today, weekday this week, else the day. */
+const dateCache = new Map<string, string>();
+
+/** A date as a file browser shows one: time today, weekday this week, else the day. Cached: Intl formatting is slow per call. */
 export function fmtDate(ms: unknown, now: number = Date.now()): string {
   const n = Number(ms);
   if (!ms || !Number.isFinite(n)) return '';
+  const key = `${Math.floor(now / 3600000)}:${n}`;
+  const hit = dateCache.get(key);
+  if (hit !== undefined) return hit;
+  if (dateCache.size > 20000) dateCache.clear();
+  const out = fmtDateRaw(n, now);
+  dateCache.set(key, out);
+  return out;
+}
+
+function fmtDateRaw(n: number, now: number): string {
   const d = new Date(n);
   if (!Number.isFinite(d.getTime())) return '';
   const day = 86400000;

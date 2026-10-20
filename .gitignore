@@ -11,3 +11,5 @@ fixtures/cache/
 !.env.example
 *.log
 .DS_Store
+# the recorded live records stay as files; the synthetic ones are one raw.json
+fixtures/synthetic/raw/

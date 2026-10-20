@@ -38,6 +38,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'fixtures', 'synthetic');
 const sha256 = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 const sha256Bytes = (b: Uint8Array) => new Uint8Array(createHash('sha256').update(b).digest());
+// noble's synchronous signing needs a SHA-512 wired in (the browser client uses the async WebCrypto path).
+ed.hashes.sha512 = (...msgs: Uint8Array[]) => {
+  const h = createHash('sha512');
+  for (const m of msgs) h.update(m);
+  return new Uint8Array(h.digest());
+};
 
 /* ---------- a seeded random, so the fixture is the same every build ---------- */
 let seed = 0x9e3779b9;
@@ -434,11 +440,14 @@ function buildRootTxBand(): { files: { name: string; bytes: Uint8Array }[]; reco
 /* ---------- the publication ---------- */
 async function main(): Promise<void> {
   rmSync(OUT, { recursive: true, force: true });
-  mkdirSync(path.join(OUT, 'raw'), { recursive: true });
+  mkdirSync(OUT, { recursive: true });
   mkdirSync(path.join(OUT, 'torrents'), { recursive: true });
   generate();
   console.log(`generated ${items.length} items, ${roots.size} roots, ${wallets.length} wallets`);
-  for (const it of items) if (it.json !== undefined) writeFileSync(path.join(OUT, 'raw', toBase64Url(it.id) + '.json'), it.json);
+  // Every record's JSON in one file (twenty thousand tiny files would weigh on git and the filesystem).
+  const raw: Record<string, string> = {};
+  for (const it of items) if (it.json !== undefined) raw[toBase64Url(it.id)] = it.json;
+  writeFileSync(path.join(OUT, 'raw.json'), JSON.stringify(raw) + '\n');
   const bands = await writeBands();
   const rt = buildRootTxBand();
   const rtId = `d-h${rt.from}-${rt.to}-${PUBLISHER_TAG}-${sha256(new TextEncoder().encode('rt')).slice(0, 12)}`;

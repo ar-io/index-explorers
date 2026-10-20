@@ -42,6 +42,14 @@ const types = { '.json': 'application/json', '.html': 'text/html; charset=utf-8'
 const typeOf = (p) => types[path.extname(p)] || 'application/octet-stream';
 
 const publicationPath = path.join(FIXTURES, 'publication.json');
+let rawMap = null;
+const rawRecords = () => {
+  if (rawMap === null) {
+    const f = path.join(FIXTURES, 'raw.json');
+    rawMap = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : {};
+  }
+  return rawMap;
+};
 const loadPublication = () => JSON.parse(readFileSync(publicationPath, 'utf8'));
 /** sha256 -> absolute file path, from the publication's own listing. */
 function blobIndex() {
@@ -117,6 +125,9 @@ function handle(req, res, { registryOnly = false } = {}) {
     return serveFile(req, res, file, { chaos: CHAOS_FILE !== null && m[3] === CHAOS_FILE });
   }
   if ((m = /^\/raw\/([A-Za-z0-9_-]{43})$/.exec(p))) {
+    // Records: one raw.json map (synthetic fixtures), or raw/<id>.json files (recorded ones).
+    const body = rawRecords()[m[1]];
+    if (body !== undefined) return send(res, 200, body, { 'content-type': 'application/json' });
     const file = path.join(FIXTURES, 'raw', `${m[1]}.json`);
     if (!existsSync(file)) return send(res, 404, 'not found');
     return send(res, 200, readFileSync(file), { 'content-type': 'application/json' });
