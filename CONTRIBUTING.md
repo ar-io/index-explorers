@@ -66,4 +66,6 @@ when the generator changes, and commit the result in the same PR.
 Small, one concern each, with the numbers measured in headless Chromium in
 the description when the change touches a listing path. Commit messages
 follow conventional commits (`feat(index-client): …`, `fix(ardrive-explorer): …`).
-Deploys happen only from a tag through the Deploy workflow; see the README.
+Deploys happen only from a tag through the Deploy workflow, and only for a
+release verified locally with `node scripts/release.mjs verify <app> --version <x.y.z>`;
+see the README.

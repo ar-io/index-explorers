@@ -34,6 +34,15 @@ test.describe('arweave-l1-explorer', () => {
         .innerText()
         .catch(() => '');
     const rows = () => page.locator('#results tbody tr').count();
+    // The status line still holds the last answer until the next one replaces
+    // it, so clear it through the store before each action; otherwise
+    // answered() can match the previous answer and count a table mid-redraw.
+    const clear = () =>
+      page.evaluate(() =>
+        (
+          window as unknown as { __explorer: { store: { say(t: string): void } } }
+        ).__explorer.store.say(''),
+      );
     const answered = () =>
       until(
         page,
@@ -42,6 +51,7 @@ test.describe('arweave-l1-explorer', () => {
         'answer',
       );
     // A question: apps writing to Arweave, from the tag lookup.
+    await clear();
     await page.locator('#asks button').nth(0).click();
     await answered();
     expect(await status()).not.toMatch(/error|could not/i);
@@ -55,6 +65,7 @@ test.describe('arweave-l1-explorer', () => {
       return s.bands[s.bands.length - 1]!.to;
     });
     await page.fill('#find', String(tip));
+    await clear();
     await page.click('#findgo');
     await answered();
     expect(await page.locator('#answertitle').innerText()).toMatch(/Block/);
@@ -73,6 +84,7 @@ test.describe('arweave-l1-explorer', () => {
     });
     if (owner) {
       await page.fill('#find', owner);
+      await clear();
       await page.click('#findgo');
       await answered();
       expect(await page.locator('#answertitle').innerText()).toMatch(/Wallet/);
@@ -81,6 +93,7 @@ test.describe('arweave-l1-explorer', () => {
     // A preset.
     await page.locator('#editor > summary').click();
     await page.locator('#presets button', { hasText: 'Busiest blocks' }).click();
+    await clear();
     await page.click('#run');
     await answered();
     expect(await rows()).toBeGreaterThan(0);

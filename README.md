@@ -70,17 +70,40 @@ Never run the suites on a gateway: a gateway blocks its own public IP on
 
 ## Deploy
 
-`pnpm build` writes each app's `dist/` (index.html, `sw.js`, modules). The
-Deploy workflow runs from a tag (`ardrive-explorer-v1.0.0`,
-`arweave-l1-explorer-v1.0.0`, `network-index-v1.0.0`): pin check against two
-gateways, build, live E2E on that commit, then
-[ario-deploy](https://github.com/ar-io/ar-io-deploy) uploads the folder with
-Turbo and sets the ArNS record (`explore` under `ardrive`, `arweave-l1-search`,
-`cdb64`), and `scripts/record-deploy.mjs` writes the manifest id and every
-file's SHA-256 into `DEPLOYS.md`. The workflow needs two secrets in the
-`arweave` environment: `DEPLOY_KEY` (the upload wallet's Arweave JWK, base64)
-and `ARNS_KEY` (the Solana key that controls the names). Nothing deploys from
-a developer machine.
+An app ships only as the exact bytes that were fully verified on a
+developer machine, and only from a tag.
+
+1. **Verify locally.** On a clean checkout of the commit to ship:
+
+   ```bash
+   node scripts/release.mjs verify network-index --version 1.0.0
+   ```
+
+   It installs, checks the engine pins against two gateways, lints, runs
+   every unit test, the app's E2E specs on the fixture gateway, builds for
+   production, and runs the app's specs live against turbo-gateway.com.
+   Every step must pass. It then writes `releases/<app>.json`: the git tree
+   id of every build input and the SHA-256 of every built file.
+
+2. **Commit the record, merge it, and tag** that commit on main:
+   `network-index-v1.0.0`, `arweave-l1-explorer-v1.0.0` or
+   `ardrive-explorer-v1.0.0`.
+
+3. **The Deploy workflow** builds again and refuses to go on unless the
+   build inputs and every built byte match the record. It runs the app's
+   live specs again, then [ario-deploy](https://github.com/ar-io/ar-io-deploy)
+   uploads `dist/` with Turbo, gzip-compressed and deduplicated against
+   earlier uploads, and sets the ArNS record (`cdb64`, `arweave-l1-search`,
+   or `explore` under `ardrive`). It then fetches every file back through
+   the new manifest and compares it with the record, waits for the name to
+   resolve to it, and runs the app's smoke spec against the deployed page.
+   The manifest id, the name's previous target (the rollback) and every
+   file's SHA-256 go into `DEPLOYS.md`.
+
+Each name's controller key lives in its own GitHub environment (`arweave`
+for `cdb64` and `arweave-l1-search`, `ardrive` for `ardrive`), with a Solana
+upload key beside it; the addresses are in `.github/workflows/deploy.yml`.
+Nothing deploys from a developer machine.
 
 ## License
 

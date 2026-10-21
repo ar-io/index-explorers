@@ -44,8 +44,10 @@ spec: `npx playwright test -c e2e/playwright.config.ts --project=fixtures nav`.
   `layouts/arfs.ts` and the ArDrive app, never in `layouts/parquet-l2.ts`.
   A new selection gets its own layer: `docs/new-l2-index.md`, skill
   `new-l2-explorer`.
-- Deploys only from a tag through the Deploy workflow (ario-deploy). Never
-  from a machine, never without the live E2E passing on that commit.
+- Deploys only from a tag through the Deploy workflow (ario-deploy), and only
+  as the bytes `node scripts/release.mjs verify <app> --version <x.y.z>`
+  verified on a clean checkout and recorded in `releases/<app>.json`. Never
+  upload from a machine; never edit a release record by hand.
 - Never run the suites on a gateway server.
 
 ## Lessons already paid for
