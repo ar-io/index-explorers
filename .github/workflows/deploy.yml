@@ -6,19 +6,19 @@ name: Deploy
 #   the record's previous target so a rollback is one record update.
 #
 # Each ArNS name is controlled by its own Solana key, so each deploy runs in
-# the GitHub environment of that name's controller and reads the secrets of
-# that environment only:
+# the GitHub environment for that name and reads only that environment's
+# secrets. All four keys are Solana keys made for this repository; their
+# secret halves are only in these secrets and on the machine that made them.
 #
-#   environment  names                       ARNS_KEY controls (ANT controller)
-#   arweave      cdb64, arweave-l1-search    2DXykUor86ZNK2Wfy9VVWFmQdvwRx8eteu1jJFPDrqeV
-#   ardrive      ardrive (undername explore) CUweBonZX6VGHqNM1RDP7AtjTKg7hcsn2VXtsJeempst
+#   environment  names                        ARNS_KEY (added as the ANT's controller)   DEPLOY_KEY (Turbo credits shared to it)
+#   arweave      cdb64, arweave-l1-search     2EzGpd5ZyyGz8mq9kTMdnzcG1uHevp26nb1GMsfcKDHH  5KA6ouQbFcwwKRHGF4troiXh4RjXYResoivnqBqsSZos
+#   ardrive      ardrive (undername explore)  28aWqmK1tNyC7apxxPNU1jSy4PWAVzpCzwnWA6gdxrs4  38V1fCRzp3KAz4TQY4UkD9SiqqkGXNZkbm7buCo5oTSR
 #
-# Both environments hold:
-#   DEPLOY_KEY  the upload key that pays: an Arweave JWK, base64-encoded
-#   ARNS_KEY    the base58 Solana secret key of the name's controller
-# A controller can set every record of its name, `@` included, so the
-# ardrive environment's key can change ardrive.ar.io itself: give that
-# environment required reviewers.
+# Both secrets are base58 Solana secret keys. The ARNS_KEY pays the Solana
+# fees of the record update, so it holds a little SOL. The DEPLOY_KEY pays
+# for the upload from credits shared to it. A controller can set every record
+# of its name, `@` included, so the ardrive environment's key can change
+# ardrive.ar.io itself: give that environment required reviewers.
 on:
   push:
     tags:
@@ -103,6 +103,7 @@ jobs:
         uses: ar-io/ar-io-deploy@v2.0.0
         with:
           deploy-key: ${{ secrets.DEPLOY_KEY }}
+          sig-type: solana
           arns-key: ${{ secrets.ARNS_KEY }}
           arns-name: ${{ needs.plan.outputs.arns }}
           undername: ${{ needs.plan.outputs.undername }}
