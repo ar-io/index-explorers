@@ -7,7 +7,7 @@ import { DuckDBInstance, type DuckDBConnection } from '@duckdb/node-api';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { parquetL2, type parquetL2 as L2 } from '../src/index.js';
+import { arfs, parquetL2, type parquetL2 as L2 } from '../src/index.js';
 import { LIVE_BAND_DIR } from './helpers.js';
 
 type Row = Record<string, unknown>;
@@ -34,8 +34,12 @@ describe('parquet-l2 over the recorded band (blocks 700,000–799,999)', () => {
   beforeAll(async () => {
     db = await DuckDBInstance.create(':memory:');
     c = await db.connect();
-    for (const s of parquetL2.l2BaseSql([band])) await c.run(s);
-    for (const s of parquetL2.l2PeriodViewsSql([band], 700000, 799999)) await c.run(s);
+    for (const s of [...parquetL2.l2BaseSql([band]), ...arfs.arfsBaseSql([band])]) await c.run(s);
+    for (const s of [
+      ...parquetL2.l2PeriodViewsSql([band], 700000, 799999),
+      ...arfs.arfsPeriodViewsSql([band], 700000, 799999),
+    ])
+      await c.run(s);
   });
   afterAll(() => {
     c.closeSync();
@@ -133,7 +137,7 @@ describe('parquet-l2 over the recorded band (blocks 700,000–799,999)', () => {
   });
 
   it('newestDrivesSql lists one row per drive, newest first', async () => {
-    const rows = await q(c, parquetL2.newestDrivesSql([band], 700000, 799999));
+    const rows = await q(c, arfs.newestDrivesSql([band], 700000, 799999));
     const ids = rows.map((r) => r.drive_id);
     expect(new Set(ids).size).toBe(ids.length);
     for (let i = 1; i < rows.length; i++)

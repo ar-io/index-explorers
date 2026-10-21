@@ -3,6 +3,7 @@
  * looked up through the index's id lookup, then its wallet lookup.
  */
 import {
+  arfs,
   bytesText,
   fmtWhen,
   isId43,
@@ -86,7 +87,7 @@ export function createFindFlows(
         hit.data_size = Number(hit.data_size);
         const ent = rowsOf(
           await s.engine!.query(
-            `SELECT * FROM ${parquetL2.entitiesSql(bands, hit.height, hit.height)} WHERE id = ${sq(id)}`,
+            `SELECT * FROM ${arfs.entitiesSql(bands, hit.height, hit.height)} WHERE id = ${sq(id)}`,
           ),
         )[0];
         return { hit, ent: ent ? toRecord(ent) : null, wallet: null };

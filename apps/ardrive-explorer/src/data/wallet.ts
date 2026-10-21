@@ -3,6 +3,7 @@
  * recent stretches of activity; everything only on request, with its cost said.
  */
 import {
+  arfs,
   clusterHeights,
   mb,
   num,
@@ -76,7 +77,7 @@ export function createWalletFlow(
         : clusters.slice(-CONFIG.walletRecent);
       const recs = rowsOf(
         await s.engine!.query(
-          `SELECT * FROM (${parquetL2.clusterSql(bands, use, `owner = ${sq(addr)}`)}) ORDER BY height DESC LIMIT ${CONFIG.walletRows}`,
+          `SELECT * FROM (${arfs.clusterSql(bands, use, `owner = ${sq(addr)}`)}) ORDER BY height DESC LIMIT ${CONFIG.walletRows}`,
         ),
       ).map(toRecord);
       return {
