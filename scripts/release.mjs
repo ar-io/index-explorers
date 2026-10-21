@@ -18,7 +18,8 @@
  *   node scripts/release.mjs remote <app> --manifest <id> [--gateway <url>] [--url <arns url>]
  *     After the upload: the manifest lists exactly the verified files, every
  *     file served through it is the verified bytes (gzip or not), and the
- *     ArNS name resolves to the manifest.
+ *     name answers the manifest on every plain GET for two minutes (gateway
+ *     nodes and the edge cache keep the old record and page for their TTL).
  *
  *   node scripts/release.mjs deployed <app> --url <arns url>
  *     After the name points at the upload: the app's smoke spec against the
@@ -219,17 +220,32 @@ Next:
   }
   if (bad.length) die(`served files differ from the verified release:\n${bad.join('\n')}`);
   console.log(`manifest ${manifest}: all ${verified.length} files are the verified bytes`);
-  if (url)
-    await retry(
-      `${url} resolving to ${manifest}`,
-      async () => {
-        const res = await fetch(`${url.replace(/\/$/, '')}/`, { method: 'HEAD' });
-        const id = res.headers.get('x-arns-resolved-id');
-        if (id !== manifest) throw new Error(`resolves to ${id ?? 'nothing'}`);
-      },
-      70, // the old record's TTL is 900 s
-    );
-  if (url) console.log(`${url} resolves to ${manifest}`);
+  if (url) {
+    // A name is served by many gateway nodes and an edge cache, each holding
+    // the old record or page for up to its TTL (900 s), so one answer proves
+    // nothing: wait until every answer over two minutes is the new manifest.
+    const base = url.replace(/\/$/, '');
+    const want = 12; // consecutive answers, 10 s apart
+    const deadline = Date.now() + 25 * 60_000;
+    let streak = 0;
+    let last = '';
+    while (streak < want) {
+      if (Date.now() > deadline)
+        die(
+          `${url} still answers ${last || 'nothing'} 25 minutes after the update, not ${manifest}`,
+        );
+      // Exactly what a browser asks for: GET / with no query. An edge cache
+      // keyed on the URL serves `/` (max-age 900, and stale while it
+      // revalidates), so a cache-busting query would see a fresh answer that
+      // visitors are not getting yet.
+      const res = await fetch(`${base}/`).catch(() => null);
+      await res?.arrayBuffer().catch(() => null);
+      last = res?.headers.get('x-arns-resolved-id') ?? '';
+      streak = last === manifest ? streak + 1 : 0;
+      if (streak < want) await new Promise((r) => setTimeout(r, 10_000));
+    }
+    console.log(`${url} resolves to ${manifest} (${want} answers in a row)`);
+  }
 } else if (cmd === 'deployed') {
   const url = opt('--url');
   if (!url) die('--url <deployed page> is required');
