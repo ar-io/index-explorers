@@ -132,6 +132,7 @@ jobs:
           }
       - name: The deployed page works at its name
         run: |
+          node scripts/release.mjs deployed "$APP" --url "https://turbo-gateway.com/${{ steps.deploy.outputs.tx-id }}/" &&
           node scripts/release.mjs deployed "$APP" --url "$URL" || {
             echo "::error::the deployed page failed its smoke test. To roll back, point ${{ needs.plan.outputs.undername }} of ${{ needs.plan.outputs.arns }} at ${{ steps.before.outputs.previous }}"
             exit 1

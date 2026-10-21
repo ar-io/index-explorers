@@ -32,8 +32,7 @@ function hashes(dir, base = '') {
   for (const f of readdirSync(dir).sort()) {
     const p = path.join(dir, f);
     if (statSync(p).isDirectory()) Object.assign(out, hashes(p, base + f + '/'));
-    else if (!f.endsWith('.map'))
-      out[base + f] = createHash('sha256').update(readFileSync(p)).digest('hex');
+    else out[base + f] = createHash('sha256').update(readFileSync(p)).digest('hex');
   }
   return out;
 }
