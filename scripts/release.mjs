@@ -71,6 +71,9 @@ if (!cmd || !APPS.includes(app ?? ''))
   die(`usage: release.mjs verify|check|remote|deployed|specs|hashes <${APPS.join('|')}> [options]`);
 
 const git = (...args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }).trim();
+/** Uncommitted changes, apart from release records (outputs of verification, never build inputs). */
+const changes = () =>
+  git('status', '--porcelain', '--untracked-files=all', '--', '.', ':(exclude)releases');
 const recordPath = path.join(ROOT, 'releases', `${app}.json`);
 const distDir = path.join(ROOT, 'apps', app, 'dist');
 
@@ -128,7 +131,7 @@ if (cmd === 'verify') {
   const version = opt('--version');
   if (!version || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(version))
     die('--version <x.y.z> is required');
-  const dirty = git('status', '--porcelain', '--untracked-files=all');
+  const dirty = changes();
   if (dirty) die(`the checkout has changes; verify only committed code:\n${dirty}`);
   const head = git('rev-parse', 'HEAD');
   const src = sources();
@@ -145,7 +148,7 @@ if (cmd === 'verify') {
       GW: 'https://turbo-gateway.com',
     }),
   ];
-  if (git('rev-parse', 'HEAD') !== head || git('status', '--porcelain', '--untracked-files=all'))
+  if (git('rev-parse', 'HEAD') !== head || changes())
     die('the checkout changed while verifying: nothing recorded');
   const record = {
     app,
