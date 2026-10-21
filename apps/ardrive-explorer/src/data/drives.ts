@@ -4,6 +4,7 @@
  * so memory stays flat, then the browser.
  */
 import {
+  arfs,
   clusterHeights,
   fmtDay,
   fmtRange,
@@ -75,7 +76,7 @@ export function createDriveFlows(s: Session) {
       while (got.length < CONFIG.page && bs.hi >= p.lo) {
         const lo = Math.max(p.lo, bs.hi - bs.step + 1);
         const rows = rowsOf(
-          await s.engine!.query(parquetL2.newestDrivesSql(s.registeredBands(), lo, bs.hi, where)),
+          await s.engine!.query(arfs.newestDrivesSql(s.registeredBands(), lo, bs.hi, where)),
         ).map(toRecord);
         got.push(...rows);
         bs.hi = lo - 1;
@@ -238,7 +239,7 @@ export function createDriveFlows(s: Session) {
       return;
     }
     const r = await s.measured('Reading the drive', async () => {
-      const src = `(${parquetL2.clusterSql(s.registeredBands(), plan.clusters, `drive_id = ${sq(driveId)}`)})`;
+      const src = `(${arfs.clusterSql(s.registeredBands(), plan.clusters, `drive_id = ${sq(driveId)}`)})`;
       // The drive and its folders first, so a cap cuts files, never the tree they hang from.
       const table = await s.engine!.query(
         `SELECT * FROM ${src} ORDER BY CASE kind WHEN 'drive' THEN 0 WHEN 'folder' THEN 1 ELSE 2 END, height DESC LIMIT ${CONFIG.listCap}`,

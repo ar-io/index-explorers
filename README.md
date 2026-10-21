@@ -4,11 +4,18 @@ Three pages on Arweave that read the ar.io gateways' signed index publications
 in the browser, verifying every byte before it is used, and the library under
 them.
 
+ArDrive is the worked example, not the point. An L2 index is a **selection**
+of ANS-104 data items by one tag (for `ardrive-l2`, `App-Name` starting with
+`ArDrive`); any gateway operator can publish one for any app, and everything
+here but the ArFS layer and the drive browser is generic. The recipe from a
+selection to a verified index and a page is
+[`docs/new-l2-index.md`](docs/new-l2-index.md).
+
 | package | what | name |
 | --- | --- | --- |
 | `packages/index-client` | the verifiable index client: publication verification, range reads checked against BitTorrent v2 hash trees, the pinned DuckDB-WASM engine, the `parquet-l1`, `parquet-l2` and `cdb64` layouts, the cost model | `@ar-io/index-client` |
 | `packages/ui` | design tokens (ArDrive and ar.io brands), primitives, icons | `@ar-io/explorer-ui` |
-| `apps/ardrive-explorer` | every drive, folder and file on ArDrive, over `ardrive-l2` | [explore_ardrive.ar.io](https://explore_ardrive.ar.io) |
+| `apps/ardrive-explorer` | every drive, folder and file on ArDrive, over `ardrive-l2` (the example selection) | [explore_ardrive.ar.io](https://explore_ardrive.ar.io) |
 | `apps/arweave-l1-explorer` | SQL and lookups over Arweave's base layer, over `parquet-l1` | [arweave-l1-search.ar.io](https://arweave-l1-search.ar.io) |
 | `apps/network-index` | every index a gateway publishes, verified, with a CDB64 lookup | [cdb64.ar.io](https://cdb64.ar.io) |
 
@@ -21,6 +28,7 @@ ar-io/ar-io-node under `docs/`.
 
 - Using the client in your own page or script: [`packages/index-client/README.md`](packages/index-client/README.md) and the runnable [`examples/`](examples/README.md) (`pnpm example:lookup <data-item-id>` verifies a publication and resolves an item to its root transaction from Node).
 - The smallest page built on it: [`apps/network-index`](apps/network-index/README.md). The full product: [`apps/ardrive-explorer`](apps/ardrive-explorer/README.md).
+- Indexing another app the way ArDrive is indexed: [`docs/new-l2-index.md`](docs/new-l2-index.md) (and the `new-l2-explorer` skill in `.claude/skills/`).
 - Working on the repo: [`CONTRIBUTING.md`](CONTRIBUTING.md); agents: [`CLAUDE.md`](CLAUDE.md).
 
 ## Trust

@@ -33,6 +33,7 @@ export {
 export * from './engine/engine.js';
 export * from './layouts/keys.js';
 export * as parquetL2 from './layouts/parquet-l2.js';
+export * as arfs from './layouts/arfs.js';
 export * as parquetL1 from './layouts/parquet-l1.js';
 export * as cdb64 from './layouts/cdb64.js';
 export * from './util/bytes.js';
