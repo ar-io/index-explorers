@@ -1,0 +1,66 @@
+{
+  "app": "arweave-l1-explorer",
+  "version": "1.0.0",
+  "verifiedAt": "2026-10-21T17:45:11.176Z",
+  "verifiedBy": "vilenarios",
+  "commit": "f3c8eba3f479e273b692310f92cb7e5e1bcbe166",
+  "machine": "linux arm64, node v23.9.0",
+  "steps": [
+    {
+      "name": "install",
+      "seconds": 1.7
+    },
+    {
+      "name": "engine files",
+      "seconds": 0.1
+    },
+    {
+      "name": "engine pins against two gateways",
+      "seconds": 4.7
+    },
+    {
+      "name": "format and types",
+      "seconds": 26.3
+    },
+    {
+      "name": "unit and integration tests",
+      "seconds": 26.8
+    },
+    {
+      "name": "E2E builds",
+      "seconds": 20.9
+    },
+    {
+      "name": "E2E on the fixture gateway",
+      "seconds": 16.4
+    },
+    {
+      "name": "production builds",
+      "seconds": 22.5
+    },
+    {
+      "name": "live E2E against turbo-gateway.com",
+      "seconds": 22.8
+    }
+  ],
+  "sources": {
+    "apps/arweave-l1-explorer": "c491ed13f1fe6d29e15298b613b13710bd8634e1",
+    "packages": "a02f60da4a46f50f12a4e200c602a70567c84bc3",
+    "package.json": "6ec6e9e3ff664b83ac82679f8c31d64e500020e3",
+    "pnpm-lock.yaml": "0c3b661a24a82f83615a29fb66c5bf53e9ba6c9a",
+    "pnpm-workspace.yaml": "8c81b3b1946d0b6aba407e9918ef96892ab1901e",
+    "tsconfig.base.json": "e22368cf71f8612b721dfa23f6afa8e83d73453c",
+    "engine.lock.json": "4acde2319817b97429ddb1b7603b3806829b7923"
+  },
+  "dist": {
+    "assets/arrow-C6ch5XQ7.js": "be8bc38f3801bd076186c30711cd432a3dcd9b7763d980467fd1ca79dfdc4e07",
+    "assets/arrow-C6ch5XQ7.js.map": "77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d",
+    "assets/duckdb-DEFjrUmw.js": "bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2",
+    "assets/duckdb-DEFjrUmw.js.map": "d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c",
+    "assets/index-Bng1ROBM.css": "ed4065492b79e089f630a55b97654f246d4725e48069822d637ee5830ba34365",
+    "assets/index-DWKgkFa8.js": "744bd37a241900881c392d277779fc553017aa412d37c0a1d46a9649d0c5d456",
+    "assets/index-DWKgkFa8.js.map": "b58bf32529782d6111ea8b2983986588e660042fe8f082e9934c6edc9f63db03",
+    "index.html": "ad0127afc9b7cfe7749a6549f4544a595977f7f48cd4421322a6b1efaf54868c",
+    "sw.js": "7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2"
+  }
+}
