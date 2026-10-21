@@ -1,9 +1,15 @@
 name: Deploy
 
-# Only from a tag, and only after the live E2E passed on that commit:
-#   which app → secrets present → pin check → build → live E2E →
-#   ario-deploy (Turbo upload-folder + the ArNS record) → DEPLOYS.md, with
-#   the record's previous target so a rollback is one record update.
+# Only from a tag, and only as the bytes that were fully verified locally:
+#   which app → secrets present → pin check → build → the build matches the
+#   local verification record (releases/<app>.json) → live E2E → ario-deploy
+#   (gzip, deduplicated Turbo upload + the ArNS record) → every served file
+#   checked against the record → DEPLOYS.md, with the record's previous
+#   target so a rollback is one record update.
+#
+# Releasing: on a clean checkout of the commit to ship,
+#   node scripts/release.mjs verify <app> --version <x.y.z>
+# then commit releases/<app>.json, merge, and tag that commit <app>-v<x.y.z>.
 #
 # Each ArNS name is controlled by its own Solana key, so each deploy runs in
 # the GitHub environment for that name and reads only that environment's
@@ -87,9 +93,11 @@ jobs:
       - run: pnpm pins:check
       - name: Build every app (the live suites open all three)
         run: pnpm --filter "./apps/*" run build
+      - name: The build is the locally verified release
+        run: node scripts/release.mjs check "$APP" --version "${{ needs.plan.outputs.version }}"
       - run: npx playwright install --with-deps chromium
-      - name: Live E2E on this commit
-        run: pnpm e2e:live
+      - name: Live E2E of this app on this commit
+        run: pnpm e2e:live $(node scripts/release.mjs specs "$APP")
         env:
           GW: https://turbo-gateway.com
       - name: What the name points at now (the rollback target)
@@ -100,7 +108,7 @@ jobs:
           echo "$URL resolves to ${prev:-nothing}"
       - name: Upload with Turbo and set the ArNS record
         id: deploy
-        uses: ar-io/ar-io-deploy@v2.0.0
+        uses: ar-io/ar-io-deploy@v2.1.1
         with:
           deploy-key: ${{ secrets.DEPLOY_KEY }}
           sig-type: solana
@@ -110,6 +118,24 @@ jobs:
           deploy-folder: apps/${{ needs.plan.outputs.app }}/dist
           fallback-file: index.html
           ttl-seconds: '900'
+          # gzip every compressible file (gateways serve it with
+          # Content-Encoding; browsers decompress), and pay only for files
+          # not already on Arweave: the Actions cache of a tag run can't see
+          # the last tag's, so incremental finds past uploads by content hash.
+          compress: gzip
+          incremental: 'true'
+      - name: Every served file is the verified bytes, and the name points at it
+        run: |
+          node scripts/release.mjs remote "$APP" --manifest "${{ steps.deploy.outputs.tx-id }}" --url "$URL" || {
+            echo "::error::verification after upload failed. To roll back, point ${{ needs.plan.outputs.undername }} of ${{ needs.plan.outputs.arns }} at ${{ steps.before.outputs.previous }}"
+            exit 1
+          }
+      - name: The deployed page works at its name
+        run: |
+          node scripts/release.mjs deployed "$APP" --url "$URL" || {
+            echo "::error::the deployed page failed its smoke test. To roll back, point ${{ needs.plan.outputs.undername }} of ${{ needs.plan.outputs.arns }} at ${{ steps.before.outputs.previous }}"
+            exit 1
+          }
       - name: Record the manifest id on main
         # main's DEPLOYS.md, not the tag's: the tag may predate other deploys.
         # apps/*/dist is ignored by git, so it survives the checkout.

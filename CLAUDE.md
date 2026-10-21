@@ -40,8 +40,10 @@ spec: `npx playwright test -c e2e/playwright.config.ts --project=fixtures nav`.
   it; run it before and after touching the drive-browser path.
 - Layout knowledge lives in the client's `layouts/`, not in an app. Apps keep
   one store, one session, pure models, no module-scope state, no string DOM.
-- Deploys only from a tag through the Deploy workflow (ario-deploy). Never
-  from a machine, never without the live E2E passing on that commit.
+- Deploys only from a tag through the Deploy workflow (ario-deploy), and only
+  as the bytes `node scripts/release.mjs verify <app> --version <x.y.z>`
+  verified on a clean checkout and recorded in `releases/<app>.json`. Never
+  upload from a machine; never edit a release record by hand.
 - Never run the suites on a gateway server.
 
 ## Lessons already paid for
