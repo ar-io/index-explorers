@@ -11,6 +11,7 @@
     "./tokens.css": "./src/tokens.css",
     "./fonts/wavehaus.css": "./src/fonts/wavehaus.css",
     "./base.css": "./src/base.css",
+    "./ario.css": "./src/ario.css",
     "./ardrive-wordmark.svg": "./src/ardrive-wordmark.svg"
   },
   "scripts": {

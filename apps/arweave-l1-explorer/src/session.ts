@@ -55,13 +55,26 @@ export interface Window {
   size: number;
 }
 
+export interface QueryOpts {
+  label?: string;
+  caption?: string | null;
+  wallet?: string | null;
+  note?: string | null;
+}
+
 export interface Result {
   cols: string[];
   rows: Record<string, unknown>[];
   isTime: Set<string>;
   label: string;
   caption: string | null;
+  /** The caption before {RANGE} was filled in, so the answer can be asked again over more. */
+  captionTemplate: string | null;
   wallet: string | null;
+  /** The period this answer covers: its key and heights. */
+  windowKey: string;
+  lo: number;
+  hi: number;
   secs: string;
   receipt: string;
   note: string | null;
@@ -117,8 +130,12 @@ export class Store {
   readonly rangeOk = signal<{ ok: boolean; why: string | null }>({ ok: false, why: 'starting' });
   readonly booted = signal(false);
   readonly extFallback = signal(false);
-  readonly sql = signal('');
+  readonly sql = signal(PRESETS[0]![1]);
   readonly editorOpen = signal(false);
+  /** True while a period loads or a query runs: the controls that start either wait. */
+  readonly working = signal(false);
+  /** True once anything was asked, so the share link stays reachable after an error. */
+  readonly queried = signal(false);
   readonly asked = signal<number | null>(null);
   readonly answerLabel = signal<string>('Pick a question, or search for anything on Arweave');
   readonly result = signal<Result | null>(null);
@@ -702,17 +719,42 @@ export class Session {
   /* --------------------------------------------------------------- queries */
 
   /** Runs the editor's SQL, loading the scope first when it is not loaded yet. */
-  async runQuery(
-    opts: {
-      label?: string;
-      caption?: string | null;
-      wallet?: string | null;
-      note?: string | null;
-    } = {},
-  ): Promise<void> {
+  async runQuery(opts: QueryOpts = {}): Promise<void> {
     const st = this.store;
     const sql = st.sql.value.trim().replace(/;+\s*$/, '');
-    if (!sql || this.busy) return;
+    if (this.busy) return;
+    if (!sql) {
+      st.say('Write a query, or pick one of the examples above the editor, first.', 'bad');
+      return;
+    }
+    // One thing at a time: a second click while a period loads or a query
+    // runs would start a second load.
+    this.busy = true;
+    st.working.value = true;
+    st.queried.value = true;
+    try {
+      await this.runQueryOnce(opts, sql);
+    } finally {
+      this.busy = false;
+      st.working.value = false;
+    }
+  }
+
+  /** Opens the current period from its button, under the same one-at-a-time rule. */
+  async openPeriod(): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    this.store.working.value = true;
+    try {
+      await this.loadScope();
+    } finally {
+      this.busy = false;
+      this.store.working.value = false;
+    }
+  }
+
+  private async runQueryOnce(opts: QueryOpts, sql: string): Promise<void> {
+    const st = this.store;
     const win = this.currentWindow();
     if (!win) return;
     const ranged = win.bands.some((b) => this.isRangeable(b));
@@ -735,7 +777,6 @@ export class Session {
       st.progress.value = { ...st.progress.value, stop: false };
       return;
     }
-    this.busy = true;
     let read: Receipt | null = null;
     try {
       const t0 = performance.now();
@@ -771,11 +812,17 @@ export class Session {
         isTime,
         label,
         caption,
+        captionTemplate: opts.caption ?? null,
         wallet: opts.wallet ?? null,
+        windowKey: win.key,
+        lo,
+        hi,
         secs,
         receipt,
         note: opts.note ?? null,
       };
+      // A gateway offer belongs to the failure that raised it.
+      st.switchTo.value = null;
       if (opts.note && rows.length === 0) st.say(`${opts.note} ${receipt}`.trim(), 'bad');
       else if (caption) {
         const more =
@@ -807,7 +854,6 @@ export class Session {
       st.say(why.stopped ? why.msg : 'Query error: ' + why.msg, 'bad');
       st.switchTo.value = why.switchTo ?? null;
     } finally {
-      this.busy = false;
       st.progress.value = { ...st.progress.value, stop: false };
       st.barHide();
     }
@@ -965,7 +1011,7 @@ export class Session {
       const tip = this.bands.length ? (this.bands[this.bands.length - 1]!.to ?? 0) : 0;
       note =
         hint.height > tip
-          ? `${hint.bundle ? 'Its bundle is' : 'It is'} in block ${num(hint.height)}, newer than this index, which reaches block ${num(tip)}.`
+          ? `${hint.bundle ? 'Its bundle is' : 'It is'} in block ${num(hint.height)}, newer than this index, which reaches block ${num(tip)}. The publisher adds new blocks as it updates its newest band.`
           : inScope
             ? `Not in block ${num(hint.height)} of the signed index, though a gateway said it would be. Nothing was taken on its word.`
             : `Block ${num(hint.height)} is outside the period chosen under Data; pick one that contains it.`;

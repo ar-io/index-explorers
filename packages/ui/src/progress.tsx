@@ -27,12 +27,15 @@ export function ProgressBar({ state, onStop }: { state: ProgressState; onStop: (
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={state.indeterminate ? undefined : Math.round(state.pct)}
+        aria-labelledby="barnote"
         data-indeterminate={state.indeterminate ? 'true' : 'false'}
       >
         <i style={{ width: state.indeterminate ? '' : `${state.pct}%` }} />
       </div>
       <div class="barrow">
-        <p id="barnote">{state.note}</p>
+        <p id="barnote" aria-live="polite">
+          {state.note}
+        </p>
         <button
           id="stop"
           type="button"

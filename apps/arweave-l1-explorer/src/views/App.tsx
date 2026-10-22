@@ -1,4 +1,4 @@
-import { ProgressBar, Proof } from '@ar-io/explorer-ui';
+import { ProgressBar, Proof, ArioLogo } from '@ar-io/explorer-ui';
 import { fmtRange, isId43, mb, num } from '@ar-io/index-client';
 import { createContext } from 'preact';
 import { useContext, useState } from 'preact/hooks';
@@ -14,20 +14,6 @@ const useApp = () => {
   if (!v) throw new Error('no context');
   return v;
 };
-
-function Logo() {
-  return (
-    <svg class="logo" viewBox="0 0 1296 381" fill="currentColor" role="img" aria-label="ar.io">
-      <path d="M1035.01 60.5C924.55 60.5 835.01 150.04 835.01 260.5V320.5H895.01V280.5C895.01 263.93 908.44 250.5 925.01 250.5C933.29 250.5 940.79 253.86 946.22 259.29C951.65 264.72 955.01 272.22 955.01 280.5V320.5H1015.01V300.5C1015.01 256.32 1050.83 220.5 1095.01 220.5C1139.19 220.5 1175.01 256.32 1175.01 300.5V320.5H1235.01V260.5C1235.01 150.04 1145.47 60.5 1035.01 60.5ZM925.01 220.5C908.44 220.5 895.01 207.07 895.01 190.5C895.01 173.93 908.44 160.5 925.01 160.5C941.58 160.5 955.01 173.93 955.01 190.5C955.01 207.07 941.58 220.5 925.01 220.5Z" />
-      <path d="M237.05 95.77C217.12 85.59 194.33 80.5 168.67 80.5C129.24 80.5 101.43 90.82 85.2298 111.47C75.0498 124.66 69.3198 141.5 68.0298 162.01H127.17C128.6 152.98 131.47 145.81 135.77 140.51C141.79 133.34 152.04 129.76 166.52 129.76C179.42 129.76 189.21 131.59 195.88 135.25C202.54 138.9 205.88 145.54 205.88 155.14C205.88 163.03 201.5 168.83 192.76 172.56C187.89 174.71 179.78 176.51 168.46 177.94L147.6 180.52C123.94 183.53 106.02 188.55 93.8398 195.57C71.6198 208.47 60.5098 229.33 60.5098 258.15C60.5098 280.37 67.4298 297.54 81.2598 309.65C95.0898 321.76 112.62 327.82 133.84 327.82C150.47 327.82 165.38 324.02 178.57 316.42C189.61 309.97 199.35 302.16 207.82 292.98V320.51H266.96V153.42C266.96 125.18 256.99 105.97 237.07 95.79L237.05 95.77ZM205.66 229.32C205.23 249.82 199.46 263.94 188.35 271.68C177.24 279.42 165.09 283.29 151.9 283.29C143.58 283.29 136.56 280.92 130.83 276.19C124.95 271.6 122.01 264.08 122.01 253.61C122.01 241.86 126.74 233.18 136.2 227.59C141.79 224.29 151.04 221.5 163.94 219.2L177.7 216.62C184.58 215.33 189.99 213.93 193.93 212.43C197.87 210.93 201.78 208.96 205.65 206.52V229.31L205.66 229.32Z" />
-      <path d="M405.44 142.65C380.78 142.65 364.22 150.68 355.76 166.74C351.03 175.77 348.66 189.68 348.66 208.46V320.5H286.94V86.09H345.43V126.95C354.89 111.33 363.14 100.64 370.16 94.91C381.63 85.31 396.54 80.5 414.89 80.5C416.04 80.5 417 80.54 417.79 80.61C418.58 80.68 420.33 80.79 423.06 80.93V143.72C419.19 143.29 415.75 143 412.74 142.86C409.73 142.72 407.29 142.64 405.43 142.64L405.44 142.65Z" />
-      <path d="M535.02 159.49H472.87V320.5H535.02V159.49Z" />
-      <path d="M504.49 80.5H503.41C485.714 80.5 471.37 94.8448 471.37 112.54C471.37 130.235 485.714 144.58 503.41 144.58H504.49C522.185 144.58 536.53 130.235 536.53 112.54C536.53 94.8448 522.185 80.5 504.49 80.5Z" />
-      <path d="M764.83 117.42C784.61 142.03 794.51 171.12 794.51 204.69C794.51 238.26 784.62 268.03 764.83 292.28C745.05 316.54 715.01 328.66 674.73 328.66C634.45 328.66 604.41 316.53 584.63 292.28C564.85 268.03 554.95 238.83 554.95 204.69C554.95 170.55 564.84 142.03 584.63 117.42C604.41 92.81 634.45 80.5 674.73 80.5C715.01 80.5 745.05 92.81 764.83 117.42ZM674.51 131.93C656.59 131.93 642.79 138.22 633.11 150.82C623.44 163.41 618.6 181.37 618.6 204.7C618.6 228.03 623.44 246.03 633.11 258.69C642.79 271.35 656.58 277.68 674.51 277.68C692.44 277.68 706.19 271.35 715.8 258.69C725.4 246.03 730.21 228.04 730.21 204.7C730.21 181.36 725.4 163.41 715.8 150.82C706.19 138.23 692.43 131.93 674.51 131.93Z" />
-      <path d="M423.07 320.51C439.638 320.51 453.07 307.079 453.07 290.51C453.07 273.941 439.638 260.51 423.07 260.51C406.501 260.51 393.07 273.941 393.07 290.51C393.07 307.079 406.501 320.51 423.07 320.51Z" />
-    </svg>
-  );
-}
 
 function Results() {
   const { store, session } = useApp();
@@ -108,7 +94,7 @@ function Results() {
       <p class="caption" id="caption" hidden={!r?.caption}>
         {r?.caption}
       </p>
-      <p class="widen" id="widen" hidden={!r || !win}>
+      <p class="widen" id="widen" hidden={!r || !win || r.windowKey !== win.key}>
         {win ? (
           <>
             <span>
@@ -120,11 +106,13 @@ function Results() {
                 key={w.id}
                 type="button"
                 class="secondary"
+                disabled={store.working.value}
                 onClick={() => {
                   store.scope.value = w.id;
                   void session.runQuery({
                     label: store.answerLabel.value,
-                    caption: r?.caption ?? null,
+                    caption: r?.captionTemplate ?? null,
+                    wallet: r?.wallet ?? null,
                   });
                 }}
               >
@@ -166,7 +154,7 @@ function Results() {
           <span class={store.status.value.cls}>{store.status.value.text}</span>
         ) : null}
       </div>
-      <div class="row result-actions" id="resultactions" hidden={!r}>
+      <div class="row result-actions" id="resultactions" hidden={!r && !store.queried.value}>
         <button id="copylink" class="secondary" type="button" onClick={() => void copyLink()}>
           Copy link
         </button>
@@ -178,7 +166,7 @@ function Results() {
           onClick={() =>
             r &&
             (saveFile(
-              `arweave-l1-${lo}-${hi}.csv`,
+              `arweave-l1-${r.lo}-${r.hi}.csv`,
               'text/csv;charset=utf-8',
               toCsv(r.cols, r.rows, r.isTime),
             ),
@@ -195,7 +183,7 @@ function Results() {
           onClick={() =>
             r &&
             (saveFile(
-              `arweave-l1-${lo}-${hi}.json`,
+              `arweave-l1-${r.lo}-${r.hi}.json`,
               'application/json',
               toJson(r.cols, r.rows, r.isTime),
             ),
@@ -263,7 +251,14 @@ function SqlDrawer() {
               type="button"
               class="secondary"
               aria-pressed={fill(i) === sql ? 'true' : 'false'}
-              onClick={() => (store.sql.value = fill(i))}
+              onClick={() => {
+                store.sql.value = fill(i);
+                const ta = document.getElementById('sql') as HTMLTextAreaElement | null;
+                requestAnimationFrame(() => {
+                  ta?.focus();
+                  ta?.setSelectionRange(0, 0);
+                });
+              }}
             >
               {label}
             </button>
@@ -294,7 +289,11 @@ function SqlDrawer() {
               type="button"
               class="linkbtn"
               id="changeperiod"
-              onClick={() => document.getElementById('scope')?.focus()}
+              onClick={() => {
+                const sel = document.getElementById('scope');
+                sel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                sel?.focus({ preventScroll: true });
+              }}
             >
               Change
             </button>
@@ -302,7 +301,7 @@ function SqlDrawer() {
           <button
             id="run"
             type="button"
-            disabled={!store.pub.value.verified}
+            disabled={!store.pub.value.verified || store.working.value}
             onClick={() => {
               store.asked.value = null;
               void session.runQuery({});
@@ -364,23 +363,28 @@ function SqlDrawer() {
               <h3>Writing a query</h3>
               <ul class="tips">
                 <li>
-                  It is ordinary SQL. SELECT, WHERE, GROUP BY, ORDER BY, JOIN and window functions
-                  all work.
+                  It is ordinary SQL. <code>SELECT</code>, <code>WHERE</code>, <code>GROUP BY</code>
+                  , <code>ORDER BY</code>, <code>JOIN</code> and window functions all work.
                 </li>
                 <li>
                   IDs and addresses are plain text here, so <code>WHERE owner = 'FPjb…'</code> is
-                  all a wallet lookup needs. Matching the stored bytes is quicker:{' '}
-                  <code>FROM rawtx WHERE owner_address = unb64u('FPjb…')</code>.
+                  all a wallet lookup needs. Matching the stored bytes is quicker, since nothing is
+                  decoded first: <code>FROM rawtx WHERE owner_address = unb64u('FPjb…')</code>.
+                  Either way a wallet over all history reads every band's wallet column, a few
+                  hundred MB; a transaction ID found with the search bar reads a few dozen.
                 </li>
                 <li>
-                  Three shortcuts work over any period: <code>find_tx('…')</code>,{' '}
+                  Three shortcuts work over any period: <code>SELECT * FROM find_tx('…')</code>,{' '}
                   <code>wallet_totals('…')</code> and <code>tag_counts('App-Name')</code>. Where the
                   bands carry lookup files they read those, about a megabyte a band, instead of a
                   whole column.
                 </li>
                 <li>
-                  Sizes are bytes: <code>round(data_size / power(2,20), 2) AS mib</code>. AR amounts
-                  are winston, so divide by <code>1e12</code>.
+                  Sizes are bytes. Divide to taste:{' '}
+                  <code>round(data_size / power(2,20), 2) AS mib</code>.
+                </li>
+                <li>
+                  AR amounts are winston, so divide by <code>1e12</code> for AR.
                 </li>
                 <li>
                   Questions cover the period chosen at the top, next to the search bar. Pick a wider
@@ -429,7 +433,7 @@ function DataDrawer() {
                 if (store.gatewayChoice.value !== 'custom') void session.readPublication();
               }}
             >
-              <option value="auto">Auto — whichever gateway serves this page</option>
+              <option value="auto">Auto: whichever gateway serves this page</option>
               {CONFIG.publishers.map((g) => (
                 <option key={g} value={g}>
                   {g.replace(/^https?:\/\//, '')}
@@ -511,8 +515,14 @@ function DataDrawer() {
           <button
             id="load"
             type="button"
-            disabled={!win || session.disabled(win) || (ranged ? open : add === 0) || !pub.verified}
-            onClick={() => void session.loadScope()}
+            disabled={
+              !win ||
+              session.disabled(win) ||
+              (ranged ? open : add === 0) ||
+              !pub.verified ||
+              store.working.value
+            }
+            onClick={() => void session.openPeriod()}
           >
             {ranged ? (open ? 'Ready' : 'Open period') : add === 0 ? 'Loaded' : 'Load ' + mb(add)}
           </button>
@@ -576,7 +586,7 @@ export function App() {
       <header class="framed">
         <div class="bar">
           <a href="https://ar.io" aria-label="ar.io home" class="logo-link">
-            <Logo />
+            <ArioLogo />
           </a>
           <a
             class="pill"
@@ -587,7 +597,7 @@ export function App() {
             Read docs
           </a>
         </div>
-        <p class="eyebrow">ar.io — verifiable indexes</p>
+        <p class="eyebrow">ar.io · verifiable indexes</p>
         <h1>
           Query Arweave's base layer. <em>Verify every byte.</em>
         </h1>
@@ -618,9 +628,9 @@ export function App() {
               "The publisher's signing key, read from the ar.io registry through a different gateway",
             signature: "The publication's signature, checked against that key",
             engine:
-              "The query engine, matched against a hash pinned in this page, and its Parquet reader, which the engine accepts only with DuckDB's signature — checked when you first load data",
+              "The query engine, matched against a hash pinned in this page, and its Parquet reader, which the engine accepts only with DuckDB's signature. Checked when you first load data",
             pieces:
-              "Every piece of data a question reads, checked as it arrives against the file's BitTorrent v2 hash tree, whose root the signed publication pins — checked when you first ask",
+              "Every piece of data a question reads, checked as it arrives against the file's BitTorrent v2 hash tree, whose root the signed publication pins. Checked when you first ask",
           }}
           note="A question fetches only the parts of each file it needs, and nothing it reads is used until it matches the hash tree. Where a browser cannot do that, files are downloaded whole and hashed against the digest the signature covers instead. A failure at any step stops the question, and a check that cannot run counts as a failure. This page's own scripts, the range reader included, come in the same Arweave manifest as the page, so they are not hashed separately."
         />
@@ -642,9 +652,18 @@ export function App() {
               autocomplete="off"
               value={findText}
               onInput={(e) => setFindText((e.target as HTMLInputElement).value)}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), session.find(findText))}
+              onKeyDown={(e) =>
+                e.key === 'Enter' &&
+                !store.working.value &&
+                (e.preventDefault(), session.find(findText))
+              }
             />
-            <button id="findgo" type="button" onClick={() => session.find(findText)}>
+            <button
+              id="findgo"
+              type="button"
+              disabled={store.working.value}
+              onClick={() => session.find(findText)}
+            >
               Find
             </button>
           </div>
@@ -697,7 +716,7 @@ export function App() {
             <button
               key={q.title}
               type="button"
-              disabled={!pub.verified}
+              disabled={!pub.verified || store.working.value}
               aria-pressed={store.asked.value === i ? 'true' : 'false'}
               onClick={() =>
                 void session
@@ -761,21 +780,40 @@ export function App() {
           </div>
           <div>
             <h4>On ar.io</h4>
-            <ul>
+            <ul class="foot-apps">
               <li>
                 <a href="https://gateways.ar.io/" target="_blank" rel="noopener">
                   Network Portal
                 </a>
+                <span>Explore gateways, delegate stake and check token balances.</span>
               </li>
               <li>
-                <a href="https://explore_ardrive.ar.io" target="_blank" rel="noopener">
-                  ArDrive Explorer
+                <a href="https://console.ar.io/" target="_blank" rel="noopener">
+                  Console
                 </a>
+                <span>Upload data to Arweave, and buy and manage ArNS names.</span>
               </li>
               <li>
                 <a href="https://cdb64.ar.io" target="_blank" rel="noopener">
-                  Every index the gateway publishes
+                  Network index
                 </a>
+                <span>Every index the gateway publishes, verified, with a root lookup.</span>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4>This page</h4>
+            <ul>
+              <li>
+                <a id="foot-pub" href={`${home}/ar-io/indexes`}>
+                  The signed publication it reads
+                </a>
+              </li>
+              <li>
+                <a href="https://duck-db-wasm.ar.io/">DuckDB-WASM 1.30.0, from Arweave</a>
+              </li>
+              <li>
+                <a href="https://ar.io">ar.io</a>
               </li>
             </ul>
           </div>
@@ -788,10 +826,12 @@ export function App() {
             <pre>
               <code>{`duckdb -c "INSTALL httpfs; LOAD httpfs;\n  SELECT count(*) FROM read_parquet('${home}/ar-io/indexes/parquet-l1/<band>/transactions.parquet')"`}</code>
             </pre>
-            <p class="note">
-              <a id="foot-pub" href={`${home}/ar-io/indexes`}>
-                The signed publication it reads
+            <p class="foot-note">
+              Full recipe in{' '}
+              <a href="https://docs.ar.io/build/advanced/index-publications#query-a-parquet-dataset">
+                the docs
               </a>
+              .
             </p>
           </div>
         </div>

@@ -28,6 +28,8 @@ test.describe('arweave-l1-explorer', () => {
       await page.locator('#proof-text').innerText(),
     ).toBe('ok');
     expect(await page.evaluate(() => !!navigator.serviceWorker?.controller)).toBe(true);
+    // The editor opens with the first example, as v0's did, so Run answers at once.
+    expect(await page.inputValue('#sql')).toMatch(/^SELECT height, count\(\*\) AS txs/);
     const status = () =>
       page
         .locator('#status')
@@ -97,6 +99,13 @@ test.describe('arweave-l1-explorer', () => {
     await page.click('#run');
     await answered();
     expect(await rows()).toBeGreaterThan(0);
+    // An empty editor says so rather than doing nothing.
+    const kept = await page.inputValue('#sql');
+    await page.fill('#sql', '');
+    await clear();
+    await page.click('#run');
+    expect(await status()).toMatch(/Write a query/);
+    await page.fill('#sql', kept);
     // Exports and the share link.
     const [dl] = await Promise.all([
       page.waitForEvent('download', { timeout: 20_000 }),

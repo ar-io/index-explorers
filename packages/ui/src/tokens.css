@@ -3,7 +3,8 @@
  * Alabaster #FAFAFA, Primary #D31721, Ruddy #FE0230, Success #18A957, Info
  * #3142C4; Wavehaus Sans 800 for headings, 300–600 for body. Dark by
  * default, as the app is; a light theme follows the system or
- * data-theme="light". A page sets data-brand="ario" for the ar.io explorers.
+ * data-theme="light". The ar.io explorers set data-brand="ario" and import
+ * ario.css, which carries ar.io's brand kit over these same tokens.
  */
 :root {
   --onyx: #121212;
@@ -69,37 +70,4 @@
   --sel-bg: var(--onyx);
   --sel-fg: var(--alabaster);
   color-scheme: light;
-}
-
-/* ar.io: the same structure in the network's colours. */
-:root[data-brand='ario'] {
-  --primary: #7a52f4;
-  --ruddy: #9d7cff;
-  --label: #b9a3ff;
-  --glow: rgba(122, 82, 244, 0.3);
-  --ink: #0e0a1c;
-  --bg: #120d24;
-  --surface: #191231;
-  --raised: #221a3d;
-  --line: rgba(255, 255, 255, 0.12);
-  --headline: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-  --body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-}
-@media (prefers-color-scheme: light) {
-  :root[data-brand='ario']:not([data-theme='dark']) {
-    --bg: #faf8ff;
-    --surface: #fff;
-    --raised: #f1edfb;
-    --fg: #15102a;
-    --label: #5a35d9;
-    --line: #e7e2f5;
-  }
-}
-:root[data-brand='ario'][data-theme='light'] {
-  --bg: #faf8ff;
-  --surface: #fff;
-  --raised: #f1edfb;
-  --fg: #15102a;
-  --label: #5a35d9;
-  --line: #e7e2f5;
 }
