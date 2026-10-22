@@ -201,3 +201,91 @@ describe('lookupRoot across bands', () => {
     expect(fromBase64Url(toBase64Url(key))).toEqual(key);
   });
 });
+
+describe('Arweave-hosted packs', () => {
+  // Two packs; partition files sit at offsets inside "transactions" of padding.
+  const keys = Array.from({ length: 300 }, (_, i) => rnd(5000 + i));
+  const inA = keys.filter((_, i) => i % 2 === 0);
+  const inB = keys.filter((_, i) => i % 2 === 1);
+  const partitionsFor = (ks: Uint8Array[], seed: number) => {
+    const byPrefix = new Map<number, { key: Uint8Array; value: Uint8Array }[]>();
+    ks.forEach((key, i) => {
+      const list = byPrefix.get(key[0]!) ?? [];
+      list.push({ key, value: encodeMsgpack({ r: rnd(seed + i), i: 7 * i }) });
+      byPrefix.set(key[0]!, list);
+    });
+    return byPrefix;
+  };
+  // Lay every partition of a pack end to end in one transaction, after a 1000-byte prefix.
+  const build = (ks: Uint8Array[], seed: number, txIndex: number) => {
+    const byPrefix = partitionsFor(ks, seed);
+    const chunks: Uint8Array[] = [new Uint8Array(1000)];
+    let at = 1000;
+    const parts: [number, number][] = [];
+    for (let p = 0; p < 256; p++) {
+      const file = writeCdb64(byPrefix.get(p) ?? []);
+      parts.push([txIndex, at]);
+      chunks.push(file);
+      at += file.length;
+    }
+    const data = new Uint8Array(at);
+    let o = 0;
+    for (const c of chunks) (data.set(c, o), (o += c.length));
+    return { data, parts };
+  };
+  const a = build(inA, 9000, 0);
+  const b = build(inB, 19000, 1);
+  const txs = ['tx-a', 'tx-b'];
+  const datas: Record<string, Uint8Array> = { 'tx-a': a.data, 'tx-b': b.data };
+  const set: cdb64.Cdb64PackSet = {
+    txs,
+    packs: [
+      { id: 'pack-a', label: 'a', name: 'A', records: inA.length, parts: a.parts },
+      { id: 'pack-b', label: 'b', name: 'B', records: inB.length, parts: b.parts },
+    ],
+  };
+  const read = async (tx: string, s: number, e: number) => datas[tx]!.slice(s, e + 1);
+
+  it('finds a key in the first pack that holds it, reporting each stage', async () => {
+    const stages: string[] = [];
+    const missed: string[] = [];
+    const hit = await cdb64.lookupPacks(toBase64Url(inB[3]!), set, read, {
+      stage: (p, s) => stages.push(`${p.label}:${s}`),
+      miss: (p) => missed.push(p.label),
+    });
+    expect(hit?.pack.id).toBe('pack-b');
+    expect(hit?.tx).toBe('tx-b');
+    expect(hit?.rootTxId).toBe(toBase64Url(rnd(19000 + 3)));
+    expect(missed).toEqual(['a']);
+    expect(stages[0]).toBe('a:table');
+    expect(stages).toContain('b:record');
+  });
+
+  it('misses an absent key in every pack', async () => {
+    const missed: string[] = [];
+    expect(
+      await cdb64.lookupPacks(toBase64Url(rnd(777777)), set, read, {
+        miss: (p) => missed.push(p.label),
+      }),
+    ).toBeNull();
+    expect(missed).toEqual(['a', 'b']);
+  });
+
+  it('checks an item at its offset: SHA-256 of the signature is the id', async () => {
+    const sig = rnd(4242, 64); // signature type 2, ed25519: 64 bytes
+    const id = toBase64Url(
+      new Uint8Array(await crypto.subtle.digest('SHA-256', sig as BufferSource)),
+    );
+    const root = new Uint8Array(500);
+    root.set([2, 0], 100);
+    root.set(sig, 102);
+    const r = (s: number, e: number) => Promise.resolve(root.slice(s, e + 1));
+    expect(await cdb64.checkItemAtOffset(id, 100, r)).toMatchObject({
+      state: 'ok',
+      signatureBytes: 64,
+    });
+    expect(await cdb64.checkItemAtOffset(id, 101, r)).toMatchObject({ state: 'skip' });
+    root[150] = root[150]! ^ 1;
+    expect(await cdb64.checkItemAtOffset(id, 100, r)).toMatchObject({ state: 'bad' });
+  });
+});

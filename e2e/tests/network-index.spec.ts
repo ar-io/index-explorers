@@ -46,31 +46,59 @@ test.describe('network-index', () => {
     expect(await page.locator('#index-ardrive-l2 .guide pre').first().textContent()).toMatch(
       /index-swarm-setup --subscribe/,
     );
-    // Resolve a data item.
+    // Resolve a data item: published bands first, every byte checked.
+    const resolved = (re: RegExp) =>
+      until(
+        page,
+        async () => re.test(await page.locator('#status').innerText()),
+        LIVE ? 240_000 : 60_000,
+        'resolve',
+      );
     const id = LIVE ? '4aCplvNxtUx2DnpUUhhGkecFXiUDJFYhZDlra8ClGXA' : KNOWN.fileRecord;
-    await page.fill('#find', id);
+    await page.fill('#q', id);
     await page.click('#findgo');
-    await until(
-      page,
-      async () => /Found|Not in any|Could not/.test(await page.locator('#status').innerText()),
-      LIVE ? 240_000 : 60_000,
-      'resolve',
-    );
+    await resolved(/Found|Not (in any|found)|Could not/);
     const st = await page.locator('#status').innerText();
-    expect(st, st).toMatch(/Found in/);
-    expect(st).toMatch(/verified range reads/);
-    expect(await page.locator('#lookup .facts').innerText()).toMatch(/root transaction/i);
-    expect(await page.locator('.checks li[data-k="pieces"]').getAttribute('data-state')).toBe('ok');
-    // A random id is not found, honestly.
-    await page.fill('#find', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
-    await page.click('#findgo');
-    await until(
-      page,
-      async () => /Not in any|Found|Could not/.test(await page.locator('#status').innerText()),
-      60_000,
-      'miss',
+    expect(st, st).toMatch(/Found in .* a band .* signed/);
+    expect(await page.locator('#result .source').innerText()).toMatch(
+      /matched against the band's torrent/,
     );
-    expect(await page.locator('#status').innerText()).toMatch(/Not in any/);
+    expect(await page.locator('#root').innerText()).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await page.locator('.checks li[data-k="pieces"]').getAttribute('data-state')).toBe('ok');
+    expect(await page.locator('.stage[data-k="record"]').getAttribute('data-state')).toBe('done');
+    expect(await page.locator('#packs li[data-s="hit"]').count()).toBe(1);
+    // A random id is not found, honestly.
+    await page.fill('#q', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+    await page.click('#findgo');
+    await resolved(/Not (in any|found)|Found|Could not/);
+    expect(await page.locator('#status').innerText()).toMatch(/Not (in any|found)/);
+    // A pasted URL gives up its id.
+    await page.fill('#q', `https://example.com/${id}?x=1`);
+    await page.click('#findgo');
+    await resolved(/Found|Not (in any|found)|Could not/);
+    expect(await page.inputValue('#q')).toBe(id);
+    if (LIVE) {
+      // v0's example lives in the packs on Arweave, and is checked against the data.
+      await page.click('#example');
+      await resolved(/Found in the .* pack|Not (in any|found)|Could not/);
+      expect(await page.locator('#status').innerText()).toMatch(/Found in the .* pack/);
+      expect(await page.locator('#root').innerText()).toBe(
+        'gjLyC5Vwfrxumo-54oL8gAUb00B9pc63cQm0BRstrLo',
+      );
+      await until(
+        page,
+        async () => (await page.locator('#checks li[data-s="wait"]').count()) === 0,
+        60_000,
+        'check',
+      );
+      expect(await page.locator('#checks li[data-s="bad"]').count()).toBe(0);
+    }
+    // v0's links, #<id>, still run the lookup.
+    await page.goto(`${BASE}#${id}`);
+    await page.reload();
+    await resolved(/Found|Not (in any|found)|Could not/);
+    expect(await page.inputValue('#q')).toBe(id);
+    expect(await page.locator('#status').innerText()).toMatch(/Found/);
     expect(errors).toEqual([]);
     await page.screenshot({ path: 'e2e/out/network-index.png', fullPage: true });
   });
