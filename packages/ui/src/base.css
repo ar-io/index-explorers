@@ -1157,6 +1157,20 @@ footer a:hover {
 .foot-cli p {
   margin: 0 0 9px;
 }
+.foot-apps {
+  gap: 12px;
+}
+.foot-apps span {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.foot-note {
+  margin-top: 9px !important;
+  font-size: 13px;
+}
 .foot-cli pre {
   margin: 0;
   overflow-x: auto;

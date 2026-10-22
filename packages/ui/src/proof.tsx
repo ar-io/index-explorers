@@ -7,7 +7,7 @@ const LABELS: Record<keyof ProofChecks, string> = {
   registry: "The publisher's signing key, read from the ar.io registry through a different gateway",
   signature: "The publication's signature, checked against that key",
   engine:
-    "The query engine, matched against a hash pinned in this page, and its Parquet reader, which the engine accepts only with DuckDB's signature — checked when you first load data",
+    "The query engine, matched against a hash pinned in this page, and its Parquet reader, which the engine accepts only with DuckDB's signature. Checked when you first load data",
   pieces:
     "Every piece of the index a listing reads, checked as it arrives against the file's BitTorrent v2 hash tree, whose root the signed publication pins",
 };

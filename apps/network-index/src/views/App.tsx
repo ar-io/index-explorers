@@ -1,4 +1,4 @@
-import { Proof } from '@ar-io/explorer-ui';
+import { Proof, ArioLogo } from '@ar-io/explorer-ui';
 import { type Band, fmtDay, isId43, mb, num } from '@ar-io/index-client';
 import { createContext } from 'preact';
 import { useContext, useState } from 'preact/hooks';
@@ -402,8 +402,8 @@ export function App() {
     <div class="rail">
       <header class="framed">
         <div class="bar">
-          <a href="https://ar.io" aria-label="ar.io home" class="pill">
-            ar.io
+          <a href="https://ar.io" aria-label="ar.io home" class="logo-link">
+            <ArioLogo />
           </a>
           <a
             class="pill"
@@ -414,7 +414,7 @@ export function App() {
             How publications work
           </a>
         </div>
-        <p class="eyebrow">ar.io — the network index</p>
+        <p class="eyebrow">ar.io · the network index</p>
         <h1>
           Every index the gateway publishes. <em>Verified.</em>
         </h1>
