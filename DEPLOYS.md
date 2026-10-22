@@ -19,6 +19,12 @@ Every upload, newest first. The manifest id is what the ArNS name points at. Eac
   - `index.html` ad0127afc9b7cfe7749a6549f4544a595977f7f48cd4421322a6b1efaf54868c
   - `sw.js` 7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2
 
+## 2026-10-22 · network-index rolled back to v0
+
+- cdb64.ar.io `@` set back to `oh8viBLoGvvhpiopGZ08jIORh63WKAFGSrHiDgxncdg` (the original page) with `ar.io set-ant-base-name`, signed by the arweave environment's controller key. Solana transaction `3H8VvxUWnAUyDxrt2RvbBEyNLCEoiB8hUDNyEocowBvSEymGhnYLXhj1VYaGKyXDeoDN9aw9AH7HdPoUTgT6eVgo`.
+- Why: 1.0.0 searched only the published root-tx bands (about 169 million records from block 700,000) and missed most items the original page found in its Arweave packs (3.84 billion to block 1,820,000), and it dropped the original's links, item check, preview, copy and example. A feature-by-feature audit found the gaps; 1.1.0 restores them.
+- Every node served the original page on 12 plain GETs in a row 338 s after the update.
+
 ## 2026-10-21 · network-index 1.0.0
 
 - manifest: `LH5q2GKIg4-I0-EWI0laW7tst70mJ3jheUcoCU4d33s`
