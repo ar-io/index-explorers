@@ -1,14 +1,14 @@
 {
   "app": "network-index",
-  "version": "1.0.0",
-  "verifiedAt": "2026-10-21T17:42:25.084Z",
+  "version": "1.1.0",
+  "verifiedAt": "2026-10-22T12:53:28.110Z",
   "verifiedBy": "vilenarios",
-  "commit": "6c8b87162e21034e33d0d324ba173581b1ca8151",
+  "commit": "b894333f338953a6966880873e457ca19e04cd3c",
   "machine": "linux arm64, node v23.9.0",
   "steps": [
     {
       "name": "install",
-      "seconds": 1.6
+      "seconds": 1.3
     },
     {
       "name": "engine files",
@@ -16,36 +16,36 @@
     },
     {
       "name": "engine pins against two gateways",
-      "seconds": 4.6
+      "seconds": 4.4
     },
     {
       "name": "format and types",
-      "seconds": 27.6
+      "seconds": 21.9
     },
     {
       "name": "unit and integration tests",
-      "seconds": 32.1
+      "seconds": 24.5
     },
     {
       "name": "E2E builds",
-      "seconds": 16.7
+      "seconds": 14.5
     },
     {
       "name": "E2E on the fixture gateway",
-      "seconds": 15.4
+      "seconds": 13.8
     },
     {
       "name": "production builds",
-      "seconds": 15.1
+      "seconds": 14
     },
     {
       "name": "live E2E against turbo-gateway.com",
-      "seconds": 31.2
+      "seconds": 30.7
     }
   ],
   "sources": {
-    "apps/network-index": "6d401c00358fda491fdbe0d9b3386a87a5a93cf8",
-    "packages": "a02f60da4a46f50f12a4e200c602a70567c84bc3",
+    "apps/network-index": "56b3b1a23ff04cd7a51cb16808419be36a145baf",
+    "packages": "6b6854df31074693de69e1fdc948d052dfd1ebd2",
     "package.json": "6ec6e9e3ff664b83ac82679f8c31d64e500020e3",
     "pnpm-lock.yaml": "0c3b661a24a82f83615a29fb66c5bf53e9ba6c9a",
     "pnpm-workspace.yaml": "8c81b3b1946d0b6aba407e9918ef96892ab1901e",
@@ -53,14 +53,18 @@
     "engine.lock.json": "4acde2319817b97429ddb1b7603b3806829b7923"
   },
   "dist": {
+    "assets/ario-full-white-CluK9Jx-.svg": "a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490",
     "assets/arrow-BrJ3Opv-.js": "d7c8e02c630324ecd288c24015c22148fdf865e3b6283bc859130c7460a28ee2",
     "assets/arrow-BrJ3Opv-.js.map": "6d4717757ed96fb91b478245209d36df96d4e2283b5cdfbe2dfd0680a53e6f45",
+    "assets/besley-italic-latin-CVKtkS9L.woff2": "028647731182464ccd117da3f56747d8c80f914a06c854624917b8fbd2d02f0c",
+    "assets/besley-normal-latin-IX-hlgPH.woff2": "45a619033dd926aa09d426017d7c0e347f206b40132eeb4b007201a342cdcb46",
     "assets/duckdb-B2AE9Fkb.js": "6f663b308aacb914cd086a9aed42d10ec6007a6bb162d4bd0a271b776b88044e",
     "assets/duckdb-B2AE9Fkb.js.map": "d53a683be4a3d5726ab48a2f431c11f65a5ca04cb52adecf32319b44788f7583",
-    "assets/index-BwAXxTuk.js": "fa2bcefcabc8386b27f9bd17f9d8a0a89dad7af2ddfaa0a5927fa27ef020ac66",
-    "assets/index-BwAXxTuk.js.map": "271c2bea97ffb755714beb8970e98ea39cbf1551edc15fd3a843837432e917b5",
-    "assets/index-DGuB3sLL.css": "510495adfee0f5357424437deac413ec666d0453f5b83abc189fdb2b12a6b732",
-    "index.html": "48066b2b62b980ee4e5aac97789d5c60b5b8d09ec0e9605383fa80fe323378b6",
+    "assets/index-D-J956uk.js": "52769a11f3b1cc2accfbc23bf441b58a556028233092e2fb80e6806c035f665b",
+    "assets/index-D-J956uk.js.map": "53eb136855b6e112d40f3698d72cf01245762605bc0295d9299e8c92cd30f89f",
+    "assets/index-szw5Sw_4.css": "05c70d11f4b6a04e33b16c94f4c453b20f535c6917ce73963373e4e2f6b03a01",
+    "assets/plus-jakarta-sans-normal-latin-eXO_dkmS.woff2": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
+    "index.html": "ab6a4abe73dbb80df9950867a85b4905df4e7c3ba1eb9cd84e64072668a923f9",
     "sw.js": "7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2"
   }
 }
