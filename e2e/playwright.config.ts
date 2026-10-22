@@ -10,7 +10,11 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIVE = !!process.env.LIVE;
-const PORT = Number(process.env.FIXTURE_PORT || 8787);
+// The live project serves the production builds on a port of its own, and never
+// reuses a server it did not start: a fixture gateway left running on 8787
+// serves the E2E builds, which read the local fixture registry, and every live
+// check then fails with "publisher is not in the registry".
+const PORT = Number(process.env.FIXTURE_PORT || (LIVE ? 8797 : 8787));
 
 export default defineConfig({
   testDir: path.join(ROOT, 'e2e', 'tests'),
@@ -48,7 +52,7 @@ export default defineConfig({
       : `node tools/fixture-gateway/server.mjs --site apps/ardrive-explorer/dist-e2e --mount /l1/=apps/arweave-l1-explorer/dist-e2e --mount /network-index/=apps/network-index/dist-e2e --port ${PORT}`,
     cwd: ROOT,
     port: PORT,
-    reuseExistingServer: true,
+    reuseExistingServer: !LIVE && !process.env.CI,
     timeout: 30_000,
   },
 });
