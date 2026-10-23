@@ -41,9 +41,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** Each app and the E2E specs that open it: a release runs its own app's suites. */
 const SPECS = {
-  'ardrive-explorer': ['smoke', 'matrix', 'nav', 'perf'],
-  'arweave-l1-explorer': ['l1'],
-  'network-index': ['network-index'],
+  'ardrive-explorer': ['smoke', 'matrix', 'nav', 'perf', 'head'],
+  'arweave-l1-explorer': ['l1', 'head'],
+  'network-index': ['network-index', 'head'],
 };
 const APPS = Object.keys(SPECS);
 /** After a deploy: the spec that opens the deployed page, and how it is told the page's URL. */
@@ -250,10 +250,15 @@ Next:
   const url = opt('--url');
   if (!url) die('--url <deployed page> is required');
   const { spec, env } = DEPLOYED[app];
-  run(`${app} at ${url}`, 'pnpm', ['e2e:live', `e2e/tests/${spec}.spec.ts`], {
-    [env]: url.endsWith('/') ? url : `${url}/`,
-    GW: 'https://turbo-gateway.com',
-  });
+  run(
+    `${app} at ${url}`,
+    'pnpm',
+    ['e2e:live', `e2e/tests/${spec}.spec.ts`, 'e2e/tests/head.spec.ts'],
+    {
+      [env]: url.endsWith('/') ? url : `${url}/`,
+      GW: 'https://turbo-gateway.com',
+    },
+  );
 } else if (cmd === 'specs') {
   console.log(specFiles().join(' '));
 } else if (cmd === 'hashes') {
