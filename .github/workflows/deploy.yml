@@ -137,6 +137,13 @@ jobs:
             echo "::error::the deployed page failed its smoke test. To roll back, point ${{ needs.plan.outputs.undername }} of ${{ needs.plan.outputs.arns }} at ${{ steps.before.outputs.previous }}"
             exit 1
           }
+      - name: Keep the E2E traces of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-out-${{ github.ref_name }}
+          path: e2e/out
+          retention-days: 14
       - name: Record the manifest id on main
         # main's DEPLOYS.md, not the tag's: the tag may predate other deploys.
         # apps/*/dist is ignored by git, so it survives the checkout.
