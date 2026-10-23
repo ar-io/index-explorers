@@ -53,6 +53,7 @@ const types = {
   '.css': 'text/css',
   '.wasm': 'application/wasm',
   '.svg': 'image/svg+xml',
+  '.png': 'image/png',
   '.parquet': 'application/octet-stream',
   '.cdb': 'application/octet-stream',
   '.torrent': 'application/x-bittorrent',
