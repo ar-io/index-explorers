@@ -99,12 +99,19 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
       ? await page.locator('#b-list .b-more').innerText()
       : 'none',
   );
-  // open the biggest folder
+  // Open the biggest folder, and keep going down while a folder holds few
+  // files: on the live drive they sit two folders below the root. Every move
+  // is held to the bound.
   const folderRows = page
     .locator('#b-list tbody tr.b-row')
     .filter({ has: page.locator('.ico-folder') });
-  const nf = await folderRows.count();
-  if (nf) {
+  const fileRows = page
+    .locator('#b-list tbody tr.b-row')
+    .filter({ hasNot: page.locator('.ico-folder') })
+    .filter({ hasNot: page.locator('.ico-up') });
+  let depth = 0;
+  while (depth < 4 && (await folderRows.count()) && (depth === 0 || (await fileRows.count()) < 4)) {
+    const nf = await folderRows.count();
     let best = 0;
     let bestN = -1;
     for (let i = 0; i < Math.min(nf, 20); i++) {
@@ -119,9 +126,12 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
     const move = Math.round(await openFolderMeasured(page, best));
     await until(page, async () => (await driveRows(page)) > 0, 30_000, 'folder');
     log(
-      `opened folder with ${bestN} items in ${move} ms | rows in DOM ${await driveRows(page)} | crumbs: ${await page.locator('#b-crumbs').innerText()}`,
+      `opened folder with ${bestN} items in ${move} ms | rows in DOM ${await driveRows(page)} | crumbs: ${(await page.locator('#b-crumbs').innerText()).replace(/\n/g, ' / ')}`,
     );
     expect(move).toBeLessThanOrEqual(400);
+    depth += 1;
+  }
+  if (depth) {
     await page.evaluate(() => ((window as unknown as { __lt: number[] }).__lt.length = 0));
     for (let i = 0; i < 8; i++) {
       await page.evaluate(() => {

@@ -72,6 +72,7 @@ export class Engine {
   extFallback = false;
   private chain: Promise<unknown> = Promise.resolve();
   private seq = 0;
+  private files = new Map<string, { url: string; size: number }>();
 
   private constructor(
     public readonly db: duckdb.AsyncDuckDB,
@@ -179,8 +180,15 @@ export class Engine {
     return `r${this.seq}_${kind}.parquet`;
   }
 
-  async registerUrl(name: string, url: string): Promise<void> {
+  /** `size`, when known, lets a read ahead fetch the file's footer before DuckDB asks. */
+  async registerUrl(name: string, url: string, size?: number): Promise<void> {
     await this.db.registerFileURL(name, url, duckdb.DuckDBDataProtocol.HTTP, false);
+    if (size !== undefined) this.files.set(name, { url, size });
+  }
+
+  /** The URL and size a name was registered with. */
+  fileOf(name: string): { url: string; size: number } | undefined {
+    return this.files.get(name);
   }
 
   async registerBuffer(name: string, bytes: Uint8Array): Promise<void> {
@@ -188,6 +196,7 @@ export class Engine {
   }
 
   async dropFile(name: string): Promise<void> {
+    this.files.delete(name);
     try {
       await this.db.dropFile(name);
     } catch {

@@ -11,6 +11,7 @@ import {
   mb,
   num,
   parquetL2,
+  readAhead,
   rowsOf,
   sliceWindow,
   sq,
@@ -134,7 +135,14 @@ export function createDriveFlows(s: Session) {
       const p = st.currentPeriod()!;
       return { records: null, lo: p.lo, hi: p.hi, byLookup: false };
     }
+    // Every band's lookup is read at once rather than one band after another.
+    st.tr('lookup ahead');
+    await readAhead(s.engine!, [
+      parquetL2.tagLookupReadAhead(s.registeredBands(), 'Drive-Id', driveId),
+    ]);
+    st.tr('lookup');
     const [r] = rowsOf(await s.engine!.query(`SELECT * FROM drive_window(${sq(driveId)})`));
+    st.tr('lookup done');
     if (!r || r.lo == null) return null;
     return { records: Number(r.records), lo: Number(r.lo), hi: Number(r.hi), byLookup: true };
   }
@@ -239,7 +247,16 @@ export function createDriveFlows(s: Session) {
       return;
     }
     const r = await s.measured('Reading the drive', async () => {
-      const src = `(${arfs.clusterSql(s.registeredBands(), plan.clusters, `drive_id = ${sq(driveId)}`)})`;
+      const bands = s.registeredBands();
+      // The window's row groups at once, in parallel, rather than one by one as the engine asks.
+      st.tr('window ahead');
+      await readAhead(
+        s.engine!,
+        plan.clusters.flatMap(([a, z]) => parquetL2.windowReadAhead(bands, a, z)),
+        { stop: () => s.overtaken(my) },
+      );
+      st.tr('window');
+      const src = `(${arfs.clusterSql(bands, plan.clusters, `drive_id = ${sq(driveId)}`)})`;
       // The drive and its folders first, so a cap cuts files, never the tree they hang from.
       const table = await s.engine!.query(
         `SELECT * FROM ${src} ORDER BY CASE kind WHEN 'drive' THEN 0 WHEN 'folder' THEN 1 ELSE 2 END, height DESC LIMIT ${CONFIG.listCap}`,
