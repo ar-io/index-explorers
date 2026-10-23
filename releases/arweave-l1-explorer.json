@@ -1,51 +1,51 @@
 {
   "app": "arweave-l1-explorer",
-  "version": "1.1.0",
-  "verifiedAt": "2026-10-22T11:45:45.168Z",
+  "version": "1.2.0",
+  "verifiedAt": "2026-10-23T16:15:26.150Z",
   "verifiedBy": "vilenarios",
-  "commit": "4d3b94f50212ebdbee12847aac2e2d7ac0ddaed3",
+  "commit": "dbe7e6055c9d5800776951e89e73a07ce905bf66",
   "machine": "linux arm64, node v23.9.0",
   "steps": [
     {
       "name": "install",
-      "seconds": 1.1
+      "seconds": 1.7
     },
     {
       "name": "engine files",
-      "seconds": 0
+      "seconds": 0.1
     },
     {
       "name": "engine pins against two gateways",
-      "seconds": 4
+      "seconds": 4.8
     },
     {
       "name": "format and types",
-      "seconds": 20.4
+      "seconds": 27.9
     },
     {
       "name": "unit and integration tests",
-      "seconds": 24
+      "seconds": 18.4
     },
     {
       "name": "E2E builds",
-      "seconds": 14.5
+      "seconds": 11.9
     },
     {
       "name": "E2E on the fixture gateway",
-      "seconds": 15.7
+      "seconds": 15.8
     },
     {
       "name": "production builds",
-      "seconds": 13.9
+      "seconds": 14.3
     },
     {
       "name": "live E2E against turbo-gateway.com",
-      "seconds": 17.7
+      "seconds": 286.4
     }
   ],
   "sources": {
-    "apps/arweave-l1-explorer": "afec6f8ed0801f9239d0a69ee068926f7fe6fed5",
-    "packages": "6dc34009da4d1c0136330ade9d15483cfef928e9",
+    "apps/arweave-l1-explorer": "8d8e0a69320d57907c5a3a88e00c19b216d36c57",
+    "packages": "bf296d867fb79f0cbb42a4df5553d531a6f2a5b4",
     "package.json": "6ec6e9e3ff664b83ac82679f8c31d64e500020e3",
     "pnpm-lock.yaml": "0c3b661a24a82f83615a29fb66c5bf53e9ba6c9a",
     "pnpm-workspace.yaml": "8c81b3b1946d0b6aba407e9918ef96892ab1901e",
@@ -53,6 +53,7 @@
     "engine.lock.json": "4acde2319817b97429ddb1b7603b3806829b7923"
   },
   "dist": {
+    "apple-touch-icon.png": "3dc979bb165838222859ee052672f185cf7eb9c620ba66a4084aaeabf204df02",
     "assets/ario-full-white-CluK9Jx-.svg": "a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490",
     "assets/arrow-C6ch5XQ7.js": "be8bc38f3801bd076186c30711cd432a3dcd9b7763d980467fd1ca79dfdc4e07",
     "assets/arrow-C6ch5XQ7.js.map": "77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d",
@@ -61,10 +62,14 @@
     "assets/duckdb-DEFjrUmw.js": "bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2",
     "assets/duckdb-DEFjrUmw.js.map": "d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c",
     "assets/index-BYUBus2m.css": "44e050b6fa3001753a27b3dcdbb45bf032d3101dc463890c7de0d6414341c2a4",
-    "assets/index-Bks9s5Dl.js": "086f1c4738bdb4bf9376c39ee004b3c807afe0a71a43b2fc57d363d768a28f3d",
-    "assets/index-Bks9s5Dl.js.map": "b17a7a6c113152c1b6001cc8b2747e22c1649c623fbda0479358c26f4cfee93c",
+    "assets/index-DWmpt-Ak.js": "e24ded6efaa8d2e66b32b62369311bb63cc55a19db21997ed8d6f972b2a88ef8",
+    "assets/index-DWmpt-Ak.js.map": "81149cd147393e35f8c31b41a98dfcd95b9a309a117ccba8ee938107c9e4a960",
     "assets/plus-jakarta-sans-normal-latin-eXO_dkmS.woff2": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
-    "index.html": "bce55248d8f8d5f581ae3fad46b14cf31f7d50463deb6d0bd36d11a1b8d9c07a",
+    "favicon-32.png": "97366221702d7aab4d26fbb958654edbfa9a58c2f171bf1f8c8a6f3ded255d19",
+    "favicon-dark.svg": "325fd96b1df10a02e063f81afc5c111f7a87539ffe6356290c666f72739c7862",
+    "favicon.svg": "267d63fed31ab5db02b32014ac600a57fa2cd5a352d6afb69d891d67cc5f3cbc",
+    "index.html": "60ffae352dd3effe0cd5f5409a6dfa9547757725210f818b363283bcd86d31c0",
+    "social.png": "d4c4846cc8efafc0207e8ef1c994c66b7fd3d8d37e152827c09f9aed6c366333",
     "sw.js": "7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2"
   }
 }
