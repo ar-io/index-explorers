@@ -122,6 +122,20 @@ export function Explore() {
             </option>
           ))}
         </select>
+        <select
+          id="contents"
+          aria-label="Contents"
+          title="An empty drive holds nothing but its root folder: 2 records in the index's tag lookup."
+          value={store.hideEmpty.value ? 'some' : 'any'}
+          disabled={!pub.hasLookups}
+          onChange={(e) => {
+            store.hideEmpty.value = (e.target as HTMLSelectElement).value === 'some';
+            if (view.kind === 'browse') void flows.browse(true);
+          }}
+        >
+          <option value="some">With contents</option>
+          <option value="any">Empty ones too</option>
+        </select>
         <span class="note" id="asknote" style="margin:0">
           {!pub.verified
             ? pub.status === 'bad'

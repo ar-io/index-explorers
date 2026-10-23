@@ -9,7 +9,16 @@
  * reader bounded by height, base macros that the page's lookups use, and the
  * period views a SQL cell documents. See docs/new-l2-index.md.
  */
-import { CREATED_AT, hasLookups, itemsSql, type RegisteredL2Band, tagsSql } from './parquet-l2.js';
+import type { ReadAhead } from '../engine/read-ahead.js';
+import {
+  CREATED_AT,
+  hasLookups,
+  itemsSql,
+  type RegisteredL2Band,
+  tagsSql,
+  tagValueCountsSql,
+  tagValuesReadAhead,
+} from './parquet-l2.js';
 
 /** The tags the pivot reads. Everything else on a record is left for `tags`. */
 export const ENTITY_TAGS =
@@ -129,3 +138,24 @@ export const clusterSql = (
   clusters
     .map(([a, z]) => `SELECT * FROM ${entitiesSql(bands, a, z)} WHERE ${where}`)
     .join(' UNION ALL ');
+
+/**
+ * How many records each drive has over its whole history, from the tag
+ * lookup: every ArFS record carries its drive's `Drive-Id`, so a drive with
+ * nothing in it holds 2 (itself and its root folder). `from` is the oldest of
+ * these drives' heights: no record of a drive comes before the drive.
+ * `drive_id, records`.
+ */
+export const driveRecordCountsSql = (
+  bands: readonly RegisteredL2Band[],
+  driveIds: readonly string[],
+  from: number,
+): string =>
+  `(SELECT value AS drive_id, uploads AS records FROM ${tagValueCountsSql(bands, 'Drive-Id', driveIds, from)})`;
+
+/** What `driveRecordCountsSql` will fetch. */
+export const driveRecordCountsReadAhead = (
+  bands: readonly RegisteredL2Band[],
+  driveIds: readonly string[],
+  from: number,
+): ReadAhead => tagValuesReadAhead(bands, 'Drive-Id', driveIds, from);

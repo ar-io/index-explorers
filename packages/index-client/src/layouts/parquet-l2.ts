@@ -145,6 +145,54 @@ export function tagLookupReadAhead(
 }
 
 /**
+ * How many uploads carry `name` = each of `values`, over every band from
+ * height `from` on (a selection that knows its values cannot appear earlier
+ * passes that height; 0 reads every band): `value, uploads, first_height,
+ * last_height`, a row for each value found. One point lookup per value, so
+ * each reads only the row group its key falls in, in each band.
+ */
+export function tagValueCountsSql(
+  bands: readonly RegisteredL2Band[],
+  name: string,
+  values: readonly string[],
+  from = 0,
+): string {
+  const f = namesOf(
+    bands.filter((b) => b.to >= from),
+    'lg',
+  );
+  if (!f.length || !values.length)
+    return `(SELECT NULL::VARCHAR AS value, NULL::BIGINT AS uploads, NULL::UBIGINT AS first_height, NULL::UBIGINT AS last_height WHERE false)`;
+  const n = sq(name);
+  const one = (v: string) =>
+    `SELECT value, txs, first_height, last_height FROM ${readList(f)}
+      WHERE name8 = hkey(${n}) AND val8 = hkey(${sq(v)}) AND name = CAST(${n} AS BLOB) AND value = CAST(${sq(v)} AS BLOB)`;
+  return `(SELECT CAST(value AS VARCHAR) AS value, sum(txs)::BIGINT AS uploads, min(first_height) AS first_height, max(last_height) AS last_height
+    FROM (${values.map(one).join('\n    UNION ALL ')}) GROUP BY 1)`;
+}
+
+/** What `tagValueCountsSql` will fetch: the row groups each value's key can sit in, and their bloom filters. */
+export function tagValuesReadAhead(
+  bands: readonly RegisteredL2Band[],
+  name: string,
+  values: readonly string[],
+  from = 0,
+): ReadAhead {
+  const n = `hkey(${sq(name)})`;
+  return {
+    files: namesOf(
+      bands.filter((b) => b.to >= from),
+      'lg',
+    ),
+    keep: [
+      { column: 'name8', lo: n, hi: n },
+      { column: 'val8', any: values.map((v) => `hkey(${sq(v)})`) },
+    ],
+    columns: ['name8', 'val8', 'name', 'value', 'txs', 'first_height', 'last_height'],
+  };
+}
+
+/**
  * A Unix-Time stamped in milliseconds (some apps did) would throw in
  * Date#toISOString; the value is bounded here so no formatter ever sees it.
  */

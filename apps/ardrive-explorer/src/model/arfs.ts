@@ -25,6 +25,16 @@ export interface EntityRecord {
   record_size: number | null;
 }
 
+/**
+ * A drive in a list, with its records over its whole history from the tag
+ * lookup (null without lookups). Nothing in it but itself and its root
+ * folder is `EMPTY_DRIVE_RECORDS`.
+ */
+export interface DriveRow extends EntityRecord {
+  records: number | null;
+}
+export const EMPTY_DRIVE_RECORDS = 2;
+
 /** Arrow rows are proxies and hold BigInts: convert once, here. */
 export function toRecord(r: Record<string, unknown>): EntityRecord {
   const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));

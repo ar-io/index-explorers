@@ -20,7 +20,13 @@ import {
 } from '@ar-io/index-client';
 
 import { CONFIG } from '../config.js';
-import { buildDriveModel, type EntityRecord, toRecord } from '../model/arfs.js';
+import {
+  buildDriveModel,
+  type DriveRow,
+  EMPTY_DRIVE_RECORDS,
+  type EntityRecord,
+  toRecord,
+} from '../model/arfs.js';
 import { toRecordsChunked, yieldToBrowser } from '../model/rows.js';
 import type { Session } from '../session.js';
 import { emptyContent } from '../store.js';
@@ -28,7 +34,9 @@ import { emptyContent } from '../store.js';
 export interface BrowseState {
   period: string;
   hi: number;
-  rows: EntityRecord[];
+  rows: DriveRow[];
+  /** Drives left out as empty. */
+  hidden: number;
   step: number;
   done: boolean;
 }
@@ -51,6 +59,31 @@ export function createDriveFlows(s: Session) {
   const st = s.store;
   let browseState: BrowseState | null = null;
 
+  /**
+   * Each drive's records over its whole history, from the tag lookup, read
+   * ahead in parallel first. A drive's records never come before the drive,
+   * so only the bands from the oldest of them on are read.
+   */
+  async function withRecords(rows: EntityRecord[], my: number): Promise<DriveRow[]> {
+    const ids = [...new Set(rows.map((r) => r.drive_id).filter((d): d is string => !!d))];
+    if (!s.hasLookups || !ids.length) return rows.map((r) => ({ ...r, records: null }));
+    const bands = s.registeredBands();
+    const from = Math.min(...rows.map((r) => r.height));
+    const counts = new Map<string, number>();
+    for (let i = 0; i < ids.length; i += CONFIG.page) {
+      const part = ids.slice(i, i + CONFIG.page);
+      await readAhead(s.engine!, [arfs.driveRecordCountsReadAhead(bands, part, from)], {
+        stop: () => s.overtaken(my),
+      });
+      if (s.overtaken(my)) break;
+      for (const r of rowsOf(
+        await s.engine!.query(`SELECT * FROM ${arfs.driveRecordCountsSql(bands, part, from)}`),
+      ))
+        counts.set(String(r.drive_id), Number(r.records));
+    }
+    return rows.map((r) => ({ ...r, records: counts.get(r.drive_id ?? '') ?? null }));
+  }
+
   async function browse(reset: boolean): Promise<void> {
     const my = ++s.nav;
     st.tr(`browse reset=${reset}`);
@@ -65,13 +98,14 @@ export function createDriveFlows(s: Session) {
         title: 'Newest drives',
         sub: `Drives created ${when ?? p.label.toLowerCase()}, newest first.`,
       };
-      browseState = { period: p.id, hi: p.hi, rows: [], step: 1000, done: false };
+      browseState = { period: p.id, hi: p.hi, rows: [], hidden: 0, step: 1000, done: false };
     }
     const bs = browseState;
     if (bs.done) return;
     const where = filtersSql(st.privacy.value, st.app.value);
+    const hide = st.hideEmpty.value && s.hasLookups;
     const r = await s.measured('Reading drives', async () => {
-      const got: EntityRecord[] = [];
+      const got: DriveRow[] = [];
       // Walk back in windows until a page is full: a window that comes back
       // nearly empty is doubled, so a quiet period does not cost many requests.
       while (got.length < CONFIG.page && bs.hi >= p.lo) {
@@ -79,9 +113,13 @@ export function createDriveFlows(s: Session) {
         const rows = rowsOf(
           await s.engine!.query(arfs.newestDrivesSql(s.registeredBands(), lo, bs.hi, where)),
         ).map(toRecord);
-        got.push(...rows);
         bs.hi = lo - 1;
         if (rows.length < CONFIG.page / 4) bs.step = Math.min(bs.step * 2, 64000);
+        for (const d of await withRecords(rows, my)) {
+          if (hide && d.records !== null && d.records <= EMPTY_DRIVE_RECORDS) bs.hidden++;
+          else got.push(d);
+        }
+        if (s.overtaken(my)) break;
       }
       if (bs.hi < p.lo) bs.done = true;
       return got;
@@ -97,7 +135,9 @@ export function createDriveFlows(s: Session) {
         ? [
             {
               kind: 'text',
-              label: `${num(bs.rows.length)} drive${bs.rows.length === 1 ? '' : 's'} in this period.`,
+              label:
+                `${num(bs.rows.length)} drive${bs.rows.length === 1 ? '' : 's'} in this period` +
+                (bs.hidden ? `, and ${num(bs.hidden)} empty ones hidden.` : '.'),
             },
           ]
         : [
@@ -106,7 +146,8 @@ export function createDriveFlows(s: Session) {
               kind: 'text',
               label:
                 `${num(bs.rows.length)} so far, back to block ${num(bs.hi + 1)}` +
-                (timeAt(s.bands, bs.hi + 1) ? ` (${fmtDay(timeAt(s.bands, bs.hi + 1)!)})` : ''),
+                (timeAt(s.bands, bs.hi + 1) ? ` (${fmtDay(timeAt(s.bands, bs.hi + 1)!)})` : '') +
+                (bs.hidden ? `; ${num(bs.hidden)} empty ones hidden` : ''),
             },
           ],
       exportable: {
@@ -119,7 +160,7 @@ export function createDriveFlows(s: Session) {
           'app',
           'app_version',
           'arfs',
-          'versions',
+          'records',
         ],
         rows: bs.rows as unknown as Record<string, unknown>[],
         isTime: new Set(['created_at']),

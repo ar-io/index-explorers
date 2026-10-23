@@ -67,6 +67,25 @@ describe('read ahead over the recorded band', () => {
   });
   afterAll(() => c.closeSync());
 
+  it('a set of values names the row groups holding any of them, and only those', async () => {
+    const lg = band.names.lg!;
+    const ids = (
+      await q(
+        c,
+        `SELECT CAST(value AS VARCHAR) AS v FROM read_parquet('${lg}') WHERE name = CAST('Drive-Id' AS BLOB) ORDER BY val8 LIMIT 3`,
+      )
+    ).map((r) => String(r.v));
+    expect(ids.length).toBe(3);
+    const plan = parquetL2.tagValuesReadAhead([band], 'Drive-Id', ids);
+    const keys = ids.map((v) => `hkey('${v}')`).join(',');
+    const need = await rowGroupsOf(c, lg, `name8 = hkey('Drive-Id') AND val8 IN (${keys})`);
+    const got = await coveredGroups(c, lg, readAheadSql(plan));
+    for (const g of need) expect(got).toContain(g);
+    // An empty set keeps nothing.
+    const none = await q(c, readAheadSql(parquetL2.tagValuesReadAhead([band], 'Drive-Id', [])));
+    expect(none.length).toBe(0);
+  });
+
   it('a tag lookup names the row groups holding the pair, and each of its columns', async () => {
     const lg = band.names.lg!;
     const [pair] = await q(

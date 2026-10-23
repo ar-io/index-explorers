@@ -113,6 +113,30 @@ describe('parquet-l2 over the recorded band (blocks 700,000–799,999)', () => {
     expect(n(viaMacro[0]!.n)).toBe(n(drive!.n));
   });
 
+  it('driveRecordCounts gives each drive its records, as drive_window and a scan do', async () => {
+    const drives = await q(
+      c,
+      'SELECT drive_id, count(*) AS n, min(height) AS lo FROM entities WHERE drive_id IS NOT NULL GROUP BY drive_id ORDER BY n DESC, drive_id LIMIT 4',
+    );
+    const ids = drives.map((d) => String(d.drive_id));
+    const absent = '00000000-0000-0000-0000-000000000000';
+    const from = Math.min(...drives.map((d) => n(d.lo)));
+    const got = await q(
+      c,
+      `SELECT * FROM ${arfs.driveRecordCountsSql([band], [...ids, absent], from)} ORDER BY drive_id`,
+    );
+    const m = Object.fromEntries(got.map((r) => [String(r.drive_id), n(r.records)]));
+    for (const d of drives) {
+      expect(m[String(d.drive_id)]).toBe(n(d.n));
+      const [w] = await q(c, `SELECT records FROM drive_window('${String(d.drive_id)}')`);
+      expect(m[String(d.drive_id)]).toBe(n(w!.records));
+    }
+    // A value no record carries has no row; a band wholly before `from` is not read.
+    expect(absent in m).toBe(false);
+    const later = await q(c, `SELECT * FROM ${arfs.driveRecordCountsSql([band], ids, 800000)}`);
+    expect(later.length).toBe(0);
+  });
+
   it('find_id and wallet_totals agree with the tables', async () => {
     const [u] = await q(c, 'SELECT id, owner, data_size FROM uploads ORDER BY id LIMIT 1');
     const found = await q(c, `SELECT * FROM find_id('${u!.id}')`);
