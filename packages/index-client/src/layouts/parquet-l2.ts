@@ -14,6 +14,8 @@
  * touches: a view over every band would read every file's footer on the
  * first query.
  */
+import type { ReadAhead } from '../engine/read-ahead.js';
+import { sq } from '../util/format.js';
 import { KEY_MACROS, readList } from './keys.js';
 
 export const L2_SCHEMA = 'l2-1';
@@ -98,6 +100,48 @@ export function itemsSql(
     ? 'any_value(owner_address) AS owner_address, any_value(data_size) AS data_size'
     : 'any_value(owner_address) AS owner_address, any_value(root_transaction_id) AS root_transaction_id, any_value(data_size) AS data_size, any_value(content_type) AS content_type';
   return `(SELECT id, height, ${cols} FROM ${readList(f)} WHERE height BETWEEN ${lo} AND ${hi} GROUP BY id, height)`;
+}
+
+/**
+ * What reading a window's items and tags (`itemsSql` slim, `tagsSql`) will
+ * fetch: the row groups its heights touch, in the files of the bands it touches.
+ */
+export function windowReadAhead(
+  bands: readonly RegisteredL2Band[],
+  lo: number,
+  hi: number,
+): ReadAhead[] {
+  const inWindow = bandsInWindow(bands, lo, hi);
+  const keep = [{ column: 'height', lo: String(lo), hi: String(hi) }];
+  return [
+    {
+      files: namesOf(inWindow, 'it'),
+      keep,
+      columns: ['id', 'height', 'owner_address', 'data_size'],
+    },
+    { files: namesOf(inWindow, 'tg'), keep, columns: ['id', 'height', 'tag_name', 'tag_value'] },
+  ];
+}
+
+/**
+ * What finding one tag pair in `lookup_tag` will fetch, over every band: the
+ * row groups whose key statistics can hold the pair (the file is sorted by them).
+ */
+export function tagLookupReadAhead(
+  bands: readonly RegisteredL2Band[],
+  name: string,
+  value: string,
+): ReadAhead {
+  const n = `hkey(${sq(name)})`;
+  const v = `hkey(${sq(value)})`;
+  return {
+    files: namesOf(bands, 'lg'),
+    keep: [
+      { column: 'name8', lo: n, hi: n },
+      { column: 'val8', lo: v, hi: v },
+    ],
+    columns: ['name8', 'val8', 'name', 'value', 'txs', 'first_height', 'last_height'],
+  };
 }
 
 /**

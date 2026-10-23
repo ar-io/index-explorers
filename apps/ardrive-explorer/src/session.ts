@@ -342,6 +342,7 @@ export class Session {
         await engine.registerUrl(
           name,
           this.reader!.url(rangeSpec(band, file, { mirrors: this.mirrors })),
+          file.size,
         );
         names[kind] = name;
       }

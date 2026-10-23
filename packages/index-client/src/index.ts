@@ -31,6 +31,7 @@ export {
   BLOCK,
 } from './range/torrent.js';
 export * from './engine/engine.js';
+export * from './engine/read-ahead.js';
 export * from './layouts/keys.js';
 export * as parquetL2 from './layouts/parquet-l2.js';
 export * as arfs from './layouts/arfs.js';
