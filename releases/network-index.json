@@ -1,9 +1,9 @@
 {
   "app": "network-index",
-  "version": "1.1.0",
-  "verifiedAt": "2026-10-22T12:53:28.110Z",
+  "version": "1.2.0",
+  "verifiedAt": "2026-10-23T16:17:29.748Z",
   "verifiedBy": "vilenarios",
-  "commit": "b894333f338953a6966880873e457ca19e04cd3c",
+  "commit": "dbe7e6055c9d5800776951e89e73a07ce905bf66",
   "machine": "linux arm64, node v23.9.0",
   "steps": [
     {
@@ -20,32 +20,32 @@
     },
     {
       "name": "format and types",
-      "seconds": 21.9
+      "seconds": 21.8
     },
     {
       "name": "unit and integration tests",
-      "seconds": 24.5
+      "seconds": 17.5
     },
     {
       "name": "E2E builds",
-      "seconds": 14.5
+      "seconds": 14.3
     },
     {
       "name": "E2E on the fixture gateway",
-      "seconds": 13.8
+      "seconds": 14.3
     },
     {
       "name": "production builds",
-      "seconds": 14
+      "seconds": 16.1
     },
     {
       "name": "live E2E against turbo-gateway.com",
-      "seconds": 30.7
+      "seconds": 31.4
     }
   ],
   "sources": {
-    "apps/network-index": "56b3b1a23ff04cd7a51cb16808419be36a145baf",
-    "packages": "6b6854df31074693de69e1fdc948d052dfd1ebd2",
+    "apps/network-index": "e7ba9fc3e896354dad37c1d4cdda2285e8582b96",
+    "packages": "bf296d867fb79f0cbb42a4df5553d531a6f2a5b4",
     "package.json": "6ec6e9e3ff664b83ac82679f8c31d64e500020e3",
     "pnpm-lock.yaml": "0c3b661a24a82f83615a29fb66c5bf53e9ba6c9a",
     "pnpm-workspace.yaml": "8c81b3b1946d0b6aba407e9918ef96892ab1901e",
@@ -53,6 +53,7 @@
     "engine.lock.json": "4acde2319817b97429ddb1b7603b3806829b7923"
   },
   "dist": {
+    "apple-touch-icon.png": "3dc979bb165838222859ee052672f185cf7eb9c620ba66a4084aaeabf204df02",
     "assets/ario-full-white-CluK9Jx-.svg": "a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490",
     "assets/arrow-BrJ3Opv-.js": "d7c8e02c630324ecd288c24015c22148fdf865e3b6283bc859130c7460a28ee2",
     "assets/arrow-BrJ3Opv-.js.map": "6d4717757ed96fb91b478245209d36df96d4e2283b5cdfbe2dfd0680a53e6f45",
@@ -64,7 +65,11 @@
     "assets/index-D-J956uk.js.map": "53eb136855b6e112d40f3698d72cf01245762605bc0295d9299e8c92cd30f89f",
     "assets/index-szw5Sw_4.css": "05c70d11f4b6a04e33b16c94f4c453b20f535c6917ce73963373e4e2f6b03a01",
     "assets/plus-jakarta-sans-normal-latin-eXO_dkmS.woff2": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
-    "index.html": "ab6a4abe73dbb80df9950867a85b4905df4e7c3ba1eb9cd84e64072668a923f9",
+    "favicon-32.png": "97366221702d7aab4d26fbb958654edbfa9a58c2f171bf1f8c8a6f3ded255d19",
+    "favicon-dark.svg": "325fd96b1df10a02e063f81afc5c111f7a87539ffe6356290c666f72739c7862",
+    "favicon.svg": "267d63fed31ab5db02b32014ac600a57fa2cd5a352d6afb69d891d67cc5f3cbc",
+    "index.html": "92615eac2540d661adaff1cc894903e72e79cb3fbd19353f7de5132ab7e56a52",
+    "social.png": "2d8a3c663c9636b14c3528f081b31c6808084b95844a1bc8311db27aefeabdb0",
     "sw.js": "7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2"
   }
 }
