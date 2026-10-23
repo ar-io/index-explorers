@@ -8,6 +8,7 @@ import fs from 'node:fs';
 
 import {
   clearStatus,
+  driveOpened,
   driveRows,
   GW,
   KNOWN,
@@ -188,15 +189,9 @@ test('every preset runs; a bad query is reported; a drive_id link opens the driv
   await page.click('#run');
   await waitAnswer(page);
   await page.locator('#results tbody tr').first().locator('.rowlink').first().click();
-  // The newest drive may hold no files yet: it opened when its records were
-  // read and its root says it is empty.
-  const opened = async () =>
-    (await driveRows(page)) > 0 ||
-    (await page.locator('#cost').isVisible()) ||
-    ((await page.locator('#b-empty').isVisible()) &&
-      /records? between blocks/.test((await page.locator('#b-sub').textContent()) ?? ''));
-  await until(page, opened, 120_000, 'drive from query link');
-  expect(await opened()).toBe(true);
+  // The newest drive may hold no files yet.
+  await until(page, () => driveOpened(page), 120_000, 'drive from query link');
+  expect(await driveOpened(page)).toBe(true);
 });
 
 test('a share link carries the drive and opens it in a new tab', async ({ browser }) => {
@@ -205,14 +200,7 @@ test('a share link carries the drive and opens it in a new tab', async ({ browse
   expect(href).toMatch(/#.*drive=/);
   const p2 = await browser.newPage({ colorScheme: 'dark' });
   await p2.goto(href);
-  const ok = await until(
-    p2,
-    async () =>
-      (await p2.locator('#b-list tbody tr.b-row').count()) > 0 ||
-      (await p2.locator('#cost').isVisible()),
-    180_000,
-    'shared drive',
-  );
+  const ok = await until(p2, () => driveOpened(p2), 180_000, 'shared drive');
   expect(ok).toBe(true);
   await p2.close();
 });

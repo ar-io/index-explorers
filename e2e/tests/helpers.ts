@@ -54,6 +54,15 @@ export const title = (page: Page) =>
     .catch(() => '');
 export const rows = (page: Page) => page.locator('#results tbody tr').count();
 export const driveRows = (page: Page) => page.locator('#b-list tbody tr.b-row').count();
+/**
+ * A drive has opened: it lists rows, asks about its cost first, or (a drive
+ * that holds no files yet) its records are read and its root says it is empty.
+ */
+export const driveOpened = async (page: Page) =>
+  (await driveRows(page)) > 0 ||
+  (await page.locator('#cost').isVisible()) ||
+  ((await page.locator('#b-empty').isVisible()) &&
+    /records? between blocks/.test((await page.locator('#b-sub').textContent()) ?? ''));
 
 /** Polls until `fn` is true, logging the status on a timeout. */
 export async function until(
