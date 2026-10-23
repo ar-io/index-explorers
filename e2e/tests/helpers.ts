@@ -77,6 +77,22 @@ export async function until(
     await page.waitForTimeout(250);
   }
   console.log('TIMEOUT', what, '| status:', await status(page));
+  // What the page was doing, for a timeout on a runner where nothing else is kept.
+  const state = await page
+    .evaluate(() => {
+      const x = (window as unknown as { __explorer?: Record<string, unknown> }).__explorer;
+      const st = x?.store as Record<string, { value?: unknown }> | undefined;
+      const se = x?.session as Record<string, unknown> | undefined;
+      return JSON.stringify({
+        working: st?.working?.value,
+        busy: se?.busy,
+        progress: st?.progress?.value,
+        sw: !!navigator.serviceWorker?.controller,
+        trace: (x?.trace as string[] | undefined)?.slice(-20),
+      });
+    })
+    .catch((e: unknown) => `(page state unavailable: ${String(e)})`);
+  console.log('TIMEOUT', what, '| page:', state);
   return false;
 }
 
