@@ -2,6 +2,27 @@
 
 Every upload, newest first. The manifest id is what the ArNS name points at. Each entry lists the SHA-256 of every uploaded file, so a rebuild of the same commit can be compared with what is live.
 
+## 2026-10-23 · arweave-l1-explorer 1.1.0
+
+- manifest: `exZkzJUmJmubWRt2eomIlzwTm1yrIujBR16z6yQlr9w`
+- name: https://arweave-l1-search.ar.io
+- before: `HK9Uy7kJj5BC_AlLA5TWDBHi78YBIE8NgY2x5OmWdk8` (point the record back at it to roll back)
+- commit: dbf912f
+- files:
+  - `assets/ario-full-white-CluK9Jx-.svg` a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490
+  - `assets/arrow-C6ch5XQ7.js` be8bc38f3801bd076186c30711cd432a3dcd9b7763d980467fd1ca79dfdc4e07
+  - `assets/arrow-C6ch5XQ7.js.map` 77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d
+  - `assets/besley-italic-latin-CVKtkS9L.woff2` 028647731182464ccd117da3f56747d8c80f914a06c854624917b8fbd2d02f0c
+  - `assets/besley-normal-latin-IX-hlgPH.woff2` 45a619033dd926aa09d426017d7c0e347f206b40132eeb4b007201a342cdcb46
+  - `assets/duckdb-DEFjrUmw.js` bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2
+  - `assets/duckdb-DEFjrUmw.js.map` d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c
+  - `assets/index-BYUBus2m.css` 44e050b6fa3001753a27b3dcdbb45bf032d3101dc463890c7de0d6414341c2a4
+  - `assets/index-Bks9s5Dl.js` 086f1c4738bdb4bf9376c39ee004b3c807afe0a71a43b2fc57d363d768a28f3d
+  - `assets/index-Bks9s5Dl.js.map` b17a7a6c113152c1b6001cc8b2747e22c1649c623fbda0479358c26f4cfee93c
+  - `assets/plus-jakarta-sans-normal-latin-eXO_dkmS.woff2` 153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79
+  - `index.html` bce55248d8f8d5f581ae3fad46b14cf31f7d50463deb6d0bd36d11a1b8d9c07a
+  - `sw.js` 7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2
+
 ## 2026-10-21 · arweave-l1-explorer 1.0.0
 
 - manifest: `HK9Uy7kJj5BC_AlLA5TWDBHi78YBIE8NgY2x5OmWdk8`
