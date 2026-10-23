@@ -4,7 +4,7 @@ import type { ComponentChildren } from 'preact';
 
 import { CONFIG } from '../config.js';
 import { useApp } from '../context.js';
-import type { EntityRecord } from '../model/arfs.js';
+import type { DriveRow } from '../model/arfs.js';
 import type { Column, TableContent } from '../store.js';
 import { saveFile, toCsv, toJson } from '../util/export.js';
 import { captionSegments } from '../data/questions.js';
@@ -57,7 +57,7 @@ export function Name({
   );
 }
 
-function DrivesTable({ rows }: { rows: EntityRecord[] }) {
+function DrivesTable({ rows }: { rows: DriveRow[] }) {
   const { flows } = useApp();
   return (
     <table id="results">
@@ -68,7 +68,11 @@ function DrivesTable({ rows }: { rows: EntityRecord[] }) {
           <th scope="col">Created</th>
           <th scope="col">Privacy</th>
           <th scope="col">App</th>
-          <th scope="col" class="num">
+          <th
+            scope="col"
+            class="num"
+            title="Records over the drive's whole history, from the signed tag lookup. A drive with nothing in it has 2: itself and its root folder."
+          >
             Records
           </th>
         </tr>
@@ -112,7 +116,7 @@ function DrivesTable({ rows }: { rows: EntityRecord[] }) {
                 <Badge text={r.privacy} kind={r.privacy} />
               </td>
               <td>{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
-              <td class="num">{num((r as unknown as { versions: number }).versions)}</td>
+              <td class="num">{r.records === null ? '—' : num(r.records)}</td>
             </tr>
           );
         })}
@@ -411,7 +415,7 @@ export function ViewArea() {
       <div class="tablewrap" hidden={!c.table || !c.table.rows.length}>
         {c.table && c.table.rows.length ? (
           c.table.preset === 'drives' ? (
-            <DrivesTable rows={c.table.rows as unknown as EntityRecord[]} />
+            <DrivesTable rows={c.table.rows as unknown as DriveRow[]} />
           ) : c.table.preset === 'walletDrives' ? (
             <WalletDrivesTable rows={c.table.rows as unknown as WalletDrive[]} />
           ) : (

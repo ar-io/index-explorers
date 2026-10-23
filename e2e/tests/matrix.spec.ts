@@ -57,6 +57,43 @@ test('publication verifies, the range reader controls the page, drives list with
   expect(await page.locator('#namesnote').isVisible()).toBe(true);
 });
 
+test('records come from the lookup; empty drives stay hidden until asked for', async () => {
+  const counts = async () =>
+    (await page.locator('#results tbody td.num').allInnerTexts()).map((t) =>
+      Number(t.replace(/,/g, '')),
+    );
+  const shown = await counts();
+  expect(shown.length).toBeGreaterThan(0);
+  // A drive with nothing in it has 2 records: itself and its root folder.
+  expect(
+    shown.every((n) => Number.isInteger(n) && n > 2),
+    shown.join(' '),
+  ).toBe(true);
+  await clearStatus(page);
+  await page.selectOption('#contents', 'any');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'empty ones too',
+  );
+  const all = await counts();
+  expect(
+    all.every((n) => Number.isInteger(n) && n >= 1),
+    all.join(' '),
+  ).toBe(true);
+  // The live index's newest drives include empty ones (2026-10-23: test_nft).
+  if (LIVE) expect(all.some((n) => n <= 2)).toBe(true);
+  await clearStatus(page);
+  await page.selectOption('#contents', 'some');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'with contents',
+  );
+});
+
 test('filters: privacy, app and period reload the listing', async () => {
   await clearStatus(page);
   await page.selectOption('#privacy', 'public');

@@ -167,6 +167,8 @@ export class Store {
   readonly periodId = signal<string>('month');
   readonly privacy = signal<'any' | 'public' | 'private'>('any');
   readonly app = signal<string>('any');
+  /** The drives list leaves out drives with nothing but their root folder. */
+  readonly hideEmpty = signal(true);
   readonly view = signal<ViewState>({ kind: 'browse' });
   readonly content = signal<ViewContent>(emptyContent());
   readonly status = signal<StatusLine>({ text: '', cls: '' });

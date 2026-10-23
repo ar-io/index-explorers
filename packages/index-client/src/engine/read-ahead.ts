@@ -20,9 +20,13 @@ export interface ReadAhead {
    * A row group is kept when every bound overlaps the statistics of its
    * column: `[min, max]` meets `[lo, hi]`. `lo` and `hi` are SQL expressions,
    * compared as HUGEINT, so `hkey('Drive-Id')` works as well as a height.
-   * A row group without statistics is kept.
+   * A row group without statistics is kept. A bound with `any` instead
+   * keeps a row group whose `[min, max]` holds any one of those values.
    */
-  keep: readonly { column: string; lo: string; hi: string }[];
+  keep: readonly (
+    | { column: string; lo: string; hi: string }
+    | { column: string; any: readonly string[] }
+  )[];
   /** The columns the query reads; null for every column of the row groups kept. */
   columns: readonly string[] | null;
 }
@@ -39,20 +43,26 @@ const lit = (s: string) => `'${s.replace(/'/g, "''")}'`;
 /**
  * The column chunks a read ahead names, from the files' footers:
  * `file_name, start, len`, ordered by file and offset. For a bound on one
- * value (`lo` and `hi` the same), the column's bloom filters in the kept row
+ * value (`lo` and `hi` the same, or `any`), the column's bloom filters in the kept row
  * groups too: the engine checks them before it reads a row group.
  */
 export function readAheadSql(ra: ReadAhead): string {
   const files = `parquet_metadata([${ra.files.map(lit).join(',')}])`;
-  const points = ra.keep.filter((k) => k.lo === k.hi).map((k) => k.column);
-  const bounds = ra.keep.length
-    ? ra.keep
-        .map(
-          (k) => `WHEN col = ${lit(k.column)} THEN coalesce(
-            TRY_CAST(min_v AS HUGEINT) <= CAST(${k.hi} AS HUGEINT) AND TRY_CAST(max_v AS HUGEINT) >= CAST(${k.lo} AS HUGEINT), true)`,
-        )
-        .join(' ')
-    : '';
+  const points = ra.keep.filter((k) => 'any' in k || k.lo === k.hi).map((k) => k.column);
+  const overlaps = (lo: string, hi: string) =>
+    `TRY_CAST(min_v AS HUGEINT) <= CAST(${hi} AS HUGEINT) AND TRY_CAST(max_v AS HUGEINT) >= CAST(${lo} AS HUGEINT)`;
+  const bounds = ra.keep
+    .map(
+      (k) =>
+        `WHEN col = ${lit(k.column)} THEN coalesce(${
+          'any' in k
+            ? k.any.length
+              ? k.any.map((v) => `(${overlaps(v, v)})`).join(' OR ')
+              : 'false'
+            : overlaps(k.lo, k.hi)
+        }, true)`,
+    )
+    .join(' ');
   return `WITH m AS (
       SELECT file_name, row_group_id, path_in_schema AS col, stats_min_value AS min_v, stats_max_value AS max_v,
         CASE WHEN coalesce(dictionary_page_offset, 0) > 0 THEN least(dictionary_page_offset, data_page_offset) ELSE data_page_offset END AS start,
