@@ -188,13 +188,15 @@ test('every preset runs; a bad query is reported; a drive_id link opens the driv
   await page.click('#run');
   await waitAnswer(page);
   await page.locator('#results tbody tr').first().locator('.rowlink').first().click();
-  await until(
-    page,
-    async () => (await driveRows(page)) > 0 || (await page.locator('#cost').isVisible()),
-    120_000,
-    'drive from query link',
-  );
-  expect((await driveRows(page)) > 0 || (await page.locator('#cost').isVisible())).toBe(true);
+  // The newest drive may hold no files yet: it opened when its records were
+  // read and its root says it is empty.
+  const opened = async () =>
+    (await driveRows(page)) > 0 ||
+    (await page.locator('#cost').isVisible()) ||
+    ((await page.locator('#b-empty').isVisible()) &&
+      /records? between blocks/.test((await page.locator('#b-sub').textContent()) ?? ''));
+  await until(page, opened, 120_000, 'drive from query link');
+  expect(await opened()).toBe(true);
 });
 
 test('a share link carries the drive and opens it in a new tab', async ({ browser }) => {
