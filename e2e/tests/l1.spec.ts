@@ -45,10 +45,22 @@ test.describe('arweave-l1-explorer', () => {
           window as unknown as { __explorer: { store: { say(t: string): void } } }
         ).__explorer.store.say(''),
       );
+    // An answer is its receipt (case matters: a period load says "Questions
+    // read only what they need") with nothing left running.
     const answered = () =>
       until(
         page,
-        async () => /rows? in|Read |Nothing new|Answered|error|could not/i.test(await status()),
+        async () => {
+          const s = await status();
+          return (
+            (/rows? in|Read |Nothing new|Answered/.test(s) || /error|could not/i.test(s)) &&
+            !(await page.evaluate(
+              () =>
+                (window as unknown as { __explorer: { store: { working: { value: boolean } } } })
+                  .__explorer.store.working.value,
+            ))
+          );
+        },
         LIVE ? 300_000 : 120_000,
         'answer',
       );

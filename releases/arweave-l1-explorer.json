@@ -1,14 +1,14 @@
 {
   "app": "arweave-l1-explorer",
-  "version": "1.2.0",
-  "verifiedAt": "2026-10-23T16:15:26.150Z",
+  "version": "1.2.1",
+  "verifiedAt": "2026-10-23T18:47:10.517Z",
   "verifiedBy": "vilenarios",
-  "commit": "dbe7e6055c9d5800776951e89e73a07ce905bf66",
+  "commit": "cbc369c1ff86454c66e277d05a4990eb415dc7ba",
   "machine": "linux arm64, node v23.9.0",
   "steps": [
     {
       "name": "install",
-      "seconds": 1.7
+      "seconds": 0
     },
     {
       "name": "engine files",
@@ -16,31 +16,31 @@
     },
     {
       "name": "engine pins against two gateways",
-      "seconds": 4.8
+      "seconds": 4.5
     },
     {
       "name": "format and types",
-      "seconds": 27.9
+      "seconds": 25
     },
     {
       "name": "unit and integration tests",
-      "seconds": 18.4
+      "seconds": 19.8
     },
     {
       "name": "E2E builds",
-      "seconds": 11.9
+      "seconds": 14.5
     },
     {
       "name": "E2E on the fixture gateway",
-      "seconds": 15.8
+      "seconds": 15.9
     },
     {
       "name": "production builds",
-      "seconds": 14.3
+      "seconds": 16.5
     },
     {
       "name": "live E2E against turbo-gateway.com",
-      "seconds": 286.4
+      "seconds": 285.7
     }
   ],
   "sources": {
