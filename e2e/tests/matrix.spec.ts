@@ -1,5 +1,5 @@
 /**
- * The capability matrix, ported from v0's test/run2.mjs: filters, periods and
+ * The capability matrix: filters, periods and
  * their gates, exports, every question and preset, share links, private
  * drives, wallets, ids, Stop, the data-source drawer, themes and viewports.
  */

@@ -89,7 +89,7 @@ worker as `sw.js` beside the page and serves it in dev.
   the answer is never assembled from unchecked bytes.
 - Names (record JSON) are not this package's business: they are not covered
   by the signature. Apps fetch them and say so.
-- Lessons from v0 (V1-ARCHITECTURE.md §8): convert Arrow rows at the
+- The lessons in the repo's `CONTRIBUTING.md`: convert Arrow rows at the
   boundary; build views per height window; dedupe `data_items` with
   `GROUP BY`; a per-window cost minimum; reset the connection after OOM;
   resume the worker after Stop; drop `records: 0` bands; bound `Unix-Time`

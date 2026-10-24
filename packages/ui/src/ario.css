@@ -44,7 +44,7 @@
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Light by default, as v0 was: White with Card Surface and Lavender Wash,
+/* Light by default, as the original pages were: White with Card Surface and Lavender Wash,
    Black text muted by opacity, Primary accents. */
 :root[data-brand='ario'] {
   --primary: #5427c8;

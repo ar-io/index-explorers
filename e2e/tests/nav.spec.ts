@@ -1,5 +1,5 @@
 /**
- * Navigation, ported from v0's test/nav.mjs: folders, breadcrumbs, Back and
+ * Navigation: folders, breadcrumbs, Back and
  * Forward through the browser history, a copied link landing inside a folder,
  * and the timing of each move (folder moves ≤ 400 ms).
  *

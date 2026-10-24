@@ -28,7 +28,7 @@ test.describe('arweave-l1-explorer', () => {
       await page.locator('#proof-text').innerText(),
     ).toBe('ok');
     expect(await page.evaluate(() => !!navigator.serviceWorker?.controller)).toBe(true);
-    // The editor opens with the first example, as v0's did, so Run answers at once.
+    // The editor opens with the first example, so Run answers at once.
     expect(await page.inputValue('#sql')).toMatch(/^SELECT height, count\(\*\) AS txs/);
     const status = () =>
       page

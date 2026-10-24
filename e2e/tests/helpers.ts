@@ -23,7 +23,7 @@ export interface Known {
   tip: number;
 }
 
-/** The ids each suite exercises: the synthetic fixture's, or the live drives V1-ARCHITECTURE.md names. */
+/** The ids each suite exercises: the synthetic fixture's, or known live drives. */
 export const KNOWN: Known = LIVE
   ? {
       bigDrive: 'b76a5542-40c4-415c-8796-365d8dc365c7',
