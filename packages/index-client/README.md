@@ -34,8 +34,8 @@ The formats are documented in ar-io/ar-io-node under `docs/`
 | `range/sw.ts` | the service worker (built to `sw.js` by the Vite plugin in `vite.ts`) |
 | `range/reader.ts` | `registerRangeReader`, `rangeSpec`, `rangeable`, receipts (`Watch`, `receiptText`), `explainReadError` |
 | `engine/engine.ts` | `openEngine`/`Engine` (one serialised connection, `registerUrl`, `resetConnection`), `rowsOf`, `columnsOf`, `timeColumnsOf` |
-| `layouts/parquet-l2.ts` | the generic `parquet-l2` layout, any selection: `l2BaseSql` (items, tags, lookups, `uploads_between`, `find_id`, `wallet_totals`, `tag_counts`), `l2PeriodViewsSql` (`uploads`, `tags`), `itemsSql`, `tagsSql`, `uploadsSql`, `tagCountsSql` |
-| `layouts/arfs.ts` | ArDrive's layer over it, the worked example of a selection layer: `entitiesSql`, `arfsBaseSql` (`entities_between`, `drive_window`, `drive`), `arfsPeriodViewsSql` (`entities`, `drives`, `folders`, `files`), `newestDrivesSql`, `clusterSql` |
+| `layouts/parquet-l2.ts` | the generic `parquet-l2` layout, any selection: `parseL2Selection`, `l2SelectionOf`, `findL2Index` (the index that selects exactly what a page reads, whatever its name), `l2BaseSql` (items, tags, lookups, `uploads_between`, `find_id`, `wallet_totals`, `tag_counts`), `l2PeriodViewsSql` (`uploads`, `tags`), `itemsSql`, `tagsSql`, `uploadsSql`, `tagCountsSql` |
+| `layouts/arfs.ts` | ArDrive's layer over it, the worked example of a selection layer: `ARDRIVE_SELECTION`, `entitiesSql`, `arfsBaseSql` (`entities_between`, `drive_window`, `drive`), `arfsPeriodViewsSql` (`entities`, `drives`, `folders`, `files`), `newestDrivesSql`, `clusterSql` |
 | `layouts/parquet-l1.ts` | `l1PeriodSql` (`blocks`, `rawtx`, `txs`, `tags`), `l1LookupSql` (`find_tx`, `wallet_totals`, `tag_counts`), `txLookupSql` |
 | `layouts/cdb64.ts` | `lookupRoot`, `cdb64Get`, `cdb64Hash`, `parseCdb64Manifest`, `decodeRootValue` |
 | `cost.ts` | `windowCost`, `buildPeriods`, `heightAt`/`timeAt`, `clusterHeights`, `sliceWindow` |
@@ -48,14 +48,16 @@ In a browser page (see `apps/ardrive-explorer/src/session.ts` for the whole flow
 ```ts
 import {
   fetchPublication, verifyPublication, selectIndex, registerRangeReader,
-  rangeSpec, openEngine, parquetL2, REGISTRY_GATEWAYS,
+  rangeSpec, openEngine, parquetL2, arfs, REGISTRY_GATEWAYS,
 } from '@ar-io/index-client';
 import lock from '../engine.lock.json';
 
 const reader = await registerRangeReader(); // ./sw.js, built by rangeReaderPlugin()
 const pub = await fetchPublication('https://turbo-gateway.com');
 const proof = await verifyPublication(pub.doc, { registryGateways: REGISTRY_GATEWAYS, excluding: pub.gateway });
-const { bands } = selectIndex(pub.doc, 'ardrive-l2', { gateway: pub.gateway });
+const found = parquetL2.findL2Index(pub.doc, arfs.ARDRIVE_SELECTION, 'ardrive-l2');
+if (found.name === null) throw new Error(found.why);
+const { bands } = selectIndex(pub.doc, found.name, { gateway: pub.gateway });
 
 const engine = await openEngine({ hosts: lock.hosts, pins: lock });
 const registered = [];

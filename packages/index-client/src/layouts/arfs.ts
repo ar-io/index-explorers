@@ -14,11 +14,22 @@ import {
   CREATED_AT,
   hasLookups,
   itemsSql,
+  type L2Selection,
   type RegisteredL2Band,
   tagsSql,
   tagValueCountsSql,
   tagValuesReadAhead,
 } from './parquet-l2.js';
+
+/**
+ * The data items this layer reads: ArDrive's, by `App-Name`. A page refuses
+ * an index that selects anything else, whatever it is called: its counts and
+ * its "every drive" would not be ArDrive's.
+ */
+export const ARDRIVE_SELECTION: L2Selection = {
+  kind: 'ans104-data-items',
+  tag: { name: 'App-Name', valuePrefix: 'ArDrive', excludeValuePrefix: 'ArDriver' },
+};
 
 /** The tags the pivot reads. Everything else on a record is left for `tags`. */
 export const ENTITY_TAGS =

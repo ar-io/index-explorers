@@ -4,7 +4,7 @@
  * registry is read through a different gateway from the data, so the signing
  * key never comes from the server that signed.
  */
-import { fetchPublication, type FetchedPublication } from './publication.js';
+import { fetchPublication, type FetchedPublication, type Publication } from './publication.js';
 import { hostOf } from './util/fetch.js';
 
 /**
@@ -68,6 +68,8 @@ export interface PickOptions {
   /** 'auto', or a gateway origin. */
   choice: string;
   indexName: string;
+  /** Whether a publication offers what the page reads: by default, an index named `indexName`. */
+  offers?: (doc: Publication) => boolean;
   candidates?: string[];
   timeoutMs?: number;
   fetch?: typeof fetch;
@@ -87,8 +89,9 @@ export async function pickGateway(opts: PickOptions): Promise<PickedGateway> {
       const fo: { timeoutMs: number; fetch?: typeof fetch } = { timeoutMs: opts.timeoutMs ?? 6000 };
       if (opts.fetch) fo.fetch = opts.fetch;
       const pub = await fetchPublication(c, fo);
-      if (pub.doc.indexes.some((i) => i.name === opts.indexName))
-        return { gateway: pub.gateway, auto: true, tried, publication: pub };
+      const offers =
+        opts.offers ?? ((d: Publication) => d.indexes.some((i) => i.name === opts.indexName));
+      if (offers(pub.doc)) return { gateway: pub.gateway, auto: true, tried, publication: pub };
     } catch {
       /* unreachable, or no index here: try the next */
     }

@@ -77,7 +77,22 @@ A subscriber takes the index by naming it:
 
 ## 4. Read it with the client
 
-Everything generic works unchanged: `selectIndex(pub.doc, 'myapp-l2', …)`,
+Find the index by what it selects, not by its name: a publisher may call it
+anything, and a name proves nothing about what the bands hold. Declare the
+selection beside your layer, as `arfs.ARDRIVE_SELECTION` is, and ask for it:
+
+```ts
+const found = parquetL2.findL2Index(pub.doc, MYAPP_SELECTION, 'myapp-l2');
+if (found.name === null) throw new Error(found.why); // says what each index selects instead
+const { bands } = selectIndex(pub.doc, found.name, { gateway: pub.gateway });
+```
+
+`findL2Index` prefers the name you give when it selects exactly that, and
+refuses an index whose bands, or whose `filter`, disagree about the
+selection (`l2SelectionOf`). Pass the same test to `pickGateway` as `offers`
+so the automatic choice skips gateways that publish something else.
+
+Everything generic then works unchanged: `selectIndex`,
 `parquetL2.l2BaseSql` (items, tags, lookups, `uploads_between`, `find_id`,
 `wallet_totals`, `tag_counts`), `parquetL2.l2PeriodViewsSql` (`uploads`,
 `tags`), the cost model and the range reader. A page that only needs
@@ -121,7 +136,8 @@ pure models, Preact views). In the ArDrive app the selection-specific parts
 are `src/model/arfs.ts` (records → tree), `src/data/drives.ts` and the
 drive browser views; the session, the publication reading, the engine, the
 receipts, the periods, the questions machinery, exports and share links are
-generic and read `CONFIG.indexName`.
+generic. The session finds its index with `findL2Index` and
+`arfs.ARDRIVE_SELECTION`; `CONFIG.indexName` only breaks a tie.
 
 Names: if your records carry a human name inside their JSON, fetch it as
 ArDrive's page does (`src/model/names.ts`), label it as not covered by the

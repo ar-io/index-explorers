@@ -36,7 +36,9 @@ it cites the gateway-side documentation in ar-io/ar-io-node.
 6. **The page.** Copy `apps/network-index` (smallest) or
    `apps/ardrive-explorer` (full). Replace the selection-specific model and
    views; keep the session, publication reading, engine, receipts, periods,
-   exports and share links. Set `CONFIG.indexName`. Keep the DOM ids the E2E
+   exports and share links. Declare the selection in the layer (as
+   `arfs.ARDRIVE_SELECTION`) and find the index with `findL2Index`, never
+   by name alone; `CONFIG.indexName` only breaks a tie. Keep the DOM ids the E2E
    helpers use.
 7. **E2E.** Port `e2e/tests/smoke.spec.ts` first, then what the page offers.
    Measure the listing path with `perf.spec.ts`'s method (in-page timings,
