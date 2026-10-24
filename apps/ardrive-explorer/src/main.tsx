@@ -1,7 +1,7 @@
 import '@preact/signals';
 import { render } from 'preact';
 
-import '@ar-io/explorer-ui/fonts/wavehaus.css';
+import '@ar-io/explorer-ui/fonts/plus-jakarta-sans.css';
 import '@ar-io/explorer-ui/tokens.css';
 import '@ar-io/explorer-ui/base.css';
 import './styles.css';

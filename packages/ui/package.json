@@ -9,7 +9,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./tokens.css": "./src/tokens.css",
-    "./fonts/wavehaus.css": "./src/fonts/wavehaus.css",
+    "./fonts/plus-jakarta-sans.css": "./src/fonts/plus-jakarta-sans.css",
     "./base.css": "./src/base.css",
     "./ario.css": "./src/ario.css",
     "./ardrive-wordmark.svg": "./src/ardrive-wordmark.svg"

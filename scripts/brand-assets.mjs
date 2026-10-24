@@ -7,7 +7,12 @@
  * (and `favicon-dark.svg` where the brand has a light variant),
  * `favicon-32.png`, and `apple-touch-icon.png` (180x180).
  *
- *   node scripts/brand-assets.mjs
+ *   WAVEHAUS_DIR=~/fonts/wavehaus node scripts/brand-assets.mjs
+ *
+ * ArDrive's card is set in Wavehaus, which may not be redistributed, so it
+ * is not in this repository: point WAVEHAUS_DIR at a folder holding
+ * Wavehaus-158ExtraBold.woff2 and Wavehaus-66Book.woff2 from ArDrive's brand
+ * kit. Without it the card falls back to Plus Jakarta Sans, and says so.
  *
  * The outputs are committed: a build never runs a browser. Change a card's
  * words here, run this, and commit what it wrote. Claims on a card are the
@@ -29,9 +34,15 @@ const ARIO_FONTS = `
   @font-face { font-family: Besley; font-weight: 400 900; font-style: normal; src: url(${url(path.join(FONTS, 'besley-normal-latin.woff2'))}); }
   @font-face { font-family: Besley; font-weight: 400 900; font-style: italic; src: url(${url(path.join(FONTS, 'besley-italic-latin.woff2'))}); }
   @font-face { font-family: 'Plus Jakarta Sans'; font-weight: 200 800; src: url(${url(path.join(FONTS, 'plus-jakarta-sans-normal-latin.woff2'))}); }`;
-const ARDRIVE_FONTS = `
-  @font-face { font-family: Wavehaus; font-weight: 800; src: url(${url(path.join(ROOT, 'scripts/brand-fonts/Wavehaus-158ExtraBold.woff2'))}); }
-  @font-face { font-family: Wavehaus; font-weight: 400; src: url(${url(path.join(ROOT, 'scripts/brand-fonts/Wavehaus-66Book.woff2'))}); }`;
+const WAVEHAUS = process.env.WAVEHAUS_DIR;
+if (!WAVEHAUS)
+  console.warn('WAVEHAUS_DIR is not set: the ArDrive card is set in Plus Jakarta Sans');
+const ARDRIVE_FONTS = WAVEHAUS
+  ? `
+  @font-face { font-family: Wavehaus; font-weight: 800; src: url(${url(path.join(WAVEHAUS, 'Wavehaus-158ExtraBold.woff2'))}); }
+  @font-face { font-family: Wavehaus; font-weight: 400; src: url(${url(path.join(WAVEHAUS, 'Wavehaus-66Book.woff2'))}); }`
+  : `
+  @font-face { font-family: 'Plus Jakarta Sans'; font-weight: 200 800; src: url(${url(path.join(FONTS, 'plus-jakarta-sans-normal-latin.woff2'))}); }`;
 
 /** ar.io: Deep Dark, a purple glow, Besley 800 with the emphasis in Dark Accent Lavender. */
 const arioCard = ({
@@ -66,11 +77,11 @@ const arioCard = ({
   <div class="foot">${stats.map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('')}<div class="host">${host}</div></div>
 </div></body></html>`;
 
-/** ArDrive: Onyx, a Ruddy glow, Wavehaus, the emphasis in Primary red. */
+/** ArDrive: Onyx, a Ruddy glow, Wavehaus (see WAVEHAUS_DIR), the emphasis in Primary red. */
 const ardriveCard = ({ eyebrow, title, em, sub, host }) => `<!doctype html><html><head><style>
   ${ARDRIVE_FONTS}
   * { margin: 0; box-sizing: border-box; }
-  body { width: 1200px; height: 630px; background: #121212; color: #fafafa; font-family: Wavehaus; overflow: hidden; position: relative; }
+  body { width: 1200px; height: 630px; background: #121212; color: #fafafa; font-family: Wavehaus, 'Plus Jakarta Sans'; overflow: hidden; position: relative; }
   .glow { position: absolute; inset: 0; background: radial-gradient(55% 65% at 88% 0%, rgba(254,2,48,.28) 0%, rgba(18,18,18,0) 70%); }
   .wrap { position: absolute; inset: 64px 72px 60px; display: flex; flex-direction: column; }
   .logo img { height: 46px; width: auto; display: block; }
