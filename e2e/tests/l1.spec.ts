@@ -71,6 +71,30 @@ test.describe('arweave-l1-explorer', () => {
     expect(await status()).not.toMatch(/error|could not/i);
     expect(await rows()).toBeGreaterThan(0);
     expect(await page.locator('#caption').innerText()).toMatch(/Apps that sent transactions/);
+    // A preset, while the period is still the last few days: a Find below
+    // moves it to all of history, where this preset groups every block
+    // (about 550 MB live, which the page warns of before it reads).
+    await page.locator('#editor > summary').click();
+    await page.locator('#presets button', { hasText: 'Busiest blocks' }).click();
+    await clear();
+    await page.click('#run');
+    await answered();
+    expect(await rows()).toBeGreaterThan(0);
+    // An empty editor says so rather than doing nothing.
+    const kept = await page.inputValue('#sql');
+    await page.fill('#sql', '');
+    await clear();
+    await page.click('#run');
+    expect(await status()).toMatch(/Write a query/);
+    await page.fill('#sql', kept);
+    // Exports and the share link.
+    const [dl] = await Promise.all([
+      page.waitForEvent('download', { timeout: 20_000 }),
+      page.click('#csv'),
+    ]);
+    expect(await dl.suggestedFilename()).toMatch(/^arweave-l1-.*\.csv$/);
+    await page.click('#copylink');
+    expect(await page.evaluate(() => location.hash)).toMatch(/sql=/);
     // A block height.
     const tip = await page.evaluate(() => {
       const s = (
@@ -104,28 +128,6 @@ test.describe('arweave-l1-explorer', () => {
       expect(await page.locator('#answertitle').innerText()).toMatch(/Wallet/);
       expect(await rows()).toBe(1);
     }
-    // A preset.
-    await page.locator('#editor > summary').click();
-    await page.locator('#presets button', { hasText: 'Busiest blocks' }).click();
-    await clear();
-    await page.click('#run');
-    await answered();
-    expect(await rows()).toBeGreaterThan(0);
-    // An empty editor says so rather than doing nothing.
-    const kept = await page.inputValue('#sql');
-    await page.fill('#sql', '');
-    await clear();
-    await page.click('#run');
-    expect(await status()).toMatch(/Write a query/);
-    await page.fill('#sql', kept);
-    // Exports and the share link.
-    const [dl] = await Promise.all([
-      page.waitForEvent('download', { timeout: 20_000 }),
-      page.click('#csv'),
-    ]);
-    expect(await dl.suggestedFilename()).toMatch(/^arweave-l1-.*\.csv$/);
-    await page.click('#copylink');
-    expect(await page.evaluate(() => location.hash)).toMatch(/sql=/);
     expect(errors).toEqual([]);
     await page.screenshot({ path: 'e2e/out/l1.png', fullPage: true });
   });

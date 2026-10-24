@@ -549,7 +549,7 @@ export class Session {
       for (const band of missing.filter((b) => this.isRangeable(b))) {
         const names: L1Band['names'] = {};
         const lookups =
-          band.schema === 'l1-3' &&
+          parquetL1.l1SchemaHasLookups(band.schema) &&
           parquetL1.L1_LOOKUP_KINDS.every((k) => band.files.has(parquetL1.L1_FILES[k]));
         for (const kind of [
           ...parquetL1.L1_TABLE_KINDS,
@@ -975,7 +975,7 @@ export class Session {
       w.bands.every(
         (b) =>
           this.isRangeable(b) &&
-          b.schema === 'l1-3' &&
+          parquetL1.l1SchemaHasLookups(b.schema) &&
           parquetL1.L1_LOOKUP_KINDS.every((k) => b.files.has(parquetL1.L1_FILES[k])),
       )
     );
