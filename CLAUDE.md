@@ -8,9 +8,7 @@ A pnpm monorepo. `packages/index-client` is the verifiable index client (the
 piece the organisation keeps); `packages/ui` holds tokens and primitives;
 `apps/ardrive-explorer`, `apps/arweave-l1-explorer` and `apps/network-index`
 are the three pages, built with Preact + TypeScript + Vite and served from
-Arweave manifests. The design brief is V1-ARCHITECTURE.md in
-ar-io/permaweb-services (`turbo-gateway/publish/ardrive-explorer/`); the index
-formats are in ar-io/ar-io-node under `docs/`.
+Arweave manifests. The index formats are in ar-io/ar-io-node under `docs/`.
 
 ## Commands
 
@@ -34,9 +32,9 @@ spec: `npx playwright test -c e2e/playwright.config.ts --project=fixtures nav`.
 - Trust: everything from the index is verified before use. Never weaken a
   check to make a test pass. Names (record JSON) are not covered by the
   signature: label them so and size-check them against the index.
-- Performance: the acceptance table in V1-ARCHITECTURE.md §4.2 (20,000-record
-  drive: longest main-thread task ≤ 130 ms, any sort ≤ 160 ms, 200 rows then
-  more on scroll; folder moves ≤ 400 ms). `e2e/tests/perf.spec.ts` measures
+- Performance: the budget in CONTRIBUTING.md (20,000-record drive: longest
+  main-thread task ≤ 130 ms, any sort ≤ 160 ms, 200 rows then more on
+  scroll; folder moves ≤ 400 ms). `e2e/tests/perf.spec.ts` measures
   it; run it before and after touching the drive-browser path.
 - Layout knowledge lives in the client's `layouts/`, not in an app. Apps keep
   one store, one session, pure models, no module-scope state, no string DOM.
@@ -52,18 +50,12 @@ spec: `npx playwright test -c e2e/playwright.config.ts --project=fixtures nav`.
 
 ## Lessons already paid for
 
-Read V1-ARCHITECTURE.md §8 before touching the client or the drive browser.
-Added in v1: a one-letter search must not match uuids; Arrow timestamps come
-back in the engine's unit (microseconds) when read column-wise, use `get()`;
-decode Arrow columns per chunk with `slice()` or every chunk re-decodes the
-whole column; E2E tests clear the status line through the store
-(`window.__explorer.store.say('')`), never by writing the DOM; a Playwright
-`innerText()` on an element that may be absent waits for the whole timeout,
-check `count()` first; keep logs you want outside `e2e/out/`, Playwright
+Read "Lessons the code keeps" in CONTRIBUTING.md before touching the client
+or the drive browser. Keep logs you want outside `e2e/out/`: Playwright
 cleans it.
 
 ## Repository conventions
 
-Conventional commits. PRs are small and carry measured numbers. On this
-machine a workspace guard blocks force-pushes and pushes from `main`: work on
-a topic branch and let the human merge.
+Conventional commits. PRs are small and carry measured numbers. Work on a
+topic branch; a maintainer reviews and merges. Never force-push a shared
+branch.

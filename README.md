@@ -19,10 +19,12 @@ selection to a verified index and a page is
 | `apps/arweave-l1-explorer` | SQL and lookups over Arweave's base layer, over `parquet-l1` | [arweave-l1-search.ar.io](https://arweave-l1-search.ar.io) |
 | `apps/network-index` | every index a gateway publishes, verified, with a CDB64 lookup | [cdb64.ar.io](https://cdb64.ar.io) |
 
-The design and the acceptance numbers are in
-[`V1-ARCHITECTURE.md`](https://github.com/ar-io/permaweb-services/blob/main/turbo-gateway/publish/ardrive-explorer/V1-ARCHITECTURE.md)
-and `DESIGN.md` beside it in ar-io/permaweb-services; the index formats in
-ar-io/ar-io-node under `docs/`.
+The index formats are specified in
+[ar-io/ar-io-node `docs/`](https://github.com/ar-io/ar-io-node/tree/develop/docs)
+(`index-publication.md`, `cdb64-format.md`, `index-swarm.md`). The
+performance budget and the lessons the code keeps are in
+[`CONTRIBUTING.md`](CONTRIBUTING.md); how to report a vulnerability is in
+[`SECURITY.md`](SECURITY.md).
 
 ## Start here
 

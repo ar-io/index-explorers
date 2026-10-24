@@ -32,6 +32,11 @@ on:
       - 'arweave-l1-explorer-v*'
       - 'network-index-v*'
 
+# Read-only unless a job says otherwise: only the deploy job writes, to record
+# the deploy on main.
+permissions:
+  contents: read
+
 jobs:
   plan:
     runs-on: ubuntu-latest

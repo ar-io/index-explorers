@@ -49,7 +49,7 @@ export const PACK_SET = PACKS as unknown as {
   txs: string[];
   packs: PackInfo[];
 };
-/** v0's example: an image from the ar.io docs. */
+/** The original page's example: an image from the ar.io docs. */
 export const EXAMPLE_ID = 'YAXoMBQkkreZfg1UdUEnJ__i366bha5i2z3zU08dgd8';
 /** Gateways a reader can pick to read Arweave data (the packs, the item, its root) from. */
 export const ARWEAVE_GATEWAYS = (import.meta.env.VITE_ARWEAVE_GATEWAYS as string | undefined)
@@ -204,7 +204,7 @@ export class Session {
 
   async start(): Promise<void> {
     const hash = decodeURIComponent(location.hash.replace(/^#/, ''));
-    // v0's links were #<id>; v1's are #gw=…&id=…. Both run the lookup.
+    // The original page's links were #<id>; these are #gw=…&id=…. Both run the lookup.
     const bare = /^[A-Za-z0-9_-]{43}$/.test(hash) ? hash : null;
     const q = new URLSearchParams(bare ? '' : hash);
     const gw = q.get('gw');
@@ -681,7 +681,7 @@ export class Session {
   }
 
   /**
-   * The answer against the data, as v0 did: what the gateway itself says the
+   * The answer against the data, as the original page did: what the gateway itself says the
    * root is, then the item's signature at its offset in the root transaction,
    * whose SHA-256 must be the id. Then a link to the item, and an image preview.
    */

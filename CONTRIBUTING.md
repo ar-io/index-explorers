@@ -55,11 +55,68 @@ when the generator changes, and commit the result in the same PR.
   ar-io/ar-io-node and gaps there are tracked upstream, not papered over here.
 - Names from record JSON are labelled as not covered by the signature and
   size-checked against the index, wherever they appear.
-- Measure before and after any change on the drive-browser path; the
-  acceptance numbers are in V1-ARCHITECTURE.md §4.2 and in the PR
-  descriptions.
+- Measure before and after any change on the drive-browser path against
+  the [performance budget](#performance-budget).
 - Never run the suites on a gateway: a gateway blocks its own public IP on
   `/raw`, so names fail there and nothing else is representative.
+
+## Performance budget
+
+What the pages keep to, in headless Chromium. `e2e/tests/perf.spec.ts`,
+`nav.spec.ts` and `matrix.spec.ts` measure most of it:
+
+| behaviour | budget |
+| --- | --- |
+| a 20,000-record drive (`b76a5542-40c4-415c-8796-365d8dc365c7` live) | first rows within 12 s on a developer machine (`PERF_FIRST_ROWS_S`; 45 s on GitHub's runners); 200 rows rendered, more on scroll; longest main-thread task ≤ 130 ms (the live run allows 50 ms more); any sort ≤ 160 ms |
+| moving between folders | ≤ 400 ms; Back and Forward restore the exact folder; a copied link lands in the folder |
+| names | what is on screen first, then the folder, then the drive up to 1,500; search loads all of them with progress; 6 at a time |
+| a wide drive | says its cost first; reads in slices of 5,000 blocks so memory stays flat |
+| Stop | cancels, and the next listing works |
+| out of memory | resets the connection, registers the bands again, and says so |
+| two listings started quickly | the newer one wins; the older never draws |
+| phone width | no horizontal scroll |
+
+To see where the time goes, the scripts beside the suites measure a
+production build live: `e2e/debug-first-rows.mjs` (the big drive's first
+rows, with the page's trace), `e2e/debug-ranges.mjs` (the ranges it asks
+for, by phase), `e2e/debug-drive-list.mjs` (the newest-drives list and each
+"Show older") and `e2e/debug.mjs` (what the page did against the fixture
+gateway). Each says how to run it at the top.
+
+## Lessons the code keeps
+
+- Arrow rows are proxies: `{...row}` loses fields and BigInt arithmetic
+  throws in comparators. Convert with `row.toJSON()` and `Number()` at the
+  boundary. Timestamps read column-wise come back in the engine's unit
+  (microseconds): use `get()`. Decode a column per chunk with `slice()`, or
+  every chunk decodes the whole column again.
+- A view over every band reads every file's footer on the first query (about
+  45 MB): build file lists per height window.
+- `data_items` has a row per place an item sits: dedupe with `GROUP BY`,
+  never a window function over the whole table (filters stop reaching the
+  reader).
+- Row groups cost about 2.6 MB for items even for two columns, about 0.9 MB
+  for tags: estimate with a per-window minimum and say "about".
+- After DuckDB-WASM runs out of memory the connection is poisoned: reset it.
+  After Stop the worker refuses until told to resume: resume before
+  rebuilding views.
+- `localeCompare` with options builds a collator per call (1.2 s per sort
+  over 20,000 rows): use one `Intl.Collator` and precomputed keys.
+- A queue searched per item is quadratic at 20,000: keep a `Set`.
+- Bands with `records: 0` have files under one BitTorrent block and cannot be
+  range-read: drop them.
+- A `Unix-Time` in milliseconds throws in `Date#toISOString`: bound it in
+  SQL, and never let a formatter throw inside a render.
+- A one-letter search must not match uuids.
+- E2E tests clear the status line through the store
+  (`window.__explorer.store.say('')`), never by writing the DOM.
+- A Playwright `innerText()` on an element that may be absent waits for the
+  whole timeout: check `count()` first.
+
+## Security
+
+Report vulnerabilities privately, as [`SECURITY.md`](SECURITY.md) says, not
+in an issue.
 
 ## PRs
 

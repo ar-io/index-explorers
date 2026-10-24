@@ -7,6 +7,9 @@ name: Live E2E
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   live:
     runs-on: ubuntu-latest

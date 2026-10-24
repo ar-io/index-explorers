@@ -78,7 +78,7 @@ test.describe('network-index', () => {
     await resolved(/Found|Not (in any|found)|Could not/);
     expect(await page.inputValue('#q')).toBe(id);
     if (LIVE) {
-      // v0's example lives in the packs on Arweave, and is checked against the data.
+      // The original page's example lives in the packs on Arweave, and is checked against the data.
       await page.click('#example');
       await resolved(/Found in the .* pack|Not (in any|found)|Could not/);
       expect(await page.locator('#status').innerText()).toMatch(/Found in the .* pack/);
@@ -93,7 +93,7 @@ test.describe('network-index', () => {
       );
       expect(await page.locator('#checks li[data-s="bad"]').count()).toBe(0);
     }
-    // v0's links, #<id>, still run the lookup.
+    // The original page's links, #<id>, still run the lookup.
     await page.goto(`${BASE}#${id}`);
     await page.reload();
     await resolved(/Found|Not (in any|found)|Could not/);

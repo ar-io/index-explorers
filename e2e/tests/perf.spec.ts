@@ -1,8 +1,8 @@
 /**
- * Stress, ported from v0's test/perf.mjs: a drive that hits the 20,000-record
+ * Stress: a drive that hits the 20,000-record
  * cap. Time to first rows, DOM size, the longest main-thread tasks, memory,
  * scroll-driven rendering, folder navigation and search while names stream.
- * The acceptance numbers are V1-ARCHITECTURE.md §4.2's.
+ * The budget is CONTRIBUTING.md's.
  */
 import { expect, test } from '@playwright/test';
 
@@ -71,7 +71,7 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
   expect(await driveRows(page)).toBeLessThanOrEqual(201);
   expect(head).toMatch(/20,000|19,9\d\d/);
   log('status:', await page.locator('#status').innerText());
-  // The budget (V1-ARCHITECTURE §4.2: ~6 s on v0's network) is a bound on a known network; PERF_FIRST_ROWS_S sets it for this one.
+  // First rows depend on the network: PERF_FIRST_ROWS_S sets the bound for this one (CONTRIBUTING.md).
   if (LIVE) expect(firstRows).toBeLessThanOrEqual(Number(process.env.PERF_FIRST_ROWS_S || 12));
   log('heap', await mem(), 'MB | long tasks:', (await longTasks()).join(','), 'ms');
   log(
