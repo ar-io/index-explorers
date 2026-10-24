@@ -15,6 +15,7 @@
  * first query.
  */
 import type { ReadAhead } from '../engine/read-ahead.js';
+import type { Publication, PublicationIndex } from '../publication.js';
 import { sq } from '../util/format.js';
 import { KEY_MACROS, readList } from './keys.js';
 
@@ -57,6 +58,131 @@ export const l2DropSql = (): string[] => [
   ...L2_OBJECTS.views.map((v) => `DROP VIEW IF EXISTS ${v}`),
   ...L2_OBJECTS.macros.map((m) => `DROP MACRO TABLE IF EXISTS ${m}`),
 ];
+
+/**
+ * What a `parquet-l2` index holds: the data items one tag selects. An item is
+ * in it when one of its tags is named `name` exactly and its value starts
+ * with `valuePrefix` and not with `excludeValuePrefix`, as UTF-8 bytes.
+ */
+export interface L2Selection {
+  kind: 'ans104-data-items';
+  tag: { name: string; valuePrefix: string; excludeValuePrefix?: string };
+}
+
+const SELECTION_MAX_BYTES = 256;
+
+function no(why: string): never {
+  throw new Error(`the selection is not well formed: ${why}`);
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** A selection as the publication declares it, checked field by field; throws on anything else. */
+export function parseL2Selection(raw: unknown): L2Selection {
+  if (!isObj(raw)) no('not an object');
+  const extra = (o: Record<string, unknown>, allowed: string[], where: string) => {
+    for (const k of Object.keys(o)) if (!allowed.includes(k)) no(`${where}${k} is not allowed`);
+  };
+  extra(raw, ['kind', 'tag'], '');
+  if (raw.kind !== 'ans104-data-items') no(`kind ${JSON.stringify(raw.kind)}`);
+  const tag = raw.tag;
+  if (!isObj(tag)) no('tag');
+  extra(tag, ['name', 'valuePrefix', 'excludeValuePrefix'], 'tag.');
+  const str = (k: string, required: boolean): string | undefined => {
+    const v = tag[k];
+    if (v === undefined && !required) return undefined;
+    if (typeof v !== 'string') return no(`tag.${k}`);
+    if (new TextEncoder().encode(v).length > SELECTION_MAX_BYTES) no(`tag.${k} is too long`);
+    return v;
+  };
+  const name = str('name', true)!;
+  const valuePrefix = str('valuePrefix', true)!;
+  const excludeValuePrefix = str('excludeValuePrefix', false);
+  if (!name) no('tag.name is empty');
+  const out: L2Selection = { kind: 'ans104-data-items', tag: { name, valuePrefix } };
+  if (excludeValuePrefix !== undefined) {
+    if (!excludeValuePrefix.startsWith(valuePrefix) || excludeValuePrefix === valuePrefix)
+      no('tag.excludeValuePrefix must extend tag.valuePrefix');
+    out.tag.excludeValuePrefix = excludeValuePrefix;
+  }
+  return out;
+}
+
+export const sameL2Selection = (a: L2Selection, b: L2Selection): boolean =>
+  a.kind === b.kind &&
+  a.tag.name === b.tag.name &&
+  a.tag.valuePrefix === b.tag.valuePrefix &&
+  a.tag.excludeValuePrefix === b.tag.excludeValuePrefix;
+
+/** `App-Name starting "ArDrive", not "ArDriver"`: a selection for a reader. */
+export const describeL2Selection = (s: L2Selection): string =>
+  `${s.tag.name} starting ${JSON.stringify(s.tag.valuePrefix)}` +
+  (s.tag.excludeValuePrefix !== undefined
+    ? `, not ${JSON.stringify(s.tag.excludeValuePrefix)}`
+    : '');
+
+/**
+ * The one selection every band of a `parquet-l2` index declares (as its
+ * `metadata.selection`), which the index's `filter` must also be when the
+ * publisher sets one. Throws when a band has none, or any two disagree: then
+ * no band of the index can be trusted to hold what the others say.
+ */
+export function l2SelectionOf(ix: PublicationIndex): L2Selection {
+  if (ix.kind !== 'parquet-l2') throw new Error(`${ix.name} is a ${ix.kind} index, not parquet-l2`);
+  if (!ix.bands.length) throw new Error(`${ix.name} lists no bands`);
+  let one: L2Selection | null = null;
+  for (const b of ix.bands) {
+    if (b.metadata?.selection === undefined)
+      throw new Error(`${ix.name}: band ${b.id} declares no selection`);
+    const s = parseL2Selection(b.metadata.selection);
+    if (one && !sameL2Selection(one, s))
+      throw new Error(
+        `${ix.name}: band ${b.id} selects ${describeL2Selection(s)}, its other bands ${describeL2Selection(one)}`,
+      );
+    one = s;
+  }
+  if (ix.filter !== undefined) {
+    const f = parseL2Selection(ix.filter);
+    if (!sameL2Selection(one!, f))
+      throw new Error(
+        `${ix.name}: its filter selects ${describeL2Selection(f)}, its bands ${describeL2Selection(one!)}`,
+      );
+  }
+  return one!;
+}
+
+/**
+ * The name of the `parquet-l2` index that selects exactly `want`: `prefer`
+ * when it does, else the first that does. With none, why: what each
+ * `parquet-l2` index selects instead, or why its selection is refused.
+ */
+export function findL2Index(
+  pub: Publication,
+  want: L2Selection,
+  prefer?: string,
+): { name: string } | { name: null; why: string } {
+  const seen: string[] = [];
+  const matches: string[] = [];
+  for (const ix of pub.indexes) {
+    if (ix.kind !== 'parquet-l2') continue;
+    try {
+      const s = l2SelectionOf(ix);
+      if (sameL2Selection(s, want)) matches.push(ix.name);
+      else seen.push(`${ix.name} selects ${describeL2Selection(s)}`);
+    } catch (e) {
+      seen.push((e as Error).message);
+    }
+  }
+  if (prefer !== undefined && matches.includes(prefer)) return { name: prefer };
+  if (matches.length) return { name: matches[0]! };
+  return {
+    name: null,
+    why:
+      `no index here selects ${describeL2Selection(want)}` +
+      (seen.length ? ` (${seen.join('; ')})` : ''),
+  };
+}
 
 export const namesOf = (bands: readonly RegisteredL2Band[], kind: L2Kind): string[] =>
   bands.map((b) => b.names[kind]).filter((n): n is string => !!n);

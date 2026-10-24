@@ -448,7 +448,7 @@ test('the data-source drawer: another gateway is refused with a reason, switchin
       'other gateway',
     );
     const txt = await page.locator('#proof-text').innerText();
-    expect(/no ardrive-l2|Refusing|not|Verified/i.test(txt), txt).toBe(true);
+    expect(/no index of ArDrive's data items|Refusing|not|Verified/i.test(txt), txt).toBe(true);
   }
   await page.selectOption('#gwsel', 'custom');
   await page.fill('#gw', GW);

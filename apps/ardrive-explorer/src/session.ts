@@ -11,6 +11,7 @@ import {
   explainReadError,
   fetchBandDates,
   type FetchedPublication,
+  type Publication,
   fetchPublication,
   fetchWithProgress,
   fetchWithTimeout,
@@ -123,18 +124,24 @@ export class Session {
     };
     await this.forgetLoaded();
     try {
-      st.say(`Finding a gateway that publishes ${CONFIG.indexName}`);
+      st.say("Finding a gateway that publishes ArDrive's data items");
       const choice =
         st.gatewayChoice.value === 'custom' ? st.customGateway.value : st.gatewayChoice.value;
+      // The index is the one that selects ArDrive's items, whatever it is called;
+      // CONFIG.indexName only breaks a tie.
+      const find = (doc: Publication) =>
+        parquetL2.findL2Index(doc, arfs.ARDRIVE_SELECTION, CONFIG.indexName);
       const picked = await pickGateway({
         choice,
         indexName: CONFIG.indexName,
+        offers: (doc) => find(doc).name !== null,
         candidates: autoCandidates(location, CONFIG.publishers),
       });
       this.gateway = picked.gateway;
       const fetched = picked.publication ?? (await fetchPublication(picked.gateway));
-      if (!fetched.doc.indexes.some((i) => i.name === CONFIG.indexName))
-        throw new Error(`this gateway publishes no ${CONFIG.indexName} index`);
+      const found = find(fetched.doc);
+      if (found.name === null)
+        throw new Error(`this gateway publishes no index of ArDrive's data items: ${found.why}`);
       st.setProof('run', "Checking the publisher's signature…");
       st.say('Verifying the publication signature against the gateway registry');
       checking = true;
@@ -146,7 +153,7 @@ export class Session {
       if (this.overtaken(my)) return;
       this.publication = fetched;
       this.proof = proof;
-      const ix = selectIndex(fetched.doc, CONFIG.indexName, {
+      const ix = selectIndex(fetched.doc, found.name, {
         gateway: picked.gateway,
         mirrors: this.mirrors,
       });
