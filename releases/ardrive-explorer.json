@@ -1,14 +1,14 @@
 {
   "app": "ardrive-explorer",
-  "version": "1.0.0",
-  "verifiedAt": "2026-10-23T17:03:49.585Z",
+  "version": "1.1.0",
+  "verifiedAt": "2026-10-24T00:00:43.985Z",
   "verifiedBy": "vilenarios",
-  "commit": "4fed57f2c1f212f0928b9d9a2b0ea21267217439",
+  "commit": "53c3a10e359335bcd540fabc3c6cc944e18b9404",
   "machine": "linux arm64, node v23.9.0",
   "steps": [
     {
       "name": "install",
-      "seconds": 2.6
+      "seconds": 2.1
     },
     {
       "name": "engine files",
@@ -16,36 +16,36 @@
     },
     {
       "name": "engine pins against two gateways",
-      "seconds": 3.7
+      "seconds": 5.4
     },
     {
       "name": "format and types",
-      "seconds": 26.1
+      "seconds": 23
     },
     {
       "name": "unit and integration tests",
-      "seconds": 18.8
+      "seconds": 19
     },
     {
       "name": "E2E builds",
-      "seconds": 19.8
+      "seconds": 17.8
     },
     {
       "name": "E2E on the fixture gateway",
-      "seconds": 106.2
+      "seconds": 103.7
     },
     {
       "name": "production builds",
-      "seconds": 16.7
+      "seconds": 22
     },
     {
       "name": "live E2E against turbo-gateway.com",
-      "seconds": 496
+      "seconds": 479.8
     }
   ],
   "sources": {
-    "apps/ardrive-explorer": "a44b0792e0f1462db091b1270a6ee82f3bc7192b",
-    "packages": "bf296d867fb79f0cbb42a4df5553d531a6f2a5b4",
+    "apps/ardrive-explorer": "b730feb01e64aebfc34863d9b5704c040d9e4111",
+    "packages": "0fa5008748fbaeeea9c4b40a0fb5ba8dbce6098e",
     "package.json": "6ec6e9e3ff664b83ac82679f8c31d64e500020e3",
     "pnpm-lock.yaml": "0c3b661a24a82f83615a29fb66c5bf53e9ba6c9a",
     "pnpm-workspace.yaml": "8c81b3b1946d0b6aba407e9918ef96892ab1901e",
@@ -59,12 +59,12 @@
     "assets/arrow-C6ch5XQ7.js.map": "77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d",
     "assets/duckdb-DEFjrUmw.js": "bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2",
     "assets/duckdb-DEFjrUmw.js.map": "d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c",
+    "assets/index-C_oUcC6A.js": "43d30b2123940d13c88c5f2b0203cfe5b231f7172edbf9fef63778d3bbca2243",
+    "assets/index-C_oUcC6A.js.map": "dbcc9312e33e1e0cc383e06c00611f3111767cb523ff929494dcca4bef1a6e9e",
     "assets/index-CjosUaM9.css": "640451f4bc7069978ad8a3baaae9f96594adb7b35e88b77cc9530e445534ab19",
-    "assets/index-DZqp7Our.js": "1f50f33f15f025cbf467a3c67fdb0121e6e88eadfd18e6b5b8f365db0aae4d10",
-    "assets/index-DZqp7Our.js.map": "9a022709ebb8d42df4a5393699ca2f121a041681602785a7c75c1a254ebff67f",
     "favicon-32.png": "3653bf12ccb1bc9f50963db96d65cbdb7e2d2f4a133644615fd9728150384aae",
     "favicon.svg": "4c4b4d1dfb270de2ee0218175e85c52c6850378afe591d7e4ff6170b3175ae0b",
-    "index.html": "01ebd8a76d77d0c9313ea656a4740e4ab0a0aba75c6e7fb6cd86b4a554a08b1f",
+    "index.html": "3d6c6923b05e280df2d9e698638812efe5f221055f284ee4fd995873fd43527c",
     "social.png": "b035eb9bfc57364cb353cbb163cc261d8b685a0ed9d42f00a91f0d338fe2da7f",
     "sw.js": "7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2"
   }
