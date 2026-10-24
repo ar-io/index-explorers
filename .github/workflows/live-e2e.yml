@@ -1,10 +1,10 @@
-name: Nightly live E2E
+name: Live E2E
 
 # The same suites, against turbo-gateway.com's live publication, with the
-# production build. Numbers in the log are the acceptance table's.
+# production build. Numbers in the log are the acceptance table's. Run by
+# hand from the Actions tab; every deploy already runs its app's live suites
+# before it uploads.
 on:
-  schedule:
-    - cron: '17 3 * * *'
   workflow_dispatch:
 
 jobs:
@@ -24,6 +24,8 @@ jobs:
       - run: pnpm e2e:live
         env:
           GW: https://turbo-gateway.com
+          # A runner's network; see deploy.yml.
+          PERF_FIRST_ROWS_S: '45'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
