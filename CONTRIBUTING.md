@@ -19,7 +19,7 @@ pnpm lint          # prettier --check and every package's typecheck (TypeScript 
 pnpm test          # Vitest: index-client (with native DuckDB over a recorded band), the apps' models
 pnpm --filter "./apps/*" run build:e2e
 pnpm e2e           # Playwright against the local fixture gateway: deterministic, no network
-pnpm e2e:live      # the same suites against turbo-gateway.com (nightly in CI)
+pnpm e2e:live      # the same suites against turbo-gateway.com (by hand in CI: Actions → Live E2E)
 pnpm pins:check    # engine.lock.json against npm and two gateways
 ```
 

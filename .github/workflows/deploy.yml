@@ -100,6 +100,10 @@ jobs:
         run: pnpm e2e:live $(node scripts/release.mjs specs "$APP")
         env:
           GW: https://turbo-gateway.com
+          # A runner's network: first rows on the 20,000-record drive took
+          # 12 to 38 s here (Oct 20 to 24) against 7 s on a dev machine.
+          # The release check keeps 12 s; main-thread budgets are unchanged.
+          PERF_FIRST_ROWS_S: '45'
       - name: What the name points at now (the rollback target)
         id: before
         run: |
