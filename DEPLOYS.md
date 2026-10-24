@@ -2,6 +2,28 @@
 
 Every upload, newest first. The manifest id is what the ArNS name points at. Each entry lists the SHA-256 of every uploaded file, so a rebuild of the same commit can be compared with what is live.
 
+## 2026-10-24 · ardrive-explorer 1.1.0
+
+- manifest: `uMoN7gkMykfFVy6BVmi-ZDL8ot8swM65nY5tf7hppAw`
+- name: https://explore_ardrive.ar.io
+- before: `rF9ebRl8gsYEbD3UPrkDzEj0pK5MKAHq1ovOwIjwQpw` (point the record back at it to roll back)
+- commit: 9156b94
+- files:
+  - `apple-touch-icon.png` 9635d0e28944c245030dde304c6350553f18498cde33eaa0d6c180b1395524fa
+  - `assets/ario-full-white-CluK9Jx-.svg` a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490
+  - `assets/arrow-C6ch5XQ7.js` be8bc38f3801bd076186c30711cd432a3dcd9b7763d980467fd1ca79dfdc4e07
+  - `assets/arrow-C6ch5XQ7.js.map` 77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d
+  - `assets/duckdb-DEFjrUmw.js` bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2
+  - `assets/duckdb-DEFjrUmw.js.map` d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c
+  - `assets/index-C_oUcC6A.js` 43d30b2123940d13c88c5f2b0203cfe5b231f7172edbf9fef63778d3bbca2243
+  - `assets/index-C_oUcC6A.js.map` dbcc9312e33e1e0cc383e06c00611f3111767cb523ff929494dcca4bef1a6e9e
+  - `assets/index-CjosUaM9.css` 640451f4bc7069978ad8a3baaae9f96594adb7b35e88b77cc9530e445534ab19
+  - `favicon-32.png` 3653bf12ccb1bc9f50963db96d65cbdb7e2d2f4a133644615fd9728150384aae
+  - `favicon.svg` 4c4b4d1dfb270de2ee0218175e85c52c6850378afe591d7e4ff6170b3175ae0b
+  - `index.html` 3d6c6923b05e280df2d9e698638812efe5f221055f284ee4fd995873fd43527c
+  - `social.png` b035eb9bfc57364cb353cbb163cc261d8b685a0ed9d42f00a91f0d338fe2da7f
+  - `sw.js` 7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2
+
 ## 2026-10-23 · network-index 1.2.0
 
 - manifest: `ttWEuQTCs3nES1ugD6lS3rUi7MxD64f_lYtEOLiXTCM`
