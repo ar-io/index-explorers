@@ -20,8 +20,9 @@ a new selection is a new index under a new name.
 ```
 
 Pick a name matching `[a-z0-9-]{1,64}`, by convention `<app>-l2`. The
-export is in gateway Release 85 (2026-10-17); the key lookup and stats of
-layout `l2-2` (below) are on `develop`.
+export is in gateway Release 85 (2026-10-17); layout `l2-2`'s key lookup and
+stats (below) and the standalone verifier `index-l2-verify` are in Release 86
+(2026-10-23).
 
 Reference: ar-io-node `docs/index-publication.md` § "L2 bands" (the format,
 `band.json`, the lookup files) and `src/lib/parquet-l2/layout.ts`
@@ -36,7 +37,7 @@ grid as L1 bands, and `index-swarm` publishes them.
 ```bash
 # .env
 INDEX_EXPORT_KINDS=root-tx-index,parquet-l1,parquet-l2
-INDEX_EXPORT_L2_INDEXES='[{"name":"myapp-l2","selection":{"kind":"ans104-data-items","tag":{"name":"App-Name","valuePrefix":"MyApp"}}}]'
+INDEX_EXPORT_L2_INDEXES='[{"name":"myapp-l2","selection":{"kind":"ans104-data-items","tag":{"name":"App-Name","valuePrefix":"MyApp"}},"keyTags":["Collection-Id"],"statTags":["App-Name","Content-Type"]}]'
 INDEX_SWARM_PUBLISH='[{"name":"root-tx-index","kind":"cdb64-root-tx"},{"name":"myapp-l2","kind":"parquet-l2"}]'
 INDEX_EXPORT_HEADER_CHECK_URL=https://turbo-gateway.com   # or http://core:4000 on an indexer that holds the roots
 ```
@@ -58,19 +59,24 @@ and a torrent.
 
 ## 3. Verify what was published (anyone)
 
-Release 85 ships the export; the standalone verifier is on ar-io-node's
-`develop` branch and will be in the next release:
+On a gateway holding the bands (Release 86 or later):
 
 ```bash
-./tools/ar-io-node index-l2-verify --bands-dir data/indexes/installed/myapp-l2 --publisher <publisher wallet>
+./tools/ar-io-node index-l2-verify --bands-dir data/indexes/installed/myapp-l2 \
+  --publication https://<publisher>/ar-io/indexes/publication.json --registry-url http://core:4000
 ```
 
 checks every band's id against its contents, every table row by row, the
-lookups, and a sample of locations against the chain. Reference: ar-io-node
-`docs/index-verification.md` and `docs/cli.md` § `index-l2-verify`. Without a
-gateway, the client's Node example verifies the publication and reads any
-band in checked ranges: `pnpm example:lookup <id>` here, or adapt
-`examples/lookup-root.ts`.
+lookups, that every file is the one the signed publication lists, and a
+sample of items read at their recorded locations from Arweave nodes.
+Reference: ar-io-node `docs/index-verification.md` and `docs/cli.md`
+§ `index-l2-verify`.
+
+Without a gateway, from this repo: `pnpm example:query ardrive` verifies the
+publication, finds the index by its selection, checks a band's files against
+the SHA-256s the publication signs, and runs the layout's SQL over them.
+Change `arfs.ARDRIVE_SELECTION` in `examples/query-band.ts` to your selection
+to do the same for your index.
 
 A subscriber takes the index by naming it:
 `INDEX_SWARM_SUBSCRIBE='[{"publisher":"<wallet>","name":["root-tx-index","myapp-l2"]}]'`.
@@ -158,18 +164,18 @@ numbers hold.
 Add the app under `apps/`, its tag prefix to the Deploy workflow, and the
 ArNS name. Deploys run only from a tag after the live E2E passes.
 
-## What the next layout brings, and what to ask upstream
+## Layout `l2-2`, and what to ask upstream
 
-Layout `l2-2` (ar-io-node `develop`, after Release 85) adds two derived
+Layout `l2-2` (ar-io-node Release 86) adds two derived
 files per band, for tag names the publisher chooses in
 `INDEX_EXPORT_L2_INDEXES`: `lookup_key.parquet` (`keyTags`: for each value
 of a key tag, the heights at which items carry it and how many, so a group
 spread over a band costs a row group or two instead of a window scan) and
 `stats.parquet` (`statTags`: items and bytes per 1,000 heights, in all and
 per value, so "over all history" questions need no scan). Neither enters a
-band's id, and a published `l2-1` band is upgraded in place. The client
-reads the five `l2-1` files by name and ignores others, so an `l2-2` band
-works today; using the two new files is the next step for any selection
+band's id, and a published `l2-1` band is upgraded in place (every
+`ardrive-l2` band on turbo-gateway.com is `l2-2` now). The client reads the
+five `l2-1` files by name and ignores others, so an `l2-2` band works as is; using the two new files is the next step for any selection
 layer (ArDrive's `drive_window` is the first candidate). When defining a
 selection, name the tags that identify a group (`keyTags`) and the ones you
 will count by (`statTags`) from the start.

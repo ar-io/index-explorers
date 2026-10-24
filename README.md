@@ -28,8 +28,11 @@ performance budget and the lessons the code keeps are in
 
 ## Start here
 
-- Using the client in your own page or script: [`packages/index-client/README.md`](packages/index-client/README.md) and the runnable [`examples/`](examples/README.md) (`pnpm example:lookup <data-item-id>` verifies a publication and resolves an item to its root transaction from Node).
-- The smallest page built on it: [`apps/network-index`](apps/network-index/README.md). The full product: [`apps/ardrive-explorer`](apps/ardrive-explorer/README.md).
+- Using the indexes from your own script or page: [`packages/index-client/README.md`](packages/index-client/README.md) (the four steps every use takes, and what each layout lets you query) and the runnable [`examples/`](examples/README.md), from Node:
+  - `pnpm example:lookup <data-item-id>` resolves a data item to its root transaction through the CDB64 index;
+  - `pnpm example:query l1` runs SQL over a `parquet-l1` band;
+  - `pnpm example:query ardrive` finds the L2 index that selects ArDrive's data items and runs SQL over a band of it.
+- Pages built on it: [`apps/network-index`](apps/network-index/README.md) (the smallest: verification and a CDB64 lookup), [`apps/arweave-l1-explorer`](apps/arweave-l1-explorer/README.md) (SQL over `parquet-l1` in the browser) and [`apps/ardrive-explorer`](apps/ardrive-explorer/README.md) (an L2 selection with its own layer). Each keeps its whole flow in `src/session.ts`.
 - Indexing another app the way ArDrive is indexed: [`docs/new-l2-index.md`](docs/new-l2-index.md) (and the `new-l2-explorer` skill in `.claude/skills/`).
 - Working on the repo: [`CONTRIBUTING.md`](CONTRIBUTING.md); agents: [`CLAUDE.md`](CLAUDE.md).
 
@@ -41,6 +44,8 @@ performance budget and the lessons the code keeps are in
 2. Band files are read in byte ranges through a service worker that checks
    every piece against the BitTorrent v2 hash tree whose root the signed
    publication pins (`src/range/`). Nothing unverified reaches the engine.
+   A script that reads a file whole checks it against the SHA-256 the
+   publication signs for it instead (`examples/query-band.ts`).
 3. DuckDB-WASM and its worker are pinned by SHA-256 in `engine.lock.json`; the
    Parquet extension by DuckDB's own signature. `pnpm pins:check` proves the
    pins against npm and two gateways.

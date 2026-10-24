@@ -33,15 +33,52 @@ The formats are documented in ar-io/ar-io-node under `docs/`
 | `range/torrent.ts` | `checkTorrent`, `pieceOk`, `bdecode`/`bencode`, `buildTorrent` (fixtures), `Refusal` |
 | `range/sw.ts` | the service worker (built to `sw.js` by the Vite plugin in `vite.ts`) |
 | `range/reader.ts` | `registerRangeReader`, `rangeSpec`, `rangeable`, receipts (`Watch`, `receiptText`), `explainReadError` |
+| `range/protocol.ts` | the page–worker protocol: `RangeSpec`, `encodeSpec`/`decodeSpec`, `RangeTotals` |
+| `engine/read-ahead.ts` | `readAhead`, `readAheadSql`, `engineReads`: fetch the ranges a query will need in parallel, before DuckDB asks for them one at a time |
 | `engine/engine.ts` | `openEngine`/`Engine` (one serialised connection, `registerUrl`, `resetConnection`), `rowsOf`, `columnsOf`, `timeColumnsOf` |
 | `layouts/parquet-l2.ts` | the generic `parquet-l2` layout, any selection: `parseL2Selection`, `l2SelectionOf`, `findL2Index` (the index that selects exactly what a page reads, whatever its name), `l2BaseSql` (items, tags, lookups, `uploads_between`, `find_id`, `wallet_totals`, `tag_counts`), `l2PeriodViewsSql` (`uploads`, `tags`), `itemsSql`, `tagsSql`, `uploadsSql`, `tagCountsSql` |
 | `layouts/arfs.ts` | ArDrive's layer over it, the worked example of a selection layer: `ARDRIVE_SELECTION`, `entitiesSql`, `arfsBaseSql` (`entities_between`, `drive_window`, `drive`), `arfsPeriodViewsSql` (`entities`, `drives`, `folders`, `files`), `newestDrivesSql`, `clusterSql` |
 | `layouts/parquet-l1.ts` | `l1PeriodSql` (`blocks`, `rawtx`, `txs`, `tags`), `l1LookupSql` (`find_tx`, `wallet_totals`, `tag_counts`), `txLookupSql` |
 | `layouts/cdb64.ts` | `lookupRoot`, `cdb64Get`, `cdb64Hash`, `parseCdb64Manifest`, `decodeRootValue` |
+| `layouts/keys.ts` | `KEY_MACROS` (`b64u`, `unb64u`, `key64`, `hkey`: the key functions the lookup files are sorted by), `idKeySql`, `tagKeySql`, `readList` |
+| `msgpack.ts` | `decodeMsgpack`/`encodeMsgpack`: the subset the root-tx index's values use |
 | `cost.ts` | `windowCost`, `buildPeriods`, `heightAt`/`timeAt`, `clusterHeights`, `sliceWindow` |
 | `util/` | bytes/base64url/base58/SHA-256, fetch with timeouts and progress, formatting |
 
 ## Using it
+
+Every use is the same four steps; only the last changes with the index.
+
+1. **Verify the publication.** `fetchPublication(gateway)`, then
+   `verifyPublication(doc, { registryGateways: REGISTRY_GATEWAYS, excluding: gateway })`.
+   It throws unless the signature verifies under the key the registry gives
+   for the publisher, read through another gateway.
+2. **Pick the index.** `selectIndex(doc, name, { gateway })` gives its bands
+   (superseded, empty and overlapped bands left out, with why, in `dropped`).
+   For a `parquet-l2` index, find the name by what it selects:
+   `parquetL2.findL2Index(doc, selection, preferredName)` returns the index
+   that selects exactly `selection`, or `{ name: null, why }`.
+3. **Read only checked bytes.** Either a whole file, checked against the
+   SHA-256 the signed publication lists for it (`band.files.get(name).sha256`),
+   or byte ranges, each piece checked against the band's BitTorrent v2 tree
+   (`checkTorrent` on the band's `.torrent`, then `pieceOk` per piece). In a
+   page the service worker does the second for you.
+4. **Ask.** CDB64: `cdb64.lookupRoot(id, { bands, read })`. Parquet: register
+   the band files with DuckDB under any names, run the layout's SQL
+   (`parquetL1.l1PeriodSql`, `parquetL2.l2BaseSql` and `l2PeriodViewsSql`, a
+   selection layer such as `arfs.arfsBaseSql`), then query its views and
+   macros.
+
+| to | in Node | in a page |
+| --- | --- | --- |
+| verify a publication | `examples/lookup-root.ts` | `apps/network-index/src/session.ts` |
+| look up a data item's root transaction (CDB64) | `pnpm example:lookup <id>` | `apps/network-index` |
+| SQL over `parquet-l1` | `pnpm example:query l1` | `apps/arweave-l1-explorer/src/session.ts` |
+| SQL over a `parquet-l2` selection | `pnpm example:query ardrive` | `apps/ardrive-explorer/src/session.ts` |
+
+The examples are in [`examples/`](../../examples/README.md) at the repo root.
+In Node they use native DuckDB (`@duckdb/node-api`) over files checked
+whole; the layout SQL is the same text the pages run in DuckDB-WASM.
 
 In a browser page (see `apps/ardrive-explorer/src/session.ts` for the whole flow):
 
@@ -72,17 +109,28 @@ for (const band of bands) {
   registered.push({ id: band.id, from: band.from, to: band.to!, names });
 }
 await engine.exec(parquetL2.l2BaseSql(registered));
+await engine.exec(arfs.arfsBaseSql(registered));
 const table = await engine.query(`SELECT * FROM drive_window('05b211dd-ae1e-44ef-b055-2e102933e4e8')`);
 ```
 
-In Node, without the worker or the engine (verification, torrents and the
-CDB64 lookup are plain functions): see `examples/lookup-root.ts` at the repo
-root, which verifies a publication, fetches and checks a band's torrent, and
-resolves a data item to its root transaction with range reads checked piece
-by piece.
+A page registers only the bands a question's heights touch: a view over
+every band reads every file's footer on the first query. The apps build
+views per window (`l2PeriodViewsSql(bands, lo, hi)`, `l1PeriodSql`) and use
+`windowCost` to say what a window will read before reading it.
 
 In Vite, `rangeReaderPlugin()` from `@ar-io/index-client/vite` builds the
 worker as `sw.js` beside the page and serves it in dev.
+
+### What each layout gives you to query
+
+| layout | views | macros |
+| --- | --- | --- |
+| `parquet-l1` (`l1PeriodSql`) | `blocks`, `txs`, `rawtx`, `tags` | `find_tx(id)`, `wallet_totals(address)`, `tag_counts(name)` |
+| `parquet-l2` (`l2BaseSql`, `l2PeriodViewsSql`) | `uploads`, `tags`, `items_all`, `tags_all` | `find_id(id)`, `wallet_totals(address)`, `tag_counts(name)`, `uploads_between(lo, hi)` |
+| ArDrive's layer (`arfsBaseSql`, `arfsPeriodViewsSql`) | `entities`, `drives`, `folders`, `files` | `entities_between(lo, hi)`, `drive_window(driveId)`, `drive(driveId)` |
+
+The macros read the band's lookup files when every band in the period has
+them (a few kilobytes per answer), and scan the tables otherwise.
 
 ## Rules the code keeps
 
