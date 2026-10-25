@@ -1,6 +1,7 @@
 {
   "name": "@ar-io/index-client",
   "version": "0.1.0",
+  "private": true,
   "description": "Verifiable index client: signed publication verification, range reads checked against BitTorrent v2 hash trees, a pinned DuckDB-WASM engine, and the parquet-l1, parquet-l2 and cdb64 layouts",
   "license": "AGPL-3.0-or-later",
   "type": "module",

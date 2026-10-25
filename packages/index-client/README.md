@@ -5,6 +5,10 @@ ar.io gateway's signed index publication without trusting the server that
 served it. Pure TypeScript, no DOM except the service worker, unit-tested
 against recorded fixtures.
 
+It is not published to npm, and a package of this name there is not ours. The
+pages here are examples: use the client from this repository, in a fork or by
+copying `packages/index-client` into your own project.
+
 What it checks, in order:
 
 1. **The publication.** `/ar-io/indexes` is parsed and validated against the
