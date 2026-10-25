@@ -2,6 +2,32 @@
 
 Every upload, newest first. The manifest id is what the ArNS name points at. Each entry lists the SHA-256 of every uploaded file, so a rebuild of the same commit can be compared with what is live.
 
+## 2026-10-25 · arweave-l1-explorer 1.2.2
+
+- manifest: `iArlsALdNbAKo2sW5NXR51YWeI2SOtjGGXU-Q7rH-u8`
+- name: https://arweave-l1-search.ar.io
+- before: `HpoZ43us_Xo31IXnEFrsqlWiR0zoLdHD4udtqWCiOp8` (point the record back at it to roll back)
+- commit: d99a459
+- files:
+  - `apple-touch-icon.png` 3dc979bb165838222859ee052672f185cf7eb9c620ba66a4084aaeabf204df02
+  - `assets/ario-full-white-CluK9Jx-.svg` a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490
+  - `assets/arrow-C6ch5XQ7.js` be8bc38f3801bd076186c30711cd432a3dcd9b7763d980467fd1ca79dfdc4e07
+  - `assets/arrow-C6ch5XQ7.js.map` 77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d
+  - `assets/besley-italic-latin-CVKtkS9L.woff2` 028647731182464ccd117da3f56747d8c80f914a06c854624917b8fbd2d02f0c
+  - `assets/besley-normal-latin-IX-hlgPH.woff2` 45a619033dd926aa09d426017d7c0e347f206b40132eeb4b007201a342cdcb46
+  - `assets/duckdb-DEFjrUmw.js` bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2
+  - `assets/duckdb-DEFjrUmw.js.map` d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c
+  - `assets/index-BG1l4yaB.js` b18219b65f52192d0849888993c6c8c20d9a410233e753ec068fba86c6520ebf
+  - `assets/index-BG1l4yaB.js.map` a87af69277f98ab28805cbce19fecda3205227fe428a6715d3c126286e69946c
+  - `assets/index-DDV0GjUA.css` 503c362406ca741de563ad836d15448f0ef181c66091c29d416636e1860e0ad8
+  - `assets/plus-jakarta-sans-normal-latin-eXO_dkmS.woff2` 153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79
+  - `favicon-32.png` 97366221702d7aab4d26fbb958654edbfa9a58c2f171bf1f8c8a6f3ded255d19
+  - `favicon-dark.svg` 325fd96b1df10a02e063f81afc5c111f7a87539ffe6356290c666f72739c7862
+  - `favicon.svg` 267d63fed31ab5db02b32014ac600a57fa2cd5a352d6afb69d891d67cc5f3cbc
+  - `index.html` 9fa70dc93ce58205c558a195b6393b9b4178a2478679d3e9fbf9ef872f917c21
+  - `social.png` d4c4846cc8efafc0207e8ef1c994c66b7fd3d8d37e152827c09f9aed6c366333
+  - `sw.js` 7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2
+
 ## 2026-10-24 · ardrive-explorer 1.1.1
 
 - manifest: `RwgvmUR_KO_amw2pbRdKomozI3iI44LiKHGK45nNkng`
