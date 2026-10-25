@@ -7,7 +7,7 @@ import { DuckDBInstance, type DuckDBConnection } from '@duckdb/node-api';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { arfs, parquetL2, type parquetL2 as L2 } from '../src/index.js';
+import { arfs, parquetL1, parquetL2, type parquetL2 as L2 } from '../src/index.js';
 import { LIVE_BAND_DIR } from './helpers.js';
 
 type Row = Record<string, unknown>;
@@ -166,5 +166,14 @@ describe('parquet-l2 over the recorded band (blocks 700,000–799,999)', () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (let i = 1; i < rows.length; i++)
       expect(n(rows[i - 1]!.height)).toBeGreaterThanOrEqual(n(rows[i]!.height));
+  });
+});
+
+describe('parquet-l1 layouts', () => {
+  it('reads the lookup files of l1-3 and of l1-4, which keeps them and adds witnesses', () => {
+    expect(
+      ['l1-1', 'l1-2', 'l1-3', 'l1-4', 'l1-5', null].map(parquetL1.l1SchemaHasLookups),
+    ).toEqual([false, false, true, true, false, false]);
+    expect(parquetL1.L1_SCHEMAS).toContain('l1-4');
   });
 });

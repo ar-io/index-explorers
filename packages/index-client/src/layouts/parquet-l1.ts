@@ -1,6 +1,9 @@
 /**
- * The `parquet-l1` layout (`l1-3`): every Arweave base-layer block and
- * transaction as Parquet, with tags, owners and three lookup files.
+ * The `parquet-l1` layout (`l1-3`, `l1-4`): every Arweave base-layer block
+ * and transaction as Parquet, with tags, owners and three lookup files.
+ * `l1-4` adds witness files, which this layout does not read; in its
+ * `transactions` a format-1 transaction's `data_root` is NULL (its root is
+ * in `witness_v1_data_roots`), so `txs.data_root` is NULL there too.
  *
  * SQL text over registered file names; the views a period defines are
  * `blocks`, `rawtx`, `txs` and `tags`, and the three macros with one meaning
@@ -11,7 +14,11 @@
  */
 import { KEY_MACROS, readList } from './keys.js';
 
-export const L1_SCHEMAS = ['l1-1', 'l1-2', 'l1-3'];
+export const L1_SCHEMAS = ['l1-1', 'l1-2', 'l1-3', 'l1-4'];
+
+/** Layouts whose bands carry the three lookup files (`l1-4` keeps `l1-3`'s). */
+export const l1SchemaHasLookups = (schema: string | null | undefined): boolean =>
+  schema === 'l1-3' || schema === 'l1-4';
 
 export const L1_FILES = {
   tx: 'transactions.parquet',
