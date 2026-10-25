@@ -460,16 +460,61 @@ export class Session {
     }
   }
 
-  /** Drives and files over everything, from the tag lookup: a few kilobytes. */
+  /**
+   * Drives and files over everything. A band whose stats file counts
+   * `Entity-Type` (layout `l2-2`) gives them from it, kilobytes a band; any
+   * other band from its tag lookup, which reads its row groups for the name
+   * (about 25 MB over the whole live index, where the stats files are under 1 MB).
+   */
   private async heroCounts(): Promise<void> {
     if (!this.hasLookups || !this.engine) return;
-    const rows = rowsOf(await this.engine.query(parquetL2.tagCountsSql('Entity-Type')));
+    const name = 'Entity-Type';
+    const regs = this.registeredBands();
+    const stats = await Promise.all(
+      regs.map((r) => {
+        const band = this.bands.find((b) => b.id === r.id);
+        return band ? this.statsFile(band, name) : null;
+      }),
+    );
+    const fromStats = stats.filter((n): n is string => n !== null);
+    const fromLookup = regs.filter((_, i) => stats[i] === null).map((r) => r.names.lg!);
+    const parts = [
+      ...(fromStats.length ? [parquetL2.statCountsSql(fromStats, name)] : []),
+      ...(fromLookup.length ? [parquetL2.tagCountsSql(name, fromLookup)] : []),
+    ];
+    if (!parts.length) return;
+    const rows = rowsOf(
+      await this.engine.query(
+        `SELECT kind, sum(n) AS n FROM (${parts.join(' UNION ALL ')}) GROUP BY 1`,
+      ),
+    );
     const hero = { ...this.store.hero.value };
     for (const r of rows) {
       if (r.kind === 'drive') hero.drives = num(r.n as number);
       if (r.kind === 'file') hero.files = num(r.n as number);
     }
     this.store.hero.value = hero;
+  }
+
+  /**
+   * A band's stats file, registered, when its `band.json` (read through the
+   * range reader, so checked against the signed torrent) says it counts
+   * `tag`; null for a band without one, or whose stats leave the tag out.
+   */
+  private async statsFile(band: Band, tag: string): Promise<string | null> {
+    const json = band.files.get(parquetL2.L2_BAND_FILE);
+    const stats = band.files.get(parquetL2.L2_STATS_FILE);
+    if (!json || !stats || !this.reader || !this.isRangeable(band)) return null;
+    const res = await fetch(this.reader.url(rangeSpec(band, json, { mirrors: this.mirrors })));
+    if (!res.ok) throw new Error(`${band.id}: band.json could not be read (${res.status})`);
+    if (!parquetL2.statTagsOf(await res.json()).includes(tag)) return null;
+    const name = this.engine!.freshName('st');
+    await this.engine!.registerUrl(
+      name,
+      this.reader.url(rangeSpec(band, stats, { mirrors: this.mirrors })),
+      stats.size,
+    );
+    return name;
   }
 
   /* ------------------------------------------------------------- receipts */

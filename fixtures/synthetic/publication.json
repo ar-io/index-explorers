@@ -1407,8 +1407,8 @@
           "files": [
             {
               "name": "band.json",
-              "size": 1269,
-              "sha256": "7c9fde99ea0d5b1c5f281e0adb64c2ba0ba3508f3888127f425f34ed8cee0338"
+              "size": 1686,
+              "sha256": "4615d96510fbd3ca0225e8753208253b7f4bd97813a82a3c8cf577efa5b73e17"
             },
             {
               "name": "data_items.parquet",
@@ -1419,6 +1419,11 @@
               "name": "lookup_id.parquet",
               "size": 6892,
               "sha256": "adf4495fd45fd725d602b8ffbda7bb84accab74c4e825ba469f5e768ff8afc72"
+            },
+            {
+              "name": "lookup_key.parquet",
+              "size": 6048,
+              "sha256": "7a3056078e416e66a01a52486d5500de8565b8370eab6d0b4504a96f2225be97"
             },
             {
               "name": "lookup_tag.parquet",
@@ -1436,6 +1441,11 @@
               "sha256": "24911b4900d6579fdaacd22f36bbb3b694cec1a28055a26c369b5ffe14a6c843"
             },
             {
+              "name": "stats.parquet",
+              "size": 1620,
+              "sha256": "844b21847d997b1c2d5defd2af53b1c8b69308a9f72edc8f92f6143991b9b66b"
+            },
+            {
               "name": "tags.parquet",
               "size": 42090,
               "sha256": "c1ed73a4e3d14a83a74cc5eb48576697dc182b4188de18a5a68079bf1ff72572"
@@ -1447,10 +1457,10 @@
             }
           ],
           "torrent": {
-            "infohashV1": "c4b1f85bd97f7a09b4c9f625a2a4db9497896df5",
-            "infohashV2": "a8adeec88525a149d2b052856d87a1a373e1a32543c7f3415e7b5f9986231c49",
-            "magnet": "magnet:?xt=urn:btih:c4b1f85bd97f7a09b4c9f625a2a4db9497896df5&xt=urn:btmh:1220a8adeec88525a149d2b052856d87a1a373e1a32543c7f3415e7b5f9986231c49",
-            "torrentUrl": "/ar-io/indexes/torrents/c4b1f85bd97f7a09b4c9f625a2a4db9497896df5.torrent"
+            "infohashV1": "c4febb740a2a6529fa90e8c3afcdf33cfa15fedc",
+            "infohashV2": "ef91173d1d680c8f936aadcfb96ece33f02595d26c1ee471ecd92e8e56588d11",
+            "magnet": "magnet:?xt=urn:btih:c4febb740a2a6529fa90e8c3afcdf33cfa15fedc&xt=urn:btmh:1220ef91173d1d680c8f936aadcfb96ece33f02595d26c1ee471ecd92e8e56588d11",
+            "torrentUrl": "/ar-io/indexes/torrents/c4febb740a2a6529fa90e8c3afcdf33cfa15fedc.torrent"
           },
           "metadata": {
             "schema": "l2-1",
@@ -1548,6 +1558,6 @@
   "signature": {
     "alg": "ed25519",
     "keyId": "3UWhsaYkiPHZ7G2Vvq8P261npqoGphWWEuTp322rrN4E",
-    "sig": "js+3J4tZeFq10oTSxNG9sOQcf8ms3W5yPl9i4ZESaYg1pfPNys699rWYcQiASOOy0AH7akLL6mY6j7tgzwWLCg=="
+    "sig": "g9cPY2lOTy1kUvSHrSP2tjctB/gg0yc/tFcmvX+cgGb9jRDG/sm+LiCp0qS6OIJI5c6N9iMESIkav1QkR20EAg=="
   }
 }

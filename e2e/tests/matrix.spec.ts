@@ -47,6 +47,13 @@ test('publication verifies, the range reader controls the page, drives list with
     'hero',
   );
   expect(await page.locator('#stats').innerText()).not.toMatch(/—/);
+  if (!LIVE) {
+    // One band's from its stats file, the other's from its tag lookup.
+    const count = async (id: string) =>
+      Number((await page.locator(id).innerText()).replace(/[^\d]/g, ''));
+    expect(await count('#s-drives')).toBe(KNOWN.drives);
+    expect(await count('#s-files')).toBe(KNOWN.files);
+  }
   await page.waitForTimeout(LIVE ? 6000 : 2000);
   const names = await page.locator('#results tbody .name').allInnerTexts();
   expect(

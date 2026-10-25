@@ -4,11 +4,12 @@
  * registered names, and the SQL is the same text.
  */
 import { DuckDBInstance, type DuckDBConnection } from '@duckdb/node-api';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { arfs, parquetL1, parquetL2, type parquetL2 as L2 } from '../src/index.js';
-import { LIVE_BAND_DIR } from './helpers.js';
+import { arfs, KEY_MACROS, parquetL1, parquetL2, type parquetL2 as L2 } from '../src/index.js';
+import { FIXTURES, LIVE_BAND_DIR } from './helpers.js';
 
 type Row = Record<string, unknown>;
 const q = async (c: DuckDBConnection, sql: string): Promise<Row[]> =>
@@ -175,5 +176,44 @@ describe('parquet-l1 layouts', () => {
       ['l1-1', 'l1-2', 'l1-3', 'l1-4', 'l1-5', null].map(parquetL1.l1SchemaHasLookups),
     ).toEqual([false, false, true, true, false, false]);
     expect(parquetL1.L1_SCHEMAS).toContain('l1-4');
+  });
+});
+
+describe('parquet-l2 layout l2-2 stats (the synthetic l2-2 band)', () => {
+  const dir = path.join(
+    FIXTURES,
+    'synthetic',
+    'ardrive-l2',
+    'l2-h2000000-2004999-f1x7ur3e-4b9adf03fe5f',
+  );
+  let db: DuckDBInstance;
+  let c: DuckDBConnection;
+  beforeAll(async () => {
+    db = await DuckDBInstance.create(':memory:');
+    c = await db.connect();
+    for (const s of KEY_MACROS) await c.run(s);
+  });
+  afterAll(() => c.closeSync());
+
+  it('reads statTags from an l2-2 band.json only', () => {
+    const json = JSON.parse(readFileSync(path.join(dir, parquetL2.L2_BAND_FILE), 'utf8'));
+    expect(parquetL2.statTagsOf(json)).toContain('Entity-Type');
+    expect(parquetL2.statTagsOf({ ...json, schema: 'l2-1' })).toEqual([]);
+    expect(parquetL2.statTagsOf({ schema: 'l2-2', statTags: 'Entity-Type' })).toEqual([]);
+    expect(parquetL2.statTagsOf(null)).toEqual([]);
+  });
+
+  it('counts a stat tag from the stats file as the tag lookup does', async () => {
+    const counts = async (sql: string) =>
+      Object.fromEntries((await q(c, sql)).map((r) => [String(r.kind), n(r.n)]));
+    const stats = await counts(
+      parquetL2.statCountsSql([path.join(dir, parquetL2.L2_STATS_FILE)], 'Entity-Type'),
+    );
+    const lookup = await counts(
+      parquetL2.tagCountsSql('Entity-Type', [path.join(dir, 'lookup_tag.parquet')]),
+    );
+    expect(stats.drive).toBeGreaterThan(0);
+    expect(stats.file).toBeGreaterThan(0);
+    expect(stats).toEqual(lookup);
   });
 });

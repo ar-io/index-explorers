@@ -5,7 +5,9 @@
  *   ardrive-l2   two parquet-l2 bands of ArFS records (drives, folders,
  *                files) with their small JSON records under raw/, among them
  *                a drive of 20,000 files, a drive spread across both bands,
- *                private drives, several apps, versions and a hidden file
+ *                private drives, several apps, versions and a hidden file.
+ *                The first band is layout l2-2 (a key lookup and stats), the
+ *                second l2-1, as an index is while its publisher upgrades
  *   parquet-l1   one small l1-3 band of blocks, transactions and tags
  *   root-tx-index  one cdb64 band whose partitions map the L2 items to
  *                their root transactions
@@ -236,7 +238,14 @@ export const KNOWN = {
   fileData: '' as string,
   folder: '' as string,
   deepFolder: '' as string,
+  /** Drive and file records over both bands, as the page's counts give them. */
+  drives: 0,
+  files: 0,
 };
+
+/** Layout l2-2's derived tag names for the fixture: turbo-gateway.com's for ardrive-l2. */
+const KEY_TAGS = ['Drive-Id', 'File-Id', 'Folder-Id', 'Parent-Folder-Id'];
+const STAT_TAGS = ['App-Name', 'Content-Type', 'Entity-Type'];
 
 interface DriveSpec {
   privacy: 'public' | 'private';
@@ -570,12 +579,59 @@ async function writeBands(): Promise<
        FROM tags WHERE ${where} GROUP BY tag_name, tag_value ORDER BY name8, val8, name, value`,
       16384,
     );
+    const l2v2 = from === BANDS[0]![0];
+    const tagIn = (names: string[]) =>
+      `tag_name IN (${names.map((n) => `'${esc(n)}'::BLOB`).join(',')})`;
+    if (l2v2) {
+      // As ar-io-node's keyLookup and statsLookup (src/lib/parquet-l2/layout.ts).
+      await copy(
+        'lookup_key.parquet',
+        `SELECT name8, val8, height, count(*)::UBIGINT AS items
+         FROM (SELECT DISTINCT ${sha64('tag_name')} AS name8, ${sha64('tag_value')} AS val8, height, id
+               FROM tags WHERE ${where} AND ${tagIn(KEY_TAGS)})
+         GROUP BY name8, val8, height ORDER BY name8, val8, height`,
+        16384,
+      );
+      const bucket = `((height // 1000) * 1000)::UBIGINT`;
+      await copy(
+        'stats.parquet',
+        `WITH it AS (SELECT DISTINCT id, height, data_size FROM items WHERE ${where}),
+         first_index AS (
+           SELECT height, id, tag_name, min(tag_index) AS tag_index FROM tags
+           WHERE ${where} AND ${tagIn(STAT_TAGS)} GROUP BY height, id, tag_name),
+         picked AS (
+           SELECT f.height, f.id, f.tag_name AS name, t.tag_value AS value
+           FROM first_index f JOIN tags t ON t.height = f.height AND t.id = f.id AND t.tag_index = f.tag_index)
+         SELECT * FROM (
+           SELECT ${bucket} AS bucket, ''::BLOB AS name, ''::BLOB AS value, count(*)::UBIGINT AS items,
+                  coalesce(sum(data_size), 0)::UBIGINT AS bytes FROM it GROUP BY 1
+           UNION ALL
+           SELECT ${bucket} AS bucket, name, value, count(*)::UBIGINT AS items,
+                  coalesce(sum(data_size), 0)::UBIGINT AS bytes FROM it JOIN picked USING (height, id) GROUP BY 1, 2, 3)
+         ORDER BY bucket, name, value`,
+        16384,
+      );
+    }
     const rows = async (sql: string) =>
       Number(((await c.runAndReadAll(sql)).getRowObjects()[0] as { n: unknown }).n);
     const records = await rows(`SELECT count(*) AS n FROM items WHERE ${where}`);
+    for (const kind of ['drive', 'file'] as const)
+      KNOWN[kind === 'drive' ? 'drives' : 'files'] += await rows(
+        `SELECT count(DISTINCT id) AS n FROM tags WHERE ${where} AND tag_name = 'Entity-Type'::BLOB AND tag_value = '${kind}'::BLOB`,
+      );
+    const derived = async (file: string) =>
+      Number(
+        (
+          (
+            await c.runAndReadAll(
+              `SELECT count(*) AS n FROM read_parquet('${path.join(tmp, file)}')`,
+            )
+          ).getRowObjects()[0] as { n: unknown }
+        ).n,
+      );
     const band = {
       version: 1,
-      schema: 'l2-1',
+      schema: l2v2 ? 'l2-2' : 'l2-1',
       heightRange: [from, to],
       selection: {
         kind: 'ans104-data-items',
@@ -607,7 +663,14 @@ async function writeBands(): Promise<
           ),
           rowDigest: '0'.repeat(64),
         },
+        ...(l2v2
+          ? {
+              key: { rows: await derived('lookup_key.parquet'), rowDigest: '0'.repeat(64) },
+              stats: { rows: await derived('stats.parquet'), rowDigest: '0'.repeat(64) },
+            }
+          : {}),
       },
+      ...(l2v2 ? { keyTags: KEY_TAGS, statTags: STAT_TAGS } : {}),
       checks: { fixture: true },
       createdAt: new Date(blockTime(to) * 1000).toISOString(),
     };
@@ -622,6 +685,7 @@ async function writeBands(): Promise<
       'lookup_id.parquet',
       'lookup_wallet.parquet',
       'lookup_tag.parquet',
+      ...(l2v2 ? ['lookup_key.parquet', 'stats.parquet'] : []),
     ])
       files.push({ name: f, bytes: new Uint8Array(readFileSync(path.join(tmp, f))) });
     const digest = sha256(

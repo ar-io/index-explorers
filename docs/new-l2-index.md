@@ -175,8 +175,13 @@ spread over a band costs a row group or two instead of a window scan) and
 per value, so "over all history" questions need no scan). Neither enters a
 band's id, and a published `l2-1` band is upgraded in place (every
 `ardrive-l2` band on turbo-gateway.com is `l2-2` now). The client reads the
-five `l2-1` files by name and ignores others, so an `l2-2` band works as is; using the two new files is the next step for any selection
-layer (ArDrive's `drive_window` is the first candidate). When defining a
+five `l2-1` files by name and ignores others, so an `l2-2` band works as is.
+It uses the stats file for counts over all history: `statTagsOf(band.json)`
+says whether a band counts a tag, `statCountsSql` reads it, and
+`tagCountsSql` covers the bands that don't (the ArDrive page's drive and
+file counts read 4.4 MB this way, where the tag lookups alone read 25 MB).
+The key lookup is not used yet; ArDrive's `drive_window` is the first
+candidate. When defining a
 selection, name the tags that identify a group (`keyTags`) and the ones you
 will count by (`statTags`) from the start.
 
