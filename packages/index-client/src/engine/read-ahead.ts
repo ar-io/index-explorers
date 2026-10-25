@@ -21,11 +21,13 @@ export interface ReadAhead {
    * column: `[min, max]` meets `[lo, hi]`. `lo` and `hi` are SQL expressions,
    * compared as HUGEINT, so `hkey('Drive-Id')` works as well as a height.
    * A row group without statistics is kept. A bound with `any` instead
-   * keeps a row group whose `[min, max]` holds any one of those values.
+   * keeps a row group whose `[min, max]` holds any one of those values, and
+   * one with `within` a row group that meets any one of those `[lo, hi]`.
    */
   keep: readonly (
     | { column: string; lo: string; hi: string }
     | { column: string; any: readonly string[] }
+    | { column: string; within: readonly (readonly [string, string])[] }
   )[];
   /** The columns the query reads; null for every column of the row groups kept. */
   columns: readonly string[] | null;
@@ -48,7 +50,9 @@ const lit = (s: string) => `'${s.replace(/'/g, "''")}'`;
  */
 export function readAheadSql(ra: ReadAhead): string {
   const files = `parquet_metadata([${ra.files.map(lit).join(',')}])`;
-  const points = ra.keep.filter((k) => 'any' in k || k.lo === k.hi).map((k) => k.column);
+  const points = ra.keep
+    .filter((k) => 'any' in k || ('lo' in k && k.lo === k.hi))
+    .map((k) => k.column);
   const overlaps = (lo: string, hi: string) =>
     `TRY_CAST(min_v AS HUGEINT) <= CAST(${hi} AS HUGEINT) AND TRY_CAST(max_v AS HUGEINT) >= CAST(${lo} AS HUGEINT)`;
   const bounds = ra.keep
@@ -59,7 +63,11 @@ export function readAheadSql(ra: ReadAhead): string {
             ? k.any.length
               ? k.any.map((v) => `(${overlaps(v, v)})`).join(' OR ')
               : 'false'
-            : overlaps(k.lo, k.hi)
+            : 'within' in k
+              ? k.within.length
+                ? k.within.map(([lo, hi]) => `(${overlaps(lo, hi)})`).join(' OR ')
+                : 'false'
+              : overlaps(k.lo, k.hi)
         }, true)`,
     )
     .join(' ');
@@ -153,28 +161,27 @@ export interface ReadAheadOptions {
   fetch?: typeof fetch;
 }
 
+/** What a query over some plans will read, worked out from the files' footers. */
+export interface PlannedReads {
+  /** The stretches the engine reads, per file: the kept column chunks as `engineReads` grows them. */
+  spans: FileRange[];
+  /** Their sum: what the query reads, some of which the reader may already hold. */
+  bytes: number;
+}
+
 /** The last bytes of a Parquet file fetched first: its footer is almost always within them. */
 const TAIL = 64 * 1024;
 
-/**
- * Reads ahead what the plans name: every file's footer at once, then the
- * stretches the engine will read for the chosen column chunks, at once.
- * Returns the bytes asked for; never throws.
- */
-export async function readAhead(
-  engine: Engine,
-  plans: readonly ReadAhead[],
-  opts: ReadAheadOptions = {},
-): Promise<{ bytes: number; requests: number }> {
+/** Range requests through the reader, counted, and a pool to send them in parallel. */
+function fetcher(engine: Engine, opts: ReadAheadOptions) {
   const f = opts.fetch ?? fetch;
   const concurrency = opts.concurrency ?? 16;
-  let bytes = 0;
-  let requests = 0;
+  const sent = { bytes: 0, requests: 0 };
   const get = async (r: FileRange, keep = false): Promise<Uint8Array | null> => {
     const at = engine.fileOf(r.file);
     if (!at || r.end <= r.start) return null;
-    requests += 1;
-    bytes += r.end - r.start;
+    sent.requests += 1;
+    sent.bytes += r.end - r.start;
     try {
       const res = await f(at.url, { headers: { Range: `bytes=${r.start}-${r.end - 1}` } });
       // The worker answers once every piece is checked and kept, so a body
@@ -196,50 +203,91 @@ export async function readAhead(
       }),
     );
   };
-  try {
-    // Footers: the tail of each file, then whatever of the engine's read of
-    // the footer the tail did not hold.
-    const files = [...new Set(plans.flatMap((p) => p.files))].filter((n) => engine.fileOf(n));
-    await pool(
-      files.map((file) => {
-        const size = engine.fileOf(file)!.size;
-        return { file, start: Math.max(0, size - TAIL), end: size };
-      }),
-      async (r) => {
-        const tail = await get(r, true);
-        if (!tail || tail.length < 8) return;
-        const v = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
-        const footer = v.getUint32(tail.length - 8, true) + 8;
-        if (footer > r.end) return;
-        const [[from]] = engineReads([{ start: r.end - footer, end: r.end }], r.end) as [
-          [number, number],
-        ];
-        if (from < r.start) await get({ file: r.file, start: from, end: r.start });
-      },
-    );
-    // The chunks the queries will read.
-    const ranges: FileRange[] = [];
-    for (const p of plans) {
-      if (!p.files.length) continue;
-      const t = await engine.query(readAheadSql(p));
-      for (const row of t.toArray() as { file_name: string; start: bigint; len: bigint }[]) {
-        const start = Number(row.start);
-        ranges.push({ file: String(row.file_name), start, end: start + Number(row.len) });
-      }
+  return { get, pool, sent };
+}
+
+async function plan(
+  engine: Engine,
+  plans: readonly ReadAhead[],
+  { get, pool }: ReturnType<typeof fetcher>,
+): Promise<PlannedReads> {
+  // Footers: the tail of each file, then whatever of the engine's read of
+  // the footer the tail did not hold.
+  const files = [...new Set(plans.flatMap((p) => p.files))].filter((n) => engine.fileOf(n));
+  await pool(
+    files.map((file) => {
+      const size = engine.fileOf(file)!.size;
+      return { file, start: Math.max(0, size - TAIL), end: size };
+    }),
+    async (r) => {
+      const tail = await get(r, true);
+      if (!tail || tail.length < 8) return;
+      const v = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
+      const footer = v.getUint32(tail.length - 8, true) + 8;
+      if (footer > r.end) return;
+      const [[from]] = engineReads([{ start: r.end - footer, end: r.end }], r.end) as [
+        [number, number],
+      ];
+      if (from < r.start) await get({ file: r.file, start: from, end: r.start });
+    },
+  );
+  // The chunks the queries will read.
+  const ranges: FileRange[] = [];
+  for (const p of plans) {
+    if (!p.files.length) continue;
+    const t = await engine.query(readAheadSql(p));
+    for (const row of t.toArray() as { file_name: string; start: bigint; len: bigint }[]) {
+      const start = Number(row.start);
+      ranges.push({ file: String(row.file_name), start, end: start + Number(row.len) });
     }
+  }
+  // A file the engine holds whole (not range-read) costs nothing more.
+  const byFile = new Map<string, FileRange[]>();
+  for (const r of ranges)
+    if (engine.fileOf(r.file)) byFile.set(r.file, [...(byFile.get(r.file) ?? []), r]);
+  const spans = [...byFile].flatMap(([file, rs]) =>
+    engineReads(rs, engine.fileOf(file)!.size).map(([start, end]) => ({ file, start, end })),
+  );
+  return { spans, bytes: spans.reduce((t, r) => t + r.end - r.start, 0) };
+}
+
+/**
+ * What a query over these plans will read, before it reads it: the files'
+ * footers are fetched (the query needs them anyway), and from them the
+ * column chunks it reads and the stretches the engine reads them in. A share
+ * of a band's file sizes is no guide (uploads come in bursts), so this is
+ * the number to say before a large read. The reader fetches whole pieces,
+ * so slightly more arrives. Throws when a footer cannot be read.
+ */
+export async function planReads(
+  engine: Engine,
+  plans: readonly ReadAhead[],
+  opts: ReadAheadOptions = {},
+): Promise<PlannedReads> {
+  return plan(engine, plans, fetcher(engine, opts));
+}
+
+/**
+ * Reads ahead what the plans name (or what `planReads` already worked out):
+ * every file's footer at once, then the stretches the engine will read for
+ * the chosen column chunks, at once. Returns the bytes asked for; never throws.
+ */
+export async function readAhead(
+  engine: Engine,
+  plans: readonly ReadAhead[] | PlannedReads,
+  opts: ReadAheadOptions = {},
+): Promise<{ bytes: number; requests: number }> {
+  const io = fetcher(engine, opts);
+  try {
+    const { spans } = 'spans' in plans ? plans : await plan(engine, plans, io);
     const budget = opts.maxBytes ?? 90 * 1024 * 1024;
     let planned = 0;
-    const byFile = new Map<string, FileRange[]>();
-    for (const r of ranges) byFile.set(r.file, [...(byFile.get(r.file) ?? []), r]);
-    const spans = [...byFile].flatMap(([file, rs]) =>
-      engineReads(rs, engine.fileOf(file)!.size).map(([start, end]) => ({ file, start, end })),
-    );
     const within = splitRanges(spans, opts.cap ?? 2 * 1024 * 1024).filter(
       (r) => (planned += r.end - r.start) <= budget,
     );
-    await pool(within, (r) => get(r));
+    await io.pool(within, (r) => io.get(r));
   } catch {
     /* a read ahead is only ever a head start */
   }
-  return { bytes, requests };
+  return { ...io.sent };
 }

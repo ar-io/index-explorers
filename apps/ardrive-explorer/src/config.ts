@@ -3,7 +3,7 @@
  * local fixture gateway come from build-time environment variables; the
  * defaults are the production values.
  */
-import { KNOWN_PUBLISHERS, MIN_WINDOW_COST, REGISTRY_GATEWAYS } from '@ar-io/index-client';
+import { KNOWN_PUBLISHERS, REGISTRY_GATEWAYS } from '@ar-io/index-client';
 
 import lock from '../../../engine.lock.json';
 
@@ -27,8 +27,6 @@ export const CONFIG = {
   publishers: list(env.VITE_PUBLISHERS) ?? KNOWN_PUBLISHERS,
   /** The most a listing reads without asking first. */
   askFirstBytes: number(env.VITE_ASK_FIRST_BYTES, 40e6),
-  /** A window never costs less than one row group of each file; overridable so fixtures can exercise the gate. */
-  costMin: number(env.VITE_COST_MIN_BYTES, MIN_WINDOW_COST),
   /** Periods larger than this ask before a question runs over them. */
   askFirstPeriod: number(env.VITE_ASK_FIRST_PERIOD, 400e6),
   /** The most a reader is asked to download whole (no range reader). */

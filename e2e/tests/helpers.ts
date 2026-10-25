@@ -64,6 +64,26 @@ export const driveOpened = async (page: Page) =>
   ((await page.locator('#b-empty').isVisible()) &&
     /records? between blocks/.test((await page.locator('#b-sub').textContent()) ?? ''));
 
+/**
+ * Waits for a drive to list (or for `done`), reading on through its cost
+ * card when it asks first. What a listing reads depends on the data, so a
+ * test of something else accepts the card; the gate has its own test.
+ */
+export async function driveListed(
+  page: Page,
+  ms: number,
+  what = 'drive',
+  done = async () => (await driveRows(page)) > 0,
+): Promise<boolean> {
+  const card = () => page.locator('#cost button').isVisible();
+  if (!(await until(page, async () => (await done()) || (await card()), ms, what))) return false;
+  if (!(await done()) && (await card())) {
+    await page.locator('#cost button').click();
+    return until(page, done, ms, what);
+  }
+  return true;
+}
+
 /** Polls until `fn` is true, logging the status on a timeout. */
 export async function until(
   page: Page,

@@ -250,6 +250,29 @@ export function windowReadAhead(
 }
 
 /**
+ * What reading several stretches of heights' items and tags will fetch, as
+ * `windowReadAhead` for each and in one plan per file kind: the row groups
+ * any stretch touches, in the files of the bands any stretch touches.
+ */
+export function clustersReadAhead(
+  bands: readonly RegisteredL2Band[],
+  clusters: readonly (readonly [number, number])[],
+): ReadAhead[] {
+  const inAny = bands.filter((b) => clusters.some(([lo, hi]) => b.to >= lo && b.from <= hi));
+  const keep = [
+    { column: 'height', within: clusters.map(([lo, hi]) => [String(lo), String(hi)] as const) },
+  ];
+  return [
+    {
+      files: namesOf(inAny, 'it'),
+      keep,
+      columns: ['id', 'height', 'owner_address', 'data_size'],
+    },
+    { files: namesOf(inAny, 'tg'), keep, columns: ['id', 'height', 'tag_name', 'tag_value'] },
+  ];
+}
+
+/**
  * What finding one tag pair in `lookup_tag` will fetch, over every band: the
  * row groups whose key statistics can hold the pair (the file is sorted by them).
  */

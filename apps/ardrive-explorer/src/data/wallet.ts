@@ -8,10 +8,11 @@ import {
   mb,
   num,
   parquetL2,
+  planReads,
+  readAhead,
   rowsOf,
   shortId,
   sq,
-  windowCost,
 } from '@ar-io/index-client';
 
 import { CONFIG } from '../config.js';
@@ -36,7 +37,7 @@ export function createWalletFlow(
 ) {
   const st = s.store;
 
-  async function openWallet(addr: string, everything: boolean): Promise<void> {
+  async function openWallet(addr: string, everything: boolean, confirmed = false): Promise<void> {
     const my = ++s.nav;
     if (!everything) s.pushHistory({ kind: 'wallet', key: addr });
     if (!(await s.ready()) || s.overtaken(my)) return;
@@ -75,21 +76,19 @@ export function createWalletFlow(
       const use = everything
         ? clusters.slice(-CONFIG.walletMax)
         : clusters.slice(-CONFIG.walletRecent);
+      // What reading those stretches fetches, from the files' footers: said
+      // before a large read of everything, and read ahead in parallel.
+      const reads = await planReads(s.engine!, parquetL2.clustersReadAhead(bands, use));
+      const capped = everything && clusters.length > CONFIG.walletMax;
+      if (everything && !confirmed && reads.bytes > CONFIG.askFirstBytes)
+        return { t, clusters, used: use.length, capped, ask: reads.bytes, recs: [] };
+      await readAhead(s.engine!, reads, { stop: () => s.overtaken(my) });
       const recs = rowsOf(
         await s.engine!.query(
           `SELECT * FROM (${arfs.clusterSql(bands, use, `owner = ${sq(addr)}`)}) ORDER BY height DESC LIMIT ${CONFIG.walletRows}`,
         ),
       ).map(toRecord);
-      return {
-        t,
-        clusters,
-        cost: clusters
-          .slice(-CONFIG.walletMax)
-          .reduce((sum, [a, z]) => sum + windowCost(s.bands, a, z, { min: CONFIG.costMin }), 0),
-        used: use.length,
-        capped: everything && clusters.length > CONFIG.walletMax,
-        recs,
-      };
+      return { t, clusters, used: use.length, capped, ask: null, recs };
     });
     if (!r || s.overtaken(my)) return;
     if (!r.out) {
@@ -100,7 +99,26 @@ export function createWalletFlow(
       st.say(r.receipt, 'ok');
       return;
     }
-    const { t, clusters, cost, used, capped, recs } = r.out;
+    const { t, clusters, used, capped, ask, recs } = r.out;
+    if (ask !== null) {
+      st.content.value = {
+        ...st.content.value,
+        sub: `${num(clusters.length)} stretches of blocks with this wallet’s uploads.`,
+        cost: {
+          text: [
+            `Finding ${capped ? `its drives over the newest ${num(used)} stretches` : 'every drive it wrote to'} reads about `,
+            mb(ask),
+            ' of the index.',
+          ],
+          action: {
+            label: `Read ${mb(ask)} and find them`,
+            go: () => void openWallet(addr, true, true),
+          },
+        },
+      };
+      st.say('');
+      return;
+    }
     const driveIds = new Map<string, WalletDrive>();
     for (const x of recs) {
       if (!x.drive_id) continue;
@@ -145,7 +163,7 @@ export function createWalletFlow(
           ? [
               {
                 kind: 'button' as const,
-                label: `Find ${clusters.length > CONFIG.walletMax ? `its drives over the newest ${CONFIG.walletMax} stretches` : 'every drive'} (reads about ${mb(cost)})`,
+                label: `Find ${clusters.length > CONFIG.walletMax ? `its drives over the newest ${CONFIG.walletMax} stretches` : 'every drive'}`,
                 go: () => void openWallet(addr, true),
               },
             ]
