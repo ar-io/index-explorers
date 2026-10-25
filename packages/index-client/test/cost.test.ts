@@ -4,12 +4,10 @@ import {
   buildPeriods,
   clusterHeights,
   heightAt,
-  MIN_WINDOW_COST,
   parsePublication,
   selectIndex,
   sliceWindow,
   timeAt,
-  windowCost,
 } from '../src/index.js';
 import { GATEWAY, LIVE_PUBLICATION, readJson } from './helpers.js';
 
@@ -17,25 +15,6 @@ const ix = selectIndex(parsePublication(readJson(LIVE_PUBLICATION)), 'ardrive-l2
   gateway: GATEWAY,
 });
 const bands = ix.bands;
-
-describe('windowCost', () => {
-  it('never says less than one row group of each file', () => {
-    expect(windowCost(bands, 2024900, 2024950)).toBe(MIN_WINDOW_COST);
-  });
-
-  it('is the window’s share of tags plus 45% of items, from the signed sizes', () => {
-    const b = bands.find((x) => x.id.startsWith('l2-h900000'))!;
-    const whole = windowCost(bands, 900000, 999999);
-    const tags = b.files.get('tags.parquet')!.size;
-    const items = b.files.get('data_items.parquet')!.size;
-    expect(whole).toBeCloseTo(tags + items * 0.45, -3);
-    expect(windowCost(bands, 900000, 949999)).toBeCloseTo(whole / 2, -3);
-    // Across two bands: each contributes its share.
-    const two = windowCost(bands, 999000, 1000999);
-    expect(two).toBeGreaterThan(MIN_WINDOW_COST);
-    expect(two).toBeLessThan(whole / 10);
-  });
-});
 
 describe('periods and dates', () => {
   const dated = bands.map((b) => ({

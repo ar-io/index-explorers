@@ -131,6 +131,29 @@ describe('read ahead over the recorded band', () => {
     expect(parquetL2.windowReadAhead([band], 1, 2).every((p) => p.files.length === 0)).toBe(true);
   });
 
+  it('several stretches name the row groups any of them touches, in one plan per file kind', async () => {
+    const clusters: [number, number][] = [
+      [700000, 700400],
+      [760000, 760100],
+    ];
+    const plans = parquetL2.clustersReadAhead([band], clusters);
+    expect(plans.length).toBe(2);
+    for (const plan of plans) {
+      const file = plan.files[0]!;
+      const got = await coveredGroups(c, file, readAheadSql(plan));
+      // The same row groups as one window plan per stretch, together.
+      const each = new Set<number>();
+      for (const [lo, hi] of clusters) {
+        const one = parquetL2.windowReadAhead([band], lo, hi).find((p) => p.files[0] === file)!;
+        for (const g of await coveredGroups(c, file, readAheadSql(one))) each.add(g);
+        for (const g of await rowGroupsOf(c, file, `height BETWEEN ${lo} AND ${hi}`))
+          expect(got).toContain(g);
+      }
+      expect(got).toEqual([...each].sort((a, b) => a - b));
+    }
+    expect(parquetL2.clustersReadAhead([band], [[1, 2]]).every((p) => !p.files.length)).toBe(true);
+  });
+
   it('splits a long read on aligned boundaries so it goes out in parallel', () => {
     expect(splitRanges([{ file: 'a', start: 100, end: 2500 }], 1024)).toEqual([
       { file: 'a', start: 100, end: 1024 },

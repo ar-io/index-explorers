@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "build:e2e": "VITE_REGISTRY_GATEWAYS=http://localhost:8788 VITE_ENGINE_HOSTS=http://localhost:8787/engine/ VITE_PUBLISHERS=http://localhost:8787 VITE_ASK_FIRST_BYTES=2000000 VITE_COST_MIN_BYTES=1000000 vite build --outDir dist-e2e"
+    "build:e2e": "VITE_REGISTRY_GATEWAYS=http://localhost:8788 VITE_ENGINE_HOSTS=http://localhost:8787/engine/ VITE_PUBLISHERS=http://localhost:8787 VITE_ASK_FIRST_BYTES=3500000 vite build --outDir dist-e2e"
   },
   "dependencies": {
     "@ar-io/index-client": "workspace:*",

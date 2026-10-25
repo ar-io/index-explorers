@@ -1,6 +1,15 @@
 import { expect, test } from '@playwright/test';
 
-import { driveRows, KNOWN, openPage, pageErrors, rows, status, until } from './helpers.js';
+import {
+  driveListed,
+  driveRows,
+  KNOWN,
+  openPage,
+  pageErrors,
+  rows,
+  status,
+  until,
+} from './helpers.js';
 
 test('the page verifies the publication, lists drives with names, and opens a drive', async ({
   page,
@@ -18,7 +27,7 @@ test('the page verifies the publication, lists drives with names, and opens a dr
   expect(names.some((n) => !/fetching|unnamed|private|unavailable/i.test(n))).toBe(true);
   await page.fill('#find', KNOWN.typicalDrive);
   await page.click('#findgo');
-  await until(page, async () => (await driveRows(page)) > 0, 60_000, 'drive');
+  await driveListed(page, 60_000);
   console.log(
     'drive head:',
     (await page.locator('.b-head').innerText()).replace(/\n/g, ' | ').slice(0, 200),

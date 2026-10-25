@@ -8,6 +8,7 @@ import fs from 'node:fs';
 
 import {
   clearStatus,
+  driveListed,
   driveOpened,
   driveRows,
   GW,
@@ -247,17 +248,13 @@ test('a private drive shows its shape only', async () => {
   await page.locator('#browse').click();
   await until(page, async () => (await rows(page)) > 0, 120_000, 'private browse');
   await page.locator('#results tbody tr').first().locator('.rowlink').first().click();
-  await until(
-    page,
-    async () =>
-      /Private drive/.test(
-        await page
-          .locator('.b-head')
-          .innerText()
-          .catch(() => ''),
-      ),
-    120_000,
-    'private drive',
+  await driveListed(page, 120_000, 'private drive', async () =>
+    /Private drive/.test(
+      await page
+        .locator('.b-head')
+        .innerText()
+        .catch(() => ''),
+    ),
   );
   const head = await page.locator('.b-head').innerText();
   expect(head).toMatch(/Private drive/);
@@ -285,26 +282,38 @@ test('the wallet view: totals, stretches, and every drive on request', async () 
   expect(await page.locator('#viewfacts').innerText()).toMatch(/uploads/i);
   const every = page.locator('#more button', { hasText: /Find/ });
   if (await every.count()) {
-    const costText = await every.innerText();
-    const m = /about ([\d.]+) (MB|GB)/.exec(costText);
-    const mbs = m ? Number(m[1]) * (m[2] === 'GB' ? 1000 : 1) : 0;
-    if (mbs < 300) {
-      await clearStatus(page);
-      await every.click();
-      await until(
-        page,
-        async () =>
-          /Every drive|newest/.test(
-            await page
-              .locator('#viewsub')
-              .innerText()
-              .catch(() => ''),
-          ),
-        600_000,
-        'every drive',
-      );
-      expect(await page.locator('#viewsub').innerText()).toMatch(/Every drive|newest/);
+    const sub = () =>
+      page
+        .locator('#viewsub')
+        .innerText()
+        .catch(() => '');
+    await clearStatus(page);
+    await every.click();
+    // A large read says its cost first, worked out from the files' footers.
+    await until(
+      page,
+      async () =>
+        /Every drive|newest/.test(await sub()) || (await page.locator('#cost').isVisible()),
+      600_000,
+      'every drive or its cost',
+    );
+    if (await page.locator('#cost').isVisible()) {
+      const m = /about ([\d.]+) (MB|GB)/.exec(await page.locator('#cost').innerText());
+      expect(m, await page.locator('#cost').innerText()).not.toBeNull();
+      const mbs = Number(m![1]) * (m![2] === 'GB' ? 1000 : 1);
+      if (mbs < 300) {
+        await clearStatus(page);
+        await page.locator('#cost button').click();
+        await until(
+          page,
+          async () => /Every drive|newest/.test(await sub()),
+          600_000,
+          'every drive',
+        );
+      }
     }
+    if (!(await page.locator('#cost').isVisible()))
+      expect(await sub()).toMatch(/Every drive|newest/);
   }
 });
 

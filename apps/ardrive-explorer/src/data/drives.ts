@@ -11,12 +11,13 @@ import {
   mb,
   num,
   parquetL2,
+  type PlannedReads,
+  planReads,
   readAhead,
   rowsOf,
   sliceWindow,
   sq,
   timeAt,
-  windowCost,
 } from '@ar-io/index-client';
 
 import { CONFIG } from '../config.js';
@@ -196,7 +197,7 @@ export function createDriveFlows(s: Session) {
   async function narrowByOwner(
     driveId: string,
     w: DriveWindow,
-  ): Promise<{ owner: string; clusters: [number, number][]; cost: number } | null> {
+  ): Promise<{ owner: string; clusters: [number, number][] } | null> {
     const bands = s.registeredBands();
     const [first] = rowsOf(
       await s.engine!.query(
@@ -211,13 +212,14 @@ export function createDriveFlows(s: Session) {
       ),
     ).map((r) => Number(r.height));
     if (!heights.length) return null;
-    const clusters = clusterHeights(heights, CONFIG.clusterGap);
-    const cost = clusters.reduce(
-      (t, [a, z]) => t + windowCost(s.bands, a, z, { min: CONFIG.costMin }),
-      0,
-    );
-    return { owner: String(first.owner), clusters, cost };
+    return { owner: String(first.owner), clusters: clusterHeights(heights, CONFIG.clusterGap) };
   }
+
+  /** What listing a drive over these stretches reads, from the files' footers. */
+  const priced = async (clusters: [number, number][]) => ({
+    clusters,
+    reads: await planReads(s.engine!, parquetL2.clustersReadAhead(s.registeredBands(), clusters)),
+  });
 
   async function openDrive(
     driveIdRaw: string,
@@ -250,23 +252,33 @@ export function createDriveFlows(s: Session) {
     }
     // A wide window is read as slices of blocks, one small scan each, so the
     // memory a listing needs stays flat however wide the drive. Narrowing to
-    // the stretches its owner wrote in is taken whenever it reads less.
-    let plan: { clusters: [number, number][]; cost: number; owner?: string } = {
-      clusters: sliceWindow(w.lo, w.hi, CONFIG.slice),
-      cost: windowCost(s.bands, w.lo, w.hi, { min: CONFIG.costMin }),
-    };
-    if (plan.cost > CONFIG.askFirstBytes && s.hasLookups) {
-      const n = await narrowByOwner(driveId, w).catch(() => null);
-      if (s.overtaken(my)) return;
-      if (n && n.cost < plan.cost) plan = { clusters: n.clusters, cost: n.cost, owner: n.owner };
+    // the stretches its owner wrote in is taken whenever it reads less. What
+    // each reads comes from the files' footers, which the listing needs anyway.
+    let plan: { clusters: [number, number][]; reads: PlannedReads; owner?: string };
+    try {
+      st.tr('plan');
+      plan = await priced(sliceWindow(w.lo, w.hi, CONFIG.slice));
+      if (plan.reads.bytes > CONFIG.askFirstBytes && s.hasLookups) {
+        const n = await narrowByOwner(driveId, w).catch(() => null);
+        if (s.overtaken(my)) return;
+        const p = n && (await priced(n.clusters));
+        if (p && p.reads.bytes < plan.reads.bytes) plan = { ...p, owner: n.owner };
+      }
+      st.tr('planned');
+    } catch (e) {
+      if (!s.overtaken(my))
+        st.say(`Could not read the index: ${e instanceof Error ? e.message : String(e)}`, 'bad');
+      return;
     }
+    if (s.overtaken(my)) return;
+    const cost = plan.reads.bytes;
     const when = fmtRange(timeAt(s.bands, w.lo), timeAt(s.bands, w.hi));
     const span = `${w.records != null ? num(w.records) + ' records' : 'Records'} between blocks ${num(w.lo)} and ${num(w.hi)}${when ? ` (${when})` : ''}.`;
     st.content.value = { ...st.content.value, sub: span };
-    if (plan.cost > CONFIG.askFirstBytes && !confirmed) {
+    if (cost > CONFIG.askFirstBytes && !confirmed) {
       const text = [
         `Listing this drive reads about `,
-        mb(plan.cost),
+        mb(cost),
         ` of the index` +
           (plan.owner
             ? ` (narrowed to the ${num(plan.clusters.length)} stretches of blocks its owner wrote in)`
@@ -280,7 +292,7 @@ export function createDriveFlows(s: Session) {
         cost: {
           text,
           action: {
-            label: `Read ${mb(plan.cost)} and list it`,
+            label: `Read ${mb(cost)} and list it`,
             go: () => void openDrive(driveId, true, folder),
           },
         },
@@ -291,11 +303,7 @@ export function createDriveFlows(s: Session) {
       const bands = s.registeredBands();
       // The window's row groups at once, in parallel, rather than one by one as the engine asks.
       st.tr('window ahead');
-      await readAhead(
-        s.engine!,
-        plan.clusters.flatMap(([a, z]) => parquetL2.windowReadAhead(bands, a, z)),
-        { stop: () => s.overtaken(my) },
-      );
+      await readAhead(s.engine!, plan.reads, { stop: () => s.overtaken(my) });
       st.tr('window');
       const src = `(${arfs.clusterSql(bands, plan.clusters, `drive_id = ${sq(driveId)}`)})`;
       // The drive and its folders first, so a cap cuts files, never the tree they hang from.

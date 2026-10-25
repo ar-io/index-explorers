@@ -9,6 +9,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import {
+  driveListed,
   driveRows,
   GW,
   KNOWN,
@@ -43,7 +44,7 @@ async function intoFolder(page: Page): Promise<number | null> {
 
 test('a folder opens within the budget and lands in the fragment', async ({ page }) => {
   await openPage(page, `drive=${KNOWN.typicalDrive}`);
-  await until(page, async () => (await driveRows(page)) > 0, 240_000, 'drive');
+  await driveListed(page, 240_000);
   await page.waitForTimeout(LIVE ? 6000 : 2500);
   log('1 drive open   |', await crumbs(page), '|', await frag(page));
   const move = await intoFolder(page);
@@ -60,7 +61,7 @@ test('Back/Forward, crumbs and a link walk the exact folder', async ({ page, bro
   if (KNOWN.deepFolder)
     await openPage(page, `drive=${KNOWN.typicalDrive}&folder=${KNOWN.deepFolder}`);
   else await openPage(page, `drive=${KNOWN.typicalDrive}`);
-  await until(page, async () => (await driveRows(page)) > 0, 240_000, 'drive');
+  await driveListed(page, 240_000);
   await page.waitForTimeout(LIVE ? 6000 : 2500);
   if (!KNOWN.deepFolder) {
     // Walk: open folders until two levels deep, trying each top folder in turn.

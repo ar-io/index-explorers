@@ -1,50 +1,15 @@
 /**
- * The cost model: what a height window costs to scan, from the bands' signed
- * sizes, and the periods a reader is offered. Everything is an estimate said
- * as "about": row groups are the unit read, so a window never costs less than
- * one of each file it touches.
+ * Periods and heights: the periods a reader is offered, what each holds from
+ * the bands' signed sizes, and turning dates into heights. What a listing
+ * will read is not guessed here: `planReads` (engine/read-ahead.ts) works it
+ * out from the files' footers.
  */
 import type { Band } from './publication.js';
 
-/** Row groups are 122,880 rows, about 250 blocks on the busy bands. */
+/** Row groups are 122,880 rows, about 250 blocks on the busy bands: the default gap between stretches. */
 export const ROW_GROUP_BLOCKS = 250;
-/** Measured: ~0.9 MB of tags and ~2.6 MB of items per row group on the busy bands. */
-export const MIN_WINDOW_COST = 3.5e6;
 /** About two minutes a block: only for turning "last 30 days" into a height when no dates are known. */
 export const BLOCKS_PER_DAY = 720;
-
-export interface CostOptions {
-  /** The file whose whole share counts (tags). */
-  scanFile?: string;
-  /** The file read partly (items), and the share of its row groups a record needs. */
-  partFile?: string;
-  partShare?: number;
-  min?: number;
-}
-
-/**
- * What listing the records in a window of blocks costs: the window's share
- * of tags, and of the two items columns a record needs (about 45% of the
- * items file), never less than one row group of each.
- */
-export function windowCost(
-  bands: readonly Band[],
-  lo: number,
-  hi: number,
-  opts: CostOptions = {},
-): number {
-  const scan = opts.scanFile ?? 'tags.parquet';
-  const part = opts.partFile ?? 'data_items.parquet';
-  const share = opts.partShare ?? 0.45;
-  let t = 0;
-  for (const b of bands) {
-    const to = b.to ?? hi;
-    if (to < lo || b.from > hi) continue;
-    const frac = (Math.min(to, hi) - Math.max(b.from, lo) + 1) / (to - b.from + 1);
-    t += ((b.files.get(scan)?.size ?? 0) + (b.files.get(part)?.size ?? 0) * share) * frac;
-  }
-  return Math.max(t, opts.min ?? MIN_WINDOW_COST);
-}
 
 /** The size of the files a listing may read in a band (tables, not lookups). */
 export const bandScanSize = (b: Band, files: readonly string[]): number =>
