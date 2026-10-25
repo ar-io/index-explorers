@@ -14,7 +14,7 @@
     "test": "pnpm -r --filter './packages/*' --filter './apps/*' run test",
     "lint": "prettier --check . && pnpm typecheck",
     "format": "prettier --write .",
-    "fixtures:build": "node scripts/build-fixtures.mjs",
+    "fixtures:build": "tsx scripts/build-fixtures.ts",
     "fixture-gateway": "node tools/fixture-gateway/server.mjs",
     "pins:check": "node scripts/check-pins.mjs",
     "e2e": "playwright test -c e2e/playwright.config.ts --project=fixtures",
@@ -23,14 +23,16 @@
     "example:query": "tsx examples/query-band.ts"
   },
   "devDependencies": {
+    "@duckdb/duckdb-wasm": "1.30.0",
     "@duckdb/node-api": "1.5.6-r.1",
+    "@noble/ed25519": "3.2.0",
     "@playwright/test": "1.64.1",
+    "canonicalize": "5.1.0",
     "prettier": "3.6.2",
     "tsx": "^4.23.15",
     "typescript": "5.9.3",
     "vite": "7.3.7",
-    "vitest": "3.2.7",
-    "@duckdb/duckdb-wasm": "1.30.0"
+    "vitest": "3.2.7"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

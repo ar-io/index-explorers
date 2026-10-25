@@ -21,6 +21,9 @@ export interface Known {
   folder: string;
   deepFolder: string;
   tip: number;
+  /** Drive and file records the page's counts give (0 live: not fixed). */
+  drives: number;
+  files: number;
 }
 
 /** The ids each suite exercises: the synthetic fixture's, or known live drives. */
@@ -36,6 +39,8 @@ export const KNOWN: Known = LIVE
       folder: '',
       deepFolder: '',
       tip: 0,
+      drives: 0,
+      files: 0,
     }
   : (JSON.parse(readFileSync(path.join(ROOT, 'fixtures/synthetic/known.json'), 'utf8')) as Known);
 

@@ -455,6 +455,35 @@ export function l2PeriodViewsSql(
   ];
 }
 
-/** The exact counts of a tag's values over every band, from the tag lookup: kilobytes. */
-export const tagCountsSql = (name: string): string =>
-  `SELECT CAST(value AS VARCHAR) AS kind, sum(txs) AS n FROM lookup_tag WHERE name8 = hkey('${name}') AND name = CAST('${name}' AS BLOB) GROUP BY 1`;
+/**
+ * The exact counts of a tag's values, from the tag lookup: over every band
+ * (the `lookup_tag` view), or over the `lookup_tag` files named. Each band's
+ * row groups for the name are read, which is megabytes over a whole index:
+ * where a band's stats file counts the tag, `statCountsSql` reads far less.
+ */
+export const tagCountsSql = (name: string, files?: readonly string[]): string =>
+  `SELECT CAST(value AS VARCHAR) AS kind, sum(txs) AS n FROM ${files ? readList(files) : 'lookup_tag'} WHERE name8 = hkey(${sq(name)}) AND name = CAST(${sq(name)} AS BLOB) GROUP BY 1`;
+
+/** Layout `l2-2`'s stats file, and the band file that says which tags it counts. */
+export const L2_STATS_FILE = 'stats.parquet';
+export const L2_BAND_FILE = 'band.json';
+
+/**
+ * The tag names a band's `stats.parquet` counts by, from its `band.json`:
+ * `statTags` under layout `l2-2`, none otherwise (an `l2-1` band has no
+ * stats file).
+ */
+export function statTagsOf(bandJson: unknown): string[] {
+  const b = bandJson as { schema?: unknown; statTags?: unknown } | null;
+  if (!b || b.schema !== 'l2-2' || !Array.isArray(b.statTags)) return [];
+  return b.statTags.filter((t): t is string => typeof t === 'string');
+}
+
+/**
+ * The counts of a stat tag's values from stats files, only for bands whose
+ * `statTags` name it: kilobytes per band. An item counts once per height it
+ * sits at and under its first value of the tag, where `lookup_tag` counts
+ * it once per band and value; the two differ only for such items.
+ */
+export const statCountsSql = (files: readonly string[], name: string): string =>
+  `SELECT CAST(value AS VARCHAR) AS kind, sum(items) AS n FROM ${readList(files)} WHERE name = CAST(${sq(name)} AS BLOB) GROUP BY 1`;

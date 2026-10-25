@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "schema": "l2-1",
+  "schema": "l2-2",
   "heightRange": [
     2000000,
     2004999
@@ -43,8 +43,27 @@
     "tag": {
       "rows": 754,
       "rowDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "key": {
+      "rows": 916,
+      "rowDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "stats": {
+      "rows": 92,
+      "rowDigest": "0000000000000000000000000000000000000000000000000000000000000000"
     }
   },
+  "keyTags": [
+    "Drive-Id",
+    "File-Id",
+    "Folder-Id",
+    "Parent-Folder-Id"
+  ],
+  "statTags": [
+    "App-Name",
+    "Content-Type",
+    "Entity-Type"
+  ],
   "checks": {
     "fixture": true
   },
