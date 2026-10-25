@@ -16,10 +16,12 @@ it cites the gateway-side documentation in ar-io/ar-io-node.
    `filter`/`metadata.selection` is the app's tag. If none, the operator
    publishes one: `INDEX_EXPORT_KINDS` and `INDEX_EXPORT_L2_INDEXES` in
    ar-io-node (`docs/index-export.md` § "L2 bands"; Release 85 or later).
-   Do not invent bands. Ask for `keyTags`/`statTags` (layout `l2-2`, on
-   `develop`) naming the app's group and count tags.
-2. **Learn the app's tags.** Query the selection's `tags` over a small window
-   with the client (or DuckDB over one band's `tags.parquet`): which tags
+   Do not invent bands. Ask for `keyTags`/`statTags` (layout `l2-2`,
+   Release 86) naming the app's group and count tags.
+2. **Learn the app's tags.** Query the selection's `tags` over one band:
+   `examples/query-band.ts` with `arfs.ARDRIVE_SELECTION` swapped for the
+   app's selection verifies the publication, finds the index, checks a
+   band's files and runs SQL over them from Node. Find which tags
    identify an object, a group, a version, a time. Write them down with
    counts (`tag_counts('<Tag>')` from the lookups is exact and cheap).
 3. **Write the layer.** Copy `packages/index-client/src/layouts/arfs.ts` to

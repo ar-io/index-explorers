@@ -22,7 +22,12 @@ pnpm e2e:live                               # the same against turbo-gateway.com
 pnpm fixtures:build                         # regenerate fixtures/synthetic (then commit it)
 pnpm pins:check                             # engine.lock.json vs npm and two gateways
 pnpm --filter ./apps/ardrive-explorer run dev
+pnpm example:lookup <data-item-id>          # CDB64 root-tx lookup from Node, every range checked
+pnpm example:query <l1|ardrive> [sql]       # SQL over one verified band from Node
 ```
+
+Using the indexes (not working on this repo): `packages/index-client/README.md`
+§ "Using it" and `examples/README.md`.
 
 One package's tests: `pnpm --filter ./packages/index-client test`. One E2E
 spec: `npx playwright test -c e2e/playwright.config.ts --project=fixtures nav`.
