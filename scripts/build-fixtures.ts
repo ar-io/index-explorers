@@ -854,9 +854,14 @@ async function main(): Promise<void> {
   mkdirSync(path.join(OUT, 'torrents'), { recursive: true });
   generate();
   console.log(`generated ${items.length} items, ${roots.size} roots, ${wallets.length} wallets`);
-  // Every record's JSON in one file (twenty thousand tiny files would weigh on git and the filesystem).
+  // Every record's JSON in one file (twenty thousand tiny files would weigh on git and the filesystem),
+  // by id so a rebuild writes the same bytes.
   const raw: Record<string, string> = {};
-  for (const it of items) if (it.json !== undefined) raw[toBase64Url(it.id)] = it.json;
+  for (const [id, json] of items
+    .filter((it) => it.json !== undefined)
+    .map((it) => [toBase64Url(it.id), it.json!] as const)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+    raw[id] = json;
   writeFileSync(path.join(OUT, 'raw.json'), JSON.stringify(raw) + '\n');
   const bands = await writeBands();
   const rt = buildRootTxBand();
