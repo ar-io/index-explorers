@@ -116,6 +116,56 @@ describe('read ahead over the recorded band', () => {
     for (const b of blooms) expect(ranges.some((r) => n(r.start) === n(b.at))).toBe(true);
   });
 
+  it('a wallet lookup names the row groups holding the address', async () => {
+    const lw = band.names.lw!;
+    const [w] = await q(
+      c,
+      `SELECT b64u(owner_address) AS a FROM read_parquet('${band.names.it!}') GROUP BY owner_address ORDER BY count(*) DESC LIMIT 1`,
+    );
+    const addr = String(w!.a);
+    const need = await rowGroupsOf(c, lw, `addr8 = key64(unb64u('${addr}'))`);
+    expect(need.length).toBeGreaterThan(0);
+    const got = await coveredGroups(
+      c,
+      lw,
+      readAheadSql(parquetL2.walletLookupReadAhead([band], addr)),
+    );
+    for (const g of need) expect(got).toContain(g);
+    const [total] = await q(
+      c,
+      `SELECT count(DISTINCT row_group_id) AS n FROM parquet_metadata('${lw}')`,
+    );
+    if (n(total!.n) > 2) expect(got.length).toBeLessThan(n(total!.n));
+    // Within a window: the row groups that reach it, and the heights the lookup gives there.
+    const [mid] = await q(
+      c,
+      `SELECT quantile_disc(height, 0.5) AS h FROM read_parquet('${lw}') WHERE addr8 = key64(unb64u('${addr}'))`,
+    );
+    const lo = n(mid!.h) - 500;
+    const hi = n(mid!.h) + 500;
+    const inWindow = await rowGroupsOf(
+      c,
+      lw,
+      `addr8 = key64(unb64u('${addr}')) AND height BETWEEN ${lo} AND ${hi}`,
+    );
+    const windowed = await coveredGroups(
+      c,
+      lw,
+      readAheadSql(parquetL2.walletLookupReadAhead([band], addr, lo, hi)),
+    );
+    for (const g of inWindow) expect(windowed).toContain(g);
+    expect(windowed.length).toBeLessThanOrEqual(got.length);
+    const heights = await q(c, parquetL2.walletHeightsSql([band], addr, lo, hi));
+    const direct = await q(
+      c,
+      `SELECT DISTINCT height FROM read_parquet('${lw}') WHERE addr8 = key64(unb64u('${addr}')) AND role = 0 AND height BETWEEN ${lo} AND ${hi} ORDER BY 1`,
+    );
+    expect(heights.map((r) => n(r.height))).toEqual(direct.map((r) => n(r.height)));
+    expect(heights.length).toBeGreaterThan(0);
+    // A window no band reaches reads nothing.
+    expect(parquetL2.walletLookupReadAhead([band], addr, 1, 2).files).toEqual([]);
+  });
+
   it('a window names the row groups its heights touch in items and tags', async () => {
     for (const plan of parquetL2.windowReadAhead([band], 700000, 700400)) {
       const file = plan.files[0]!;

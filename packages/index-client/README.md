@@ -40,7 +40,7 @@ The formats are documented in ar-io/ar-io-node under `docs/`
 | `range/protocol.ts` | the page–worker protocol: `RangeSpec`, `encodeSpec`/`decodeSpec`, `RangeTotals` |
 | `engine/read-ahead.ts` | `planReads`, `readAhead`, `readAheadSql`, `engineReads`: work out from the files' footers exactly what a query will fetch, and fetch it in parallel before DuckDB asks for it one range at a time |
 | `engine/engine.ts` | `openEngine`/`Engine` (one serialised connection, `registerUrl`, `resetConnection`), `rowsOf`, `columnsOf`, `timeColumnsOf` |
-| `layouts/parquet-l2.ts` | the generic `parquet-l2` layout, any selection: `parseL2Selection`, `l2SelectionOf`, `findL2Index` (the index that selects exactly what a page reads, whatever its name), `l2BaseSql` (items, tags, lookups, `uploads_between`, `find_id`, `wallet_totals`, `tag_counts`), `l2PeriodViewsSql` (`uploads`, `tags`), `itemsSql`, `tagsSql`, `uploadsSql`, `tagCountsSql` |
+| `layouts/parquet-l2.ts` | the generic `parquet-l2` layout, any selection: `parseL2Selection`, `l2SelectionOf`, `findL2Index` (the index that selects exactly what a page reads, whatever its name), `l2BaseSql` (items, tags, lookups, `uploads_between`, `find_id`, `wallet_totals`, `tag_counts`), `l2PeriodViewsSql` (`uploads`, `tags`), `itemsSql`, `tagsSql`, `uploadsSql`, `tagCountsSql`, `walletHeightsSql`; and what each reads, for `readAhead` (`windowReadAhead`, `clustersReadAhead`, `tagLookupReadAhead`, `walletLookupReadAhead`) |
 | `layouts/arfs.ts` | ArDrive's layer over it, the worked example of a selection layer: `ARDRIVE_SELECTION`, `entitiesSql`, `arfsBaseSql` (`entities_between`, `drive_window`, `drive`), `arfsPeriodViewsSql` (`entities`, `drives`, `folders`, `files`), `newestDrivesSql`, `clusterSql` |
 | `layouts/parquet-l1.ts` | `l1PeriodSql` (`blocks`, `rawtx`, `txs`, `tags`), `l1LookupSql` (`find_tx`, `wallet_totals`, `tag_counts`), `txLookupSql` |
 | `layouts/cdb64.ts` | `lookupRoot`, `cdb64Get`, `cdb64Hash`, `parseCdb64Manifest`, `decodeRootValue` |
@@ -122,7 +122,9 @@ every band reads every file's footer on the first query. The apps build
 views per window (`l2PeriodViewsSql(bands, lo, hi)`, `l1PeriodSql`) and use
 `planReads` to say what a listing will fetch before fetching it: it reads
 the files' footers (which the listing needs anyway) and sums the column
-chunks the query reads, as the engine reads them.
+chunks the query reads, as the engine reads them. A lookup is read ahead the
+same way: the row groups a key's statistics can hold, in every band at once,
+or, for an address over a window, only the window's bands.
 
 In Vite, `rangeReaderPlugin()` from `@ar-io/index-client/vite` builds the
 worker as `sw.js` beside the page and serves it in dev.

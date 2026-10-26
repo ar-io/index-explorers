@@ -294,6 +294,46 @@ export function tagLookupReadAhead(
 }
 
 /**
+ * The heights at which `addr` signed a data item (`role` 0), from
+ * `lookup_wallet`, ascending: over the bands that reach `[lo, hi]`, or every
+ * band. A window reads only its own bands, however much the address wrote elsewhere.
+ */
+export function walletHeightsSql(
+  bands: readonly RegisteredL2Band[],
+  addr: string,
+  lo?: number,
+  hi?: number,
+): string {
+  const f = namesOf(lo == null || hi == null ? bands : bandsInWindow(bands, lo, hi), 'lw');
+  if (!f.length) return `SELECT NULL::UBIGINT AS height WHERE false`;
+  const within = lo == null || hi == null ? '' : ` AND height BETWEEN ${lo} AND ${hi}`;
+  return `SELECT DISTINCT height FROM ${readList(f)} WHERE addr8 = key64(unb64u(${sq(addr)})) AND role = 0${within} ORDER BY 1`;
+}
+
+/**
+ * What finding one address in `lookup_wallet` will fetch: the row groups whose
+ * `addr8` statistics can hold it (the file is sorted by it, then by height),
+ * over every band or, given `[lo, hi]`, only the bands and row groups that reach it.
+ */
+export function walletLookupReadAhead(
+  bands: readonly RegisteredL2Band[],
+  addr: string,
+  lo?: number,
+  hi?: number,
+): ReadAhead {
+  const a = `key64(unb64u(${sq(addr)}))`;
+  const window = lo != null && hi != null;
+  return {
+    files: namesOf(window ? bandsInWindow(bands, lo, hi) : bands, 'lw'),
+    keep: [
+      { column: 'addr8', lo: a, hi: a },
+      ...(window ? [{ column: 'height', lo: String(lo), hi: String(hi) }] : []),
+    ],
+    columns: ['addr8', 'role', 'height', 'data_size'],
+  };
+}
+
+/**
  * How many uploads carry `name` = each of `values`, over every band from
  * height `from` on (a selection that knows its values cannot appear earlier
  * passes that height; 0 reads every band): `value, uploads, first_height,
