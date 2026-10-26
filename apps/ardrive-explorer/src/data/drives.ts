@@ -1,7 +1,8 @@
 /**
  * Browse: the newest drives, walking back from the tip in windows; and a
- * drive: its window from the tag lookup, owner narrowing when cheaper, slices
- * so memory stays flat, then the browser.
+ * drive: the heights of its records from the key lookup (or its window from
+ * the tag lookup, with owner narrowing when cheaper), slices so memory stays
+ * flat, then the browser.
  */
 import {
   arfs,
@@ -9,6 +10,7 @@ import {
   fmtDay,
   fmtRange,
   mb,
+  mergeStretches,
   num,
   parquetL2,
   type PlannedReads,
@@ -47,6 +49,8 @@ export interface DriveWindow {
   lo: number;
   hi: number;
   byLookup: boolean;
+  /** The stretches of blocks holding the drive's records, where key lookups give them. */
+  clusters?: [number, number][];
 }
 
 export function filtersSql(privacy: string, app: string): string {
@@ -177,16 +181,52 @@ export function createDriveFlows(s: Session) {
       const p = st.currentPeriod()!;
       return { records: null, lo: p.lo, hi: p.hi, byLookup: false };
     }
-    // Every band's lookup is read at once rather than one band after another.
+    // A band whose key lookup covers Drive-Id (layout l2-2) gives every height
+    // the drive's records sit at; any other band, the first and last from its
+    // tag lookup. Every band's lookup is read at once, not one after another.
+    const regs = s.registeredBands();
     st.tr('lookup ahead');
+    const keys = await Promise.all(regs.map((b) => s.keyFile(b.id, 'Drive-Id').catch(() => null)));
+    const keyFiles = keys.filter((n): n is string => n !== null);
+    const tagBands = regs.filter((_, i) => keys[i] === null);
     await readAhead(s.engine!, [
-      parquetL2.tagLookupReadAhead(s.registeredBands(), 'Drive-Id', driveId),
+      ...(keyFiles.length ? [parquetL2.keyLookupReadAhead(keyFiles, 'Drive-Id', driveId)] : []),
+      ...(tagBands.length ? [parquetL2.tagLookupReadAhead(tagBands, 'Drive-Id', driveId)] : []),
     ]);
     st.tr('lookup');
-    const [r] = rowsOf(await s.engine!.query(`SELECT * FROM drive_window(${sq(driveId)})`));
+    const heights = keyFiles.length
+      ? rowsOf(await s.engine!.query(parquetL2.keyHeightsSql(keyFiles, 'Drive-Id', driveId)))
+      : [];
+    const [t] = tagBands.length
+      ? rowsOf(
+          await s.engine!.query(
+            parquetL2.tagWindowSql(
+              tagBands.map((b) => b.names.lg!),
+              'Drive-Id',
+              driveId,
+            ),
+          ),
+        )
+      : [];
     st.tr('lookup done');
-    if (!r || r.lo == null) return null;
-    return { records: Number(r.records), lo: Number(r.lo), hi: Number(r.hi), byLookup: true };
+    const stretches = clusterHeights(
+      heights.map((r) => Number(r.height)),
+      CONFIG.clusterGap,
+    );
+    let records = heights.reduce((n, r) => n + Number(r.items), 0);
+    if (t && t.lo != null) {
+      stretches.push([Number(t.lo), Number(t.hi)]);
+      records += Number(t.records);
+    }
+    if (!stretches.length) return null;
+    const clusters = mergeStretches(stretches, CONFIG.slice);
+    return {
+      records,
+      lo: clusters[0]![0],
+      hi: clusters[clusters.length - 1]![1],
+      byLookup: true,
+      ...(keyFiles.length ? { clusters } : {}),
+    };
   }
 
   /**
@@ -257,17 +297,18 @@ export function createDriveFlows(s: Session) {
       return;
     }
     // A wide window is read as slices of blocks, one small scan each, so the
-    // memory a listing needs stays flat however wide the drive. Narrowing to
-    // the stretches its owner wrote in is taken whenever it reads less. What
-    // each reads comes from the files' footers, which the listing needs anyway.
+    // memory a listing needs stays flat however wide the drive. With the key
+    // lookup's stretches the read is already exact; without, narrowing to the
+    // stretches its owner wrote in is taken whenever it reads less. What each
+    // reads comes from the files' footers, which the listing needs anyway.
     // Confirming a cost card reads what the card priced, without planning again.
     let plan: DrivePlan;
     if (planned) plan = planned.plan;
     else
       try {
         st.tr('plan');
-        plan = await priced(sliceWindow(w.lo, w.hi, CONFIG.slice));
-        if (plan.reads.bytes > CONFIG.askFirstBytes && s.hasLookups) {
+        plan = await priced(w.clusters ?? sliceWindow(w.lo, w.hi, CONFIG.slice));
+        if (!w.clusters && plan.reads.bytes > CONFIG.askFirstBytes && s.hasLookups) {
           st.tr('narrow');
           const n = await narrowByOwner(driveId, w).catch(() => null);
           st.tr('narrowed');
@@ -293,7 +334,9 @@ export function createDriveFlows(s: Session) {
         ` of the index` +
           (plan.owner
             ? ` (narrowed to the ${num(plan.clusters.length)} stretches of blocks its owner wrote in)`
-            : ` (its records are spread over ${num(w.hi - w.lo + 1)} blocks)`) +
+            : w.clusters && w.clusters.length > 1
+              ? ` (its records sit in ${num(w.clusters.length)} stretches of blocks between ${num(w.lo)} and ${num(w.hi)})`
+              : ` (its records are spread over ${num(w.hi - w.lo + 1)} blocks)`) +
           ((w.records ?? 0) > 2e6
             ? `. With ${num(w.records!)} records it is too large to show as a tree; the list is capped at ${num(CONFIG.listCap)} files.`
             : '.'),

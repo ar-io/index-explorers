@@ -8,7 +8,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { arfs, KEY_MACROS, parquetL1, parquetL2, type parquetL2 as L2 } from '../src/index.js';
+import {
+  arfs,
+  KEY_MACROS,
+  parquetL1,
+  parquetL2,
+  type parquetL2 as L2,
+  readAheadSql,
+} from '../src/index.js';
 import { FIXTURES, LIVE_BAND_DIR } from './helpers.js';
 
 type Row = Record<string, unknown>;
@@ -179,7 +186,7 @@ describe('parquet-l1 layouts', () => {
   });
 });
 
-describe('parquet-l2 layout l2-2 stats (the synthetic l2-2 band)', () => {
+describe('parquet-l2 layout l2-2 key lookup and stats (the synthetic l2-2 band)', () => {
   const dir = path.join(
     FIXTURES,
     'synthetic',
@@ -215,5 +222,51 @@ describe('parquet-l2 layout l2-2 stats (the synthetic l2-2 band)', () => {
     expect(stats.drive).toBeGreaterThan(0);
     expect(stats.file).toBeGreaterThan(0);
     expect(stats).toEqual(lookup);
+  });
+
+  it('reads keyTags from an l2-2 band.json only', () => {
+    const json = JSON.parse(readFileSync(path.join(dir, parquetL2.L2_BAND_FILE), 'utf8'));
+    expect(parquetL2.keyTagsOf(json)).toContain('Drive-Id');
+    expect(parquetL2.keyTagsOf({ ...json, schema: 'l2-1' })).toEqual([]);
+    expect(parquetL2.keyTagsOf({ schema: 'l2-2', keyTags: 'Drive-Id' })).toEqual([]);
+  });
+
+  it("gives a drive's heights from the key lookup as a scan of tags does, within the tag lookup's window", async () => {
+    const tg = path.join(dir, 'tags.parquet');
+    const lk = [path.join(dir, parquetL2.L2_KEY_FILE)];
+    const lg = [path.join(dir, 'lookup_tag.parquet')];
+    const drives = await q(
+      c,
+      `SELECT CAST(tag_value AS VARCHAR) AS d FROM read_parquet('${tg}') WHERE tag_name = CAST('Drive-Id' AS BLOB) GROUP BY 1 ORDER BY count(DISTINCT height) DESC LIMIT 3`,
+    );
+    expect(drives.length).toBeGreaterThan(0);
+    for (const { d } of drives) {
+      const id = String(d);
+      const keyed = await q(c, parquetL2.keyHeightsSql(lk, 'Drive-Id', id));
+      const scan = await q(
+        c,
+        `SELECT height, count(DISTINCT id) AS items FROM read_parquet('${tg}') WHERE tag_name = CAST('Drive-Id' AS BLOB) AND tag_value = CAST('${id}' AS BLOB) GROUP BY 1 ORDER BY 1`,
+      );
+      expect(keyed.map((r) => [n(r.height), n(r.items)])).toEqual(
+        scan.map((r) => [n(r.height), n(r.items)]),
+      );
+      const [w] = await q(c, parquetL2.tagWindowSql(lg, 'Drive-Id', id));
+      expect(n(w!.lo)).toBe(n(keyed[0]!.height));
+      expect(n(w!.hi)).toBe(n(keyed[keyed.length - 1]!.height));
+    }
+    const none = await q(c, parquetL2.keyHeightsSql(lk, 'Drive-Id', 'no-such-drive'));
+    expect(none).toEqual([]);
+  });
+
+  it('reads ahead the row groups a key sits in', async () => {
+    const lk = path.join(dir, parquetL2.L2_KEY_FILE);
+    const [r] = await q(
+      c,
+      `SELECT CAST(tag_value AS VARCHAR) AS d FROM read_parquet('${path.join(dir, 'tags.parquet')}') WHERE tag_name = CAST('Drive-Id' AS BLOB) LIMIT 1`,
+    );
+    const plan = parquetL2.keyLookupReadAhead([lk], 'Drive-Id', String(r!.d));
+    const ranges = await q(c, readAheadSql(plan));
+    expect(ranges.length).toBeGreaterThan(0);
+    expect(ranges.every((x) => x.file_name === lk)).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import {
   buildPeriods,
   clusterHeights,
   heightAt,
+  mergeStretches,
   parsePublication,
   selectIndex,
   sliceWindow,
@@ -83,5 +84,26 @@ describe('clusters and slices', () => {
       [5000, 9999],
       [10000, 12000],
     ]);
+  });
+
+  it('merges overlapping and touching stretches, in order, then slices them', () => {
+    expect(
+      mergeStretches(
+        [
+          [500, 600],
+          [1, 10],
+          [11, 20],
+          [550, 9000],
+          [20000, 20000],
+        ],
+        5000,
+      ),
+    ).toEqual([
+      [1, 20],
+      [500, 5499],
+      [5500, 9000],
+      [20000, 20000],
+    ]);
+    expect(mergeStretches([])).toEqual([]);
   });
 });

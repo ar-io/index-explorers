@@ -504,9 +504,55 @@ export function l2PeriodViewsSql(
 export const tagCountsSql = (name: string, files?: readonly string[]): string =>
   `SELECT CAST(value AS VARCHAR) AS kind, sum(txs) AS n FROM ${files ? readList(files) : 'lookup_tag'} WHERE name8 = hkey(${sq(name)}) AND name = CAST(${sq(name)} AS BLOB) GROUP BY 1`;
 
-/** Layout `l2-2`'s stats file, and the band file that says which tags it counts. */
+/** Layout `l2-2`'s key lookup and stats files, and the band file that says which tags each covers. */
+export const L2_KEY_FILE = 'lookup_key.parquet';
 export const L2_STATS_FILE = 'stats.parquet';
 export const L2_BAND_FILE = 'band.json';
+
+/**
+ * The tag names a band's `lookup_key.parquet` covers, from its `band.json`:
+ * `keyTags` under layout `l2-2`, none otherwise.
+ */
+export function keyTagsOf(bandJson: unknown): string[] {
+  const b = bandJson as { schema?: unknown; keyTags?: unknown } | null;
+  if (!b || b.schema !== 'l2-2' || !Array.isArray(b.keyTags)) return [];
+  return b.keyTags.filter((t): t is string => typeof t === 'string');
+}
+
+/**
+ * The heights at which items carry `name` = `value`, and how many at each,
+ * from key lookup files (only bands whose `keyTags` name it): `height, items`,
+ * ascending. Where `lookup_tag` gives a value's first and last height in a
+ * band, this gives every height between, however spread.
+ */
+export const keyHeightsSql = (files: readonly string[], name: string, value: string): string =>
+  `SELECT height, sum(items)::BIGINT AS items FROM ${readList(files)} WHERE name8 = hkey(${sq(name)}) AND val8 = hkey(${sq(value)}) GROUP BY 1 ORDER BY 1`;
+
+/** What `keyHeightsSql` will fetch: the row groups the pair's keys can sit in (the files are sorted by them). */
+export function keyLookupReadAhead(
+  files: readonly string[],
+  name: string,
+  value: string,
+): ReadAhead {
+  const n = `hkey(${sq(name)})`;
+  const v = `hkey(${sq(value)})`;
+  return {
+    files,
+    keep: [
+      { column: 'name8', lo: n, hi: n },
+      { column: 'val8', lo: v, hi: v },
+    ],
+    columns: ['name8', 'val8', 'height', 'items'],
+  };
+}
+
+/**
+ * How many items carry `name` = `value` and their first and last heights,
+ * from `lookup_tag` files: `records, lo, hi` (nulls when none do).
+ */
+export const tagWindowSql = (files: readonly string[], name: string, value: string): string =>
+  `SELECT sum(txs)::BIGINT AS records, min(first_height) AS lo, max(last_height) AS hi FROM ${readList(files)}
+    WHERE name8 = hkey(${sq(name)}) AND val8 = hkey(${sq(value)}) AND name = CAST(${sq(name)} AS BLOB) AND value = CAST(${sq(value)} AS BLOB)`;
 
 /**
  * The tag names a band's `stats.parquet` counts by, from its `band.json`:
