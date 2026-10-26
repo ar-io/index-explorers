@@ -199,6 +199,8 @@ export function createDriveFlows(s: Session) {
     w: DriveWindow,
   ): Promise<{ owner: string; clusters: [number, number][] } | null> {
     const bands = s.registeredBands();
+    // The window's first block, read at once: the listing reads it too.
+    await readAhead(s.engine!, parquetL2.windowReadAhead(bands, w.lo, w.lo));
     const [first] = rowsOf(
       await s.engine!.query(
         `SELECT b64u(i.owner_address) AS owner FROM ${parquetL2.tagsSql(bands, w.lo, w.lo)} t JOIN ${parquetL2.itemsSql(bands, w.lo, w.lo, true)} i ON i.id = t.id AND i.height = t.height
@@ -206,16 +208,19 @@ export function createDriveFlows(s: Session) {
       ),
     );
     if (!first) return null;
+    // Only the window's bands, and their row groups for the address, read at once.
+    const owner = String(first.owner);
+    st.tr('owner');
+    await readAhead(s.engine!, [parquetL2.walletLookupReadAhead(bands, owner, w.lo, w.hi)]);
     const heights = rowsOf(
-      await s.engine!.query(
-        `SELECT DISTINCT height FROM lookup_wallet WHERE addr8 = key64(unb64u(${sq(first.owner)})) AND role = 0 AND height BETWEEN ${w.lo} AND ${w.hi} ORDER BY 1`,
-      ),
+      await s.engine!.query(parquetL2.walletHeightsSql(bands, owner, w.lo, w.hi)),
     ).map((r) => Number(r.height));
     if (!heights.length) return null;
-    return { owner: String(first.owner), clusters: clusterHeights(heights, CONFIG.clusterGap) };
+    return { owner, clusters: clusterHeights(heights, CONFIG.clusterGap) };
   }
 
   /** What listing a drive over these stretches reads, from the files' footers. */
+  type DrivePlan = { clusters: [number, number][]; reads: PlannedReads; owner?: string };
   const priced = async (clusters: [number, number][]) => ({
     clusters,
     reads: await planReads(s.engine!, parquetL2.clustersReadAhead(s.registeredBands(), clusters)),
@@ -225,6 +230,7 @@ export function createDriveFlows(s: Session) {
     driveIdRaw: string,
     confirmed: boolean,
     folder: string | null,
+    planned?: { w: DriveWindow; plan: DrivePlan },
   ): Promise<void> {
     const my = ++s.nav;
     const driveId = driveIdRaw.toLowerCase();
@@ -239,7 +245,7 @@ export function createDriveFlows(s: Session) {
       title: `Drive ${driveId.slice(0, 8)}…`,
       sub: 'Finding its records through the index’s lookups…',
     };
-    const w = await driveWindow(driveId).catch(() => null);
+    const w = planned?.w ?? (await driveWindow(driveId).catch(() => null));
     if (s.overtaken(my)) return;
     if (!w) {
       st.content.value = {
@@ -254,22 +260,27 @@ export function createDriveFlows(s: Session) {
     // memory a listing needs stays flat however wide the drive. Narrowing to
     // the stretches its owner wrote in is taken whenever it reads less. What
     // each reads comes from the files' footers, which the listing needs anyway.
-    let plan: { clusters: [number, number][]; reads: PlannedReads; owner?: string };
-    try {
-      st.tr('plan');
-      plan = await priced(sliceWindow(w.lo, w.hi, CONFIG.slice));
-      if (plan.reads.bytes > CONFIG.askFirstBytes && s.hasLookups) {
-        const n = await narrowByOwner(driveId, w).catch(() => null);
-        if (s.overtaken(my)) return;
-        const p = n && (await priced(n.clusters));
-        if (p && p.reads.bytes < plan.reads.bytes) plan = { ...p, owner: n.owner };
+    // Confirming a cost card reads what the card priced, without planning again.
+    let plan: DrivePlan;
+    if (planned) plan = planned.plan;
+    else
+      try {
+        st.tr('plan');
+        plan = await priced(sliceWindow(w.lo, w.hi, CONFIG.slice));
+        if (plan.reads.bytes > CONFIG.askFirstBytes && s.hasLookups) {
+          st.tr('narrow');
+          const n = await narrowByOwner(driveId, w).catch(() => null);
+          st.tr('narrowed');
+          if (s.overtaken(my)) return;
+          const p = n && (await priced(n.clusters));
+          if (p && p.reads.bytes < plan.reads.bytes) plan = { ...p, owner: n.owner };
+        }
+        st.tr('planned');
+      } catch (e) {
+        if (!s.overtaken(my))
+          st.say(`Could not read the index: ${e instanceof Error ? e.message : String(e)}`, 'bad');
+        return;
       }
-      st.tr('planned');
-    } catch (e) {
-      if (!s.overtaken(my))
-        st.say(`Could not read the index: ${e instanceof Error ? e.message : String(e)}`, 'bad');
-      return;
-    }
     if (s.overtaken(my)) return;
     const cost = plan.reads.bytes;
     const when = fmtRange(timeAt(s.bands, w.lo), timeAt(s.bands, w.hi));
@@ -293,7 +304,7 @@ export function createDriveFlows(s: Session) {
           text,
           action: {
             label: `Read ${mb(cost)} and list it`,
-            go: () => void openDrive(driveId, true, folder),
+            go: () => void openDrive(driveId, true, folder, { w, plan }),
           },
         },
       };

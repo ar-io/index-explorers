@@ -53,17 +53,15 @@ export function createWalletFlow(
       sub: 'Totals from the index’s wallet lookup…',
     };
     const r = await s.measured('Reading the wallet', async () => {
+      const bands = s.registeredBands();
+      // The totals and the heights come from the address's row groups, read in every band at once.
+      if (s.hasLookups) await readAhead(s.engine!, [parquetL2.walletLookupReadAhead(bands, addr)]);
       const [t] = rowsOf(await s.engine!.query(`SELECT * FROM wallet_totals(${sq(addr)})`));
       if (!t || !Number(t.uploads)) return null;
       const p = st.currentPeriod()!;
-      const bands = s.registeredBands();
       const heights = (
         s.hasLookups
-          ? rowsOf(
-              await s.engine!.query(
-                `SELECT DISTINCT height FROM lookup_wallet WHERE addr8 = key64(unb64u(${sq(addr)})) AND role = 0 ORDER BY 1`,
-              ),
-            )
+          ? rowsOf(await s.engine!.query(parquetL2.walletHeightsSql(bands, addr)))
           : rowsOf(
               await s.engine!.query(
                 `SELECT DISTINCT height FROM ${parquetL2.itemsSql(bands, p.lo, p.hi, true)} WHERE owner_address = unb64u(${sq(addr)}) ORDER BY 1`,
