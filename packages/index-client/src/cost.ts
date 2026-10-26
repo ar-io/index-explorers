@@ -123,3 +123,17 @@ export function sliceWindow(lo: number, hi: number, size = 5000): [number, numbe
   for (let a = lo; a <= hi; a += size) out.push([a, Math.min(a + size - 1, hi)]);
   return out;
 }
+
+/** Stretches of heights sorted, overlapping or touching ones merged, then each cut into slices of at most `size` blocks. */
+export function mergeStretches(
+  stretches: readonly (readonly [number, number])[],
+  size = 5000,
+): [number, number][] {
+  const merged: [number, number][] = [];
+  for (const [a, b] of [...stretches].sort((x, y) => x[0] - y[0])) {
+    const last = merged[merged.length - 1];
+    if (last && a <= last[1] + 1) last[1] = Math.max(last[1], b);
+    else merged.push([a, b]);
+  }
+  return merged.flatMap(([a, b]) => sliceWindow(a, b, size));
+}

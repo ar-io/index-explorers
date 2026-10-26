@@ -123,7 +123,8 @@ Copy it to `layouts/<app>.ts` and change three things:
    object (ArFS uses `height DESC, Unix-Time DESC` per `File-Id`);
 3. the lookup macro: `drive_window(d)` reads the tag lookup for a
    `Drive-Id` value, which gives the count and the first and last height of
-   any tag value before anything of the tables is read. Any tag that
+   any tag value before anything of the tables is read (an `l2-2` band's
+   key lookup gives every height instead; see below). Any tag that
    identifies a group of your items (a collection id, a process id) works the
    same way: `hkey('<Tag-Name>')` and `hkey(value)`.
 
@@ -180,8 +181,12 @@ It uses the stats file for counts over all history: `statTagsOf(band.json)`
 says whether a band counts a tag, `statCountsSql` reads it, and
 `tagCountsSql` covers the bands that don't (the ArDrive page's drive and
 file counts read 4.4 MB this way, where the tag lookups alone read 25 MB).
-The key lookup is not used yet; ArDrive's `drive_window` is the first
-candidate. When defining a
+It uses the key lookup to find a group's records: `keyTagsOf(band.json)`
+says whether a band covers a tag, `keyHeightsSql` gives every height a value
+sits at (where `lookup_tag` gives only the first and last), and
+`tagWindowSql` covers the bands that don't. The ArDrive page lists a drive
+over those heights' stretches, so a drive spread over years reads only the
+blocks that hold it, without narrowing through its owner. When defining a
 selection, name the tags that identify a group (`keyTags`) and the ones you
 will count by (`statTags`) from the start.
 

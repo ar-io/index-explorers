@@ -59,6 +59,9 @@ export class Session {
   bands: Band[] = [];
   /** Registered bands: DuckDB file names by kind. */
   registered = new Map<string, L2Band & { ranged: boolean }>();
+  /** Each band's `band.json`, read once, and the `l2-2` files registered from it (null where a band has none). */
+  private bandJsons = new Map<string, Promise<unknown>>();
+  private extras = new Map<string, Promise<string>>();
   gateway: string | null = null;
   publication: FetchedPublication | null = null;
   proof: Proof | null = null;
@@ -265,8 +268,14 @@ export class Session {
         await this.engine.query(s).catch(() => {});
       for (const r of this.registered.values())
         for (const n of Object.values(r.names)) if (n) await this.engine.dropFile(n);
+      for (const p of this.extras.values()) {
+        const n = await p.catch(() => null);
+        if (n) await this.engine.dropFile(n);
+      }
     }
     this.registered.clear();
+    this.bandJsons.clear();
+    this.extras.clear();
     this.names.clear();
     this.clearView();
   }
@@ -501,20 +510,61 @@ export class Session {
    * range reader, so checked against the signed torrent) says it counts
    * `tag`; null for a band without one, or whose stats leave the tag out.
    */
-  private async statsFile(band: Band, tag: string): Promise<string | null> {
-    const json = band.files.get(parquetL2.L2_BAND_FILE);
-    const stats = band.files.get(parquetL2.L2_STATS_FILE);
-    if (!json || !stats || !this.reader || !this.isRangeable(band)) return null;
-    const res = await fetch(this.reader.url(rangeSpec(band, json, { mirrors: this.mirrors })));
-    if (!res.ok) throw new Error(`${band.id}: band.json could not be read (${res.status})`);
-    if (!parquetL2.statTagsOf(await res.json()).includes(tag)) return null;
-    const name = this.engine!.freshName('st');
-    await this.engine!.registerUrl(
-      name,
-      this.reader.url(rangeSpec(band, stats, { mirrors: this.mirrors })),
-      stats.size,
-    );
-    return name;
+  private statsFile(band: Band, tag: string): Promise<string | null> {
+    return this.l2File(band, parquetL2.L2_STATS_FILE, 'st', parquetL2.statTagsOf, tag);
+  }
+
+  /**
+   * A registered band's key lookup file, when its `band.json` says it covers
+   * `tag`; null otherwise, and the caller reads the band's `lookup_tag`.
+   */
+  keyFile(bandId: string, tag: string): Promise<string | null> {
+    const band = this.bands.find((b) => b.id === bandId);
+    if (!band) return Promise.resolve(null);
+    return this.l2File(band, parquetL2.L2_KEY_FILE, 'lk', parquetL2.keyTagsOf, tag);
+  }
+
+  /** An `l2-2` file of a band, registered once, when its `band.json` lists `tag` among the ones `covers` reads. */
+  private async l2File(
+    band: Band,
+    file: string,
+    kind: string,
+    covers: (bandJson: unknown) => string[],
+    tag: string,
+  ): Promise<string | null> {
+    const f = band.files.get(file);
+    if (!f || !this.reader || !this.engine || !this.isRangeable(band)) return null;
+    if (!covers(await this.bandJson(band)).includes(tag)) return null;
+    const key = `${band.id} ${file}`;
+    let p = this.extras.get(key);
+    if (!p) {
+      const engine = this.engine;
+      const name = engine.freshName(kind);
+      p = engine
+        .registerUrl(name, this.reader.url(rangeSpec(band, f, { mirrors: this.mirrors })), f.size)
+        .then(() => name);
+      // A failure is not remembered: the next ask registers again.
+      p.catch(() => this.extras.delete(key));
+      this.extras.set(key, p);
+    }
+    return p;
+  }
+
+  /** A band's `band.json`, read once through the range reader, so checked against the signed torrent. */
+  private bandJson(band: Band): Promise<unknown> {
+    let p = this.bandJsons.get(band.id);
+    if (!p) {
+      const json = band.files.get(parquetL2.L2_BAND_FILE);
+      p = (async () => {
+        if (!json || !this.reader) return null;
+        const res = await fetch(this.reader.url(rangeSpec(band, json, { mirrors: this.mirrors })));
+        if (!res.ok) throw new Error(`${band.id}: band.json could not be read (${res.status})`);
+        return res.json() as Promise<unknown>;
+      })();
+      p.catch(() => this.bandJsons.delete(band.id));
+      this.bandJsons.set(band.id, p);
+    }
+    return p;
   }
 
   /* ------------------------------------------------------------- receipts */
