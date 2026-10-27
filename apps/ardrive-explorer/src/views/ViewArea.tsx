@@ -315,7 +315,7 @@ export function ViewArea() {
     }
   };
   return (
-    <article class="view" id="view" aria-live="polite">
+    <article class="view" id="view" aria-labelledby="viewtitle">
       <nav class="crumbs" id="crumbs" hidden={!c.crumbs.length}>
         {c.crumbs.map((cr, i) => (
           <span key={i} class={i > 0 ? 'crumb-item' : ''}>

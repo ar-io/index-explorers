@@ -5,6 +5,7 @@
  * was.
  */
 export type ViewState =
+  | { kind: 'home' }
   | { kind: 'browse' }
   | { kind: 'drive'; key: string; folder: string | null }
   | { kind: 'wallet'; key: string }
@@ -32,7 +33,9 @@ export function encodeFragment(link: {
   } else if (v.kind === 'wallet') q.set('wallet', v.key);
   else if (v.kind === 'id') q.set('id', v.key);
   else if (v.kind === 'query' && v.sql) q.set('sql', v.sql);
-  return '#' + q.toString();
+  else if (v.kind === 'browse') q.set('browse', '');
+  // A bare `browse` key, not `browse=`.
+  return '#' + q.toString().replace(/(^|&)browse=(?=&|$)/, '$1browse');
 }
 
 export function parseFragment(hash: string): Link {
@@ -47,7 +50,9 @@ export function parseFragment(hash: string): Link {
   else if (wallet) view = { kind: 'wallet', key: wallet };
   else if (id) view = { kind: 'id', key: id };
   else if (sql) view = { kind: 'query', sql };
-  else view = { kind: 'browse' };
+  else if (q.has('browse')) view = { kind: 'browse' };
+  // A gateway or a period alone opens the page as a plain visit would: nothing listed.
+  else view = { kind: 'home' };
   return { gw: q.get('gw'), period: q.get('period'), view };
 }
 

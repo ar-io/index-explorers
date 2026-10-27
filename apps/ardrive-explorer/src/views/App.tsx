@@ -9,17 +9,22 @@ export function App() {
   const home = (pub.publisherUrl ?? pub.gateway ?? 'https://turbo-gateway.com').replace(/\/+$/, '');
   return (
     <div class="rail">
+      <a class="skip" href="#explore">
+        Skip to Explore
+      </a>
       <Masthead />
-      <Explore />
-      <section class="panel" id="ask">
-        <p class="panel-label">Ask the data</p>
-        <h2 class="panel-title">
-          Questions over the period chosen above. Answers are computed in this tab.
-        </h2>
-        <Questions />
-        <SqlDrawer />
-        <DataSource />
-      </section>
+      <main>
+        <Explore />
+        <section class="panel" id="ask">
+          <p class="panel-label">Ask the data</p>
+          <h2 class="panel-title">
+            Questions over the period chosen above. Answers are computed in this tab.
+          </h2>
+          <Questions />
+          <SqlDrawer />
+          <DataSource />
+        </section>
+      </main>
       <footer>
         <div class="foot-grid">
           <div>
