@@ -34,7 +34,7 @@
   white-space: normal;
 }
 .guide-body.one {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 .guide-body pre {
   margin: 0 0 10px;
@@ -380,7 +380,7 @@
 }
 @media (max-width: 900px) {
   .split {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .card {
