@@ -565,10 +565,15 @@ test('the data-source drawer: another gateway is refused with a reason, switchin
     const txt = await page.locator('#proof-text').innerText();
     expect(/no index of ArDrive's data items|Refusing|not|Verified/i.test(txt), txt).toBe(true);
   }
-  // The old listing is marked, so the rows waited for below are the new ones.
-  await page.evaluate(() =>
-    document.querySelectorAll('#results tbody tr').forEach((r) => r.setAttribute('data-old', '')),
-  );
+  // The page counts its navigations: reading the publication again is one, and
+  // reopening the listing over it another, after the old listing was cleared.
+  // A listing the previous test left loading can repaint before then.
+  const nav = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __explorer: { session: { nav: number } } }).__explorer.session.nav,
+    );
+  const before = await nav();
   await page.selectOption('#gwsel', 'custom');
   await page.fill('#gw', GW);
   await page.click('#connect');
@@ -578,8 +583,7 @@ test('the data-source drawer: another gateway is refused with a reason, switchin
     60_000,
     'back',
   );
-  const fresh = async () =>
-    (await rows(page)) > 0 && (await page.locator('#results tbody tr[data-old]').count()) === 0;
+  const fresh = async () => (await nav()) >= before + 2 && (await rows(page)) > 0;
   await until(page, fresh, 180_000, 'browse after switch');
   expect(await fresh()).toBe(true);
 });
