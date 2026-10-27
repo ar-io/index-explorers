@@ -1,14 +1,14 @@
 {
   "app": "ardrive-explorer",
-  "version": "1.1.1",
-  "verifiedAt": "2026-10-24T15:42:43.143Z",
+  "version": "1.2.0",
+  "verifiedAt": "2026-10-26T20:36:34.733Z",
   "verifiedBy": "vilenarios",
-  "commit": "270726ab90cd556511d25afc7f72781d33f03bcf",
+  "commit": "d8171e9fe4827c9e52b4551d07f5b184a534ab38",
   "machine": "linux arm64, node v23.9.0",
   "steps": [
     {
       "name": "install",
-      "seconds": 1.5
+      "seconds": 1.7
     },
     {
       "name": "engine files",
@@ -16,38 +16,38 @@
     },
     {
       "name": "engine pins against two gateways",
-      "seconds": 9.5
+      "seconds": 5
     },
     {
       "name": "format and types",
-      "seconds": 35.2
+      "seconds": 26.4
     },
     {
       "name": "unit and integration tests",
-      "seconds": 49.4
+      "seconds": 20.4
     },
     {
       "name": "E2E builds",
-      "seconds": 19
+      "seconds": 12
     },
     {
       "name": "E2E on the fixture gateway",
-      "seconds": 101.7
+      "seconds": 127.6
     },
     {
       "name": "production builds",
-      "seconds": 15
+      "seconds": 15.8
     },
     {
       "name": "live E2E against turbo-gateway.com",
-      "seconds": 510
+      "seconds": 383.1
     }
   ],
   "sources": {
-    "apps/ardrive-explorer": "157d440342a1f30e737a9c1b22e9b67e5d678e40",
-    "packages": "3b68fb481f08c1d28b3cb3ff0b743ae73b310545",
-    "package.json": "6ec6e9e3ff664b83ac82679f8c31d64e500020e3",
-    "pnpm-lock.yaml": "0c3b661a24a82f83615a29fb66c5bf53e9ba6c9a",
+    "apps/ardrive-explorer": "9c89aa2cda67c5c4701bbb3646361e9d03800900",
+    "packages": "26aa4afa0d2c4c23d63f92412e580ef670126730",
+    "package.json": "7bf49d4fbace0a30a2fa6fbc06d635c786ca8af8",
+    "pnpm-lock.yaml": "05839ad7aef93766050ab64107a23be7c9be0241",
     "pnpm-workspace.yaml": "8c81b3b1946d0b6aba407e9918ef96892ab1901e",
     "tsconfig.base.json": "e22368cf71f8612b721dfa23f6afa8e83d73453c",
     "engine.lock.json": "4acde2319817b97429ddb1b7603b3806829b7923"
@@ -59,13 +59,13 @@
     "assets/arrow-C6ch5XQ7.js.map": "77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d",
     "assets/duckdb-DEFjrUmw.js": "bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2",
     "assets/duckdb-DEFjrUmw.js.map": "d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c",
-    "assets/index-B-q6jZmR.js": "b2b46171070ba9425dbdedc1fc7db583e901720dd874c8659ee4205121f5063b",
-    "assets/index-B-q6jZmR.js.map": "91b58956a6b3d9a63a9d4d33b64d161ae00e68d2153e619d0f448937ccea5001",
     "assets/index-BA7l-6dM.css": "3de1a868b7188850350f712c5a194522faf8c015b080434919bf478a1b889d9d",
+    "assets/index-Cb9NGBKe.js": "89cb1dd38e9f56ca43c5845b0c6a8279812afde2ef856b60269263939a9de65c",
+    "assets/index-Cb9NGBKe.js.map": "c2c55e14f8c48f49a0fbe92515531051cce2526a6a31dd2bd43cf2d8dfb2aba1",
     "assets/plus-jakarta-sans-normal-latin-eXO_dkmS.woff2": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
     "favicon-32.png": "3653bf12ccb1bc9f50963db96d65cbdb7e2d2f4a133644615fd9728150384aae",
     "favicon.svg": "4c4b4d1dfb270de2ee0218175e85c52c6850378afe591d7e4ff6170b3175ae0b",
-    "index.html": "57ac9de7238c7b9359cdd320e4e24e8fcfbe1be5d882be2c6902f56dfdce07be",
+    "index.html": "39bc2e96453b35d74612b9677f77dde1c52f999bd7dd1a2426edecf92cba5b7c",
     "social.png": "b035eb9bfc57364cb353cbb163cc261d8b685a0ed9d42f00a91f0d338fe2da7f",
     "sw.js": "7ff215948cf1d6c6945146bbc2ab28d2a4c7c3d8ccd9555eb7e748c89131e4c2"
   }
