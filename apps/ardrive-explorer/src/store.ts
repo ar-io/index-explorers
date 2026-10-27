@@ -169,7 +169,7 @@ export class Store {
   readonly app = signal<string>('any');
   /** The drives list leaves out drives with nothing but their root folder. */
   readonly hideEmpty = signal(true);
-  readonly view = signal<ViewState>({ kind: 'browse' });
+  readonly view = signal<ViewState>({ kind: 'home' });
   readonly content = signal<ViewContent>(emptyContent());
   readonly status = signal<StatusLine>({ text: '', cls: '' });
   readonly progress = signal<ProgressState>({

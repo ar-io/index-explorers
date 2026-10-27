@@ -33,6 +33,7 @@ body {
 /* masthead */
 .bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -118,15 +119,18 @@ header.framed > * {
 header.framed .pill {
   border-color: rgba(255, 255, 255, 0.22);
 }
+/* Equal columns while every value fits; a value that would not fit its
+   column moves the next ones to a new row instead of running into them. */
 .stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 20px 24px;
   margin: 28px 0 0;
   padding: 0;
 }
 .stat {
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: max(150px, max-content);
 }
 .stat dd {
   margin: 0;
@@ -415,6 +419,21 @@ button:disabled {
 a {
   color: var(--label);
 }
+/* A skip link: off screen until focused, then at the top of the page. */
+.skip {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  z-index: 10;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 600;
+}
+.skip:focus {
+  top: 12px;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -529,6 +548,11 @@ a {
   color: var(--muted);
   font-size: 14px;
   margin: 12px 0 0;
+}
+/* Inline code in running text (a JSON selection, a long id) breaks where it
+   must rather than widening the page; code blocks scroll in their own box. */
+:where(p, li, dd, figcaption) code {
+  overflow-wrap: anywhere;
 }
 #status {
   margin-top: 12px;
@@ -1004,11 +1028,12 @@ details.guide[open] summary::before {
 .guide-body {
   margin-top: 14px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 @media (min-width: 900px) {
   .guide-body {
-    grid-template-columns: 1.1fr 1fr;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   }
 }
 .guide h3 {

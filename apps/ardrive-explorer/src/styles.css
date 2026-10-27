@@ -178,9 +178,6 @@
   .b-list td:nth-child(4) {
     display: none;
   }
-  .b-namecell {
-    max-width: 62vw;
-  }
   .b-head {
     padding: 14px 14px 12px;
   }
@@ -214,12 +211,21 @@
 .b-up td {
   color: var(--muted);
 }
+/* The name column takes what the others leave, and its name shortens with
+   an ellipsis: max-width 0 keeps a long name from widening the table. The
+   cell stays a table cell, so its border runs the full row. */
+.b-list td.b-name {
+  max-width: 0;
+}
 .b-namecell {
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 52vw;
-  min-width: 240px;
+  min-width: 0;
+}
+.b-namecell > svg,
+.b-namecell .b-ver {
+  flex: none;
 }
 .b-namecell .name {
   overflow: hidden;
@@ -375,4 +381,10 @@
 .view-title .name.mismatch {
   text-decoration: line-through;
   color: var(--bad);
+}
+
+/* Find and the questions scroll these into view; leave a little room around them. */
+#status,
+#viewtitle {
+  scroll-margin: 16px;
 }

@@ -42,14 +42,14 @@ export const QUESTIONS: Question[] = [
     sub: 'Wallets ranked by bytes',
     sql: 'SELECT u.owner AS owner,\n       count(*) AS uploads,\n       round(sum(u.data_size) / power(2,30), 2) AS gib,\n       count(DISTINCT e.drive_id) FILTER (WHERE e.drive_id IS NOT NULL) AS drives_touched\nFROM uploads u\nLEFT JOIN entities e USING (id, height)\nGROUP BY u.owner\nORDER BY gib DESC\nLIMIT 15;',
     caption:
-      'Wallets by bytes uploaded through ArDrive {RANGE}. Open one by pasting its address above.',
+      'Wallets by bytes uploaded through ArDrive {RANGE}. Select an address to open the wallet.',
   },
   {
     title: 'Biggest files',
     sub: 'The largest uploads',
     sql: 'SELECT id, owner, round(data_size / power(2,20), 1) AS mib, content_type, created_at\nFROM uploads\nWHERE NOT is_record\nORDER BY data_size DESC\nLIMIT 15;',
     caption:
-      'The largest file data uploaded {RANGE}. Paste an id above to find the drive it belongs to.',
+      'The largest file data uploaded {RANGE}. Select an id to open it and the drive it belongs to.',
   },
   {
     title: 'Public or private?',
@@ -129,6 +129,87 @@ export const presetSql = (
   p.sql
     .replaceAll('{WALLET}', sampleWallet ?? 'paste-an-address-here')
     .replaceAll('{DRIVE}', sampleDrive ?? 'paste-a-drive-id-here');
+
+/** Column names as a table header shows them; exports keep the SQL names. */
+const COLUMN_LABELS: Record<string, string> = {
+  type: 'Type',
+  files: 'Files',
+  gib: 'GiB',
+  mib: 'MiB',
+  month: 'Month',
+  day: 'Day',
+  public_drives: 'Public drives',
+  private_drives: 'Private drives',
+  owners: 'Owners',
+  owner: 'Owner',
+  kind: 'Kind',
+  records: 'Records',
+  uploads: 'Uploads',
+  drives_touched: 'Drives touched',
+  id: 'Id',
+  content_type: 'Content type',
+  created_at: 'Created',
+  how: 'Public or private',
+  wallets: 'Wallets',
+  app: 'App',
+  app_version: 'Version',
+  new_wallets: 'New wallets',
+  size_bucket: 'Size',
+  drive_id: 'Drive',
+  name_id: 'Name record',
+  privacy: 'Privacy',
+  writers: 'Writers',
+  first: 'First',
+  last: 'Last',
+  entity_id: 'Entity',
+  parent_folder_id: 'Parent folder',
+  drives: 'Drives',
+  depth: 'Depth',
+  folders: 'Folders',
+  from_time: 'From',
+  to_time: 'To',
+};
+
+export const columnLabel = (key: string): string => COLUMN_LABELS[key] ?? key;
+
+/** A question or preset found again from its SQL: a link or a history entry carries only the SQL. */
+export interface Asked {
+  title: string;
+  /** With {RANGE}, or {TOTAL_TEXT} for a question's all-history form. */
+  caption: string | null;
+  /** The question's index, for its card; null for a preset. */
+  question: number | null;
+  /** The all-history form, which reads the lookups and needs no cost card. */
+  wide: boolean;
+}
+
+const norm = (sql: string): string =>
+  sql
+    .trim()
+    .replace(/;+\s*$/, '')
+    .replace(/\s+/g, ' ');
+/** A template's SQL as a pattern: the filled-in slots ({TOTAL}, {WALLET}, {DRIVE}) match any one value. */
+const matches = (template: string, sql: string): boolean =>
+  new RegExp(
+    '^' +
+      norm(template)
+        .split(/\{(?:TOTAL|WALLET|DRIVE)\}/)
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join("[^\\s']+") +
+      '$',
+  ).test(norm(sql));
+
+export function askedFor(sql: string): Asked | null {
+  for (const [i, q] of QUESTIONS.entries()) {
+    if (matches(q.sql, sql))
+      return { title: q.title, caption: q.caption, question: i, wide: false };
+    if (q.wideSql && matches(q.wideSql, sql))
+      return { title: q.title, caption: q.wideCaption ?? null, question: i, wide: true };
+  }
+  for (const p of PRESETS)
+    if (matches(p.sql, sql)) return { title: p.label, caption: null, question: null, wide: false };
+  return null;
+}
 
 /** Splits a caption with <strong> marks into segments, so nothing is rendered as HTML. */
 export function captionSegments(text: string): { text: string; strong: boolean }[] {

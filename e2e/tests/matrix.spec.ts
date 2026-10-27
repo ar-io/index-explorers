@@ -37,8 +37,17 @@ test.afterAll(async () => {
   await page.close();
 });
 
-test('publication verifies, the range reader controls the page, drives list with names', async () => {
+test('publication verifies, the range reader controls the page, drives list with names when asked', async () => {
   expect(await page.evaluate(() => !!navigator.serviceWorker?.controller)).toBe(true);
+  // A plain visit lists nothing: no one's drives until the reader asks.
+  await until(page, async () => /Nothing listed yet/.test(await title(page)), 60_000, 'home');
+  expect(await title(page)).toMatch(/Nothing listed yet/);
+  expect(await rows(page)).toBe(0);
+  // One landmark for the content, a skip link to it, and the status line (not the whole view) announces.
+  expect(await page.locator('main').count()).toBe(1);
+  expect(await page.locator('a.skip').getAttribute('href')).toBe('#explore');
+  expect(await page.locator('#view').getAttribute('aria-live')).toBeNull();
+  await page.locator('#more button', { hasText: 'Newest drives' }).click();
   await until(page, async () => (await rows(page)) > 0, 240_000, 'browse');
   expect(await rows(page)).toBeGreaterThan(0);
   await until(
@@ -378,6 +387,70 @@ test('find: a file record, file data, a wallet, a drive id; rejects nonsense; an
   await page.click('#findgo');
   await waitAnswer(page, 60_000);
   expect(/0 rows|no rows/i.test(await status(page)) || (await rows(page)) === 0).toBe(true);
+  // An empty block says so in the view itself.
+  expect(await page.locator('#viewsub').innerText()).toMatch(/No uploads in this block/);
+  // Past 2^53 a height would be rounded: refused rather than shown as another block.
+  await page.fill('#find', '12345678901234567890');
+  await clearStatus(page);
+  await page.click('#findgo');
+  await page.waitForTimeout(300);
+  expect(await status(page)).toMatch(/too large to be a block height/);
+});
+
+test('Find brings its answer into view on a laptop screen, and only when it is out of view', async ({
+  browser,
+}) => {
+  const m = await browser.newPage({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark' });
+  await openPage(m);
+  // Once the page has loaded (its counts shown), so no loading message replaces the answer.
+  await until(m, async () => !/—/.test(await m.locator('#stats').innerText()), 60_000, 'counts');
+  const inView = (sel: string) =>
+    m.evaluate((s) => {
+      const r = document.querySelector(s)!.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= window.innerHeight;
+    }, sel);
+  const settle = () => m.waitForTimeout(900);
+  await m.fill('#find', 'nonsense text');
+  await m.press('#find', 'Enter');
+  await settle();
+  expect(await status(m)).toMatch(/not a drive id/);
+  expect(await inView('#status'), 'the error line').toBe(true);
+  await m.evaluate(() => window.scrollTo(0, 0));
+  await m.fill('#find', KNOWN.typicalDrive);
+  await m.press('#find', 'Enter');
+  expect(await driveListed(m, LIVE ? 300_000 : 60_000)).toBe(true);
+  await settle();
+  expect(await inView('#viewtitle'), 'the drive title').toBe(true);
+  // Asked again with the answer on screen: the page stays where it is.
+  const y = await m.evaluate(() => window.scrollY);
+  await m.press('#find', 'Enter');
+  expect(await driveListed(m, LIVE ? 300_000 : 60_000)).toBe(true);
+  await settle();
+  expect(await m.evaluate(() => window.scrollY)).toBe(y);
+  await m.close();
+});
+
+test('Back to a question keeps its title and pressed card; a card is pressed only for its own answer', async () => {
+  const card = page.locator('#asks button').first();
+  const q = await card.locator('span').first().innerText();
+  await clearStatus(page);
+  await card.click();
+  await waitAnswer(page);
+  expect(await title(page)).toBe(q);
+  expect(await card.getAttribute('aria-pressed')).toBe('true');
+  // Its table speaks in words, not SQL column names.
+  expect(await page.locator('#results thead').innerText()).not.toMatch(/_/);
+  await page.fill('#find', KNOWN.typicalDrive);
+  await page.click('#findgo');
+  expect(await driveListed(page, LIVE ? 300_000 : 60_000)).toBe(true);
+  expect(await page.locator('#asks button[aria-pressed="true"]').count()).toBe(0);
+  await page.goBack();
+  await until(page, async () => (await title(page)) === q, 120_000, 'back to the question');
+  expect(await title(page)).toBe(q);
+  expect(await card.getAttribute('aria-pressed')).toBe('true');
+  await page.locator('#browse').click();
+  await until(page, async () => (await rows(page)) > 0, 120_000, 'browse');
+  expect(await page.locator('#asks button[aria-pressed="true"]').count()).toBe(0);
 });
 
 test('a wide drive says its cost first, Stop cancels, and browsing works after a stop', async () => {
@@ -484,7 +557,7 @@ test('light theme renders; phone width has no horizontal scroll', async ({ brows
   await page.screenshot({ path: 'e2e/out/light.png', fullPage: true });
   await page.emulateMedia({ colorScheme: 'dark' });
   const m = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
-  await m.goto(url(''));
+  await m.goto(url('browse'));
   await until(
     m,
     async () => (await m.locator('#results tbody tr').count()) > 0,
@@ -519,4 +592,53 @@ test('with every gateway unreachable, the page says so, not that none publishes 
   expect(await status(m)).toMatch(/^Could not reach/);
   expect(await status(m)).not.toMatch(/Refusing|publish/);
   await m.close();
+});
+
+test('a drive at 375, 800 and 1280 px: row lines run the full width and Size shows; a phone fits the masthead and the Find hint', async ({
+  browser,
+}) => {
+  for (const width of [375, 800, 1280]) {
+    const m = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: 'dark' });
+    await openPage(m, `drive=${KNOWN.typicalDrive}`);
+    expect(await driveListed(m, LIVE ? 300_000 : 60_000), `${width} px`).toBe(true);
+    const found = await m.evaluate(() => {
+      const out: string[] = [];
+      const wrap = document.querySelector('.b-listwrap') as HTMLElement;
+      if (wrap.scrollWidth > wrap.clientWidth + 1)
+        out.push(`the list scrolls sideways (${wrap.scrollWidth} px in ${wrap.clientWidth})`);
+      const box = wrap.getBoundingClientRect();
+      const table = document.getElementById('b-list')!.getBoundingClientRect();
+      for (const tr of [...document.querySelectorAll('#b-list tbody tr.b-row')].slice(0, 30)) {
+        const cells = [...tr.children]
+          .filter((td) => getComputedStyle(td).display !== 'none')
+          .map((td) => td.getBoundingClientRect());
+        for (let i = 0; i + 1 < cells.length; i++)
+          if (cells[i + 1]!.left - cells[i]!.right > 1) out.push('a row line stops short');
+        if (cells[0]!.left > table.left + 1 || cells.at(-1)!.right < table.right - 1)
+          out.push('a row line does not span the table');
+        if (cells.at(-1)!.right > box.right + 1) out.push('the last column is cut off');
+      }
+      return [...new Set(out)];
+    });
+    expect(found, `${width} px`).toEqual([]);
+    if (width === 375) {
+      const fits = await m.evaluate(() => {
+        const out: string[] = [];
+        const head = document.querySelector('header.framed')!.getBoundingClientRect();
+        const pill = document.querySelector('header.framed .bar .pill')!.getBoundingClientRect();
+        if (pill.right > head.right || pill.left < head.left)
+          out.push('the pill leaves the masthead');
+        const input = document.getElementById('find') as HTMLInputElement;
+        const cs = getComputedStyle(input);
+        const ctx = document.createElement('canvas').getContext('2d')!;
+        ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const room = input.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        if (ctx.measureText(input.placeholder).width > room)
+          out.push(`the Find hint is cut ("${input.placeholder}" in ${Math.round(room)} px)`);
+        return out;
+      });
+      expect(fits).toEqual([]);
+    }
+    await m.close();
+  }
 });

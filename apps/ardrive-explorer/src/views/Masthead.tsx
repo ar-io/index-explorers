@@ -36,11 +36,15 @@ export function Masthead() {
       <dl class="stats" id="stats">
         <div class="stat">
           <dd id="s-drives">{hero.drives}</dd>
-          <dt>Drives</dt>
+          <dt title="Every drive record the index holds: a drive renamed or changed counts once per record.">
+            Drive records
+          </dt>
         </div>
         <div class="stat">
           <dd id="s-files">{hero.files}</dd>
-          <dt>Files</dt>
+          <dt title="Every file record the index holds: a file renamed or moved counts once per record.">
+            File records
+          </dt>
         </div>
         <div class="stat">
           <dd id="s-items">{hero.items}</dd>

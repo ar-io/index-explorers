@@ -3,11 +3,12 @@ import { fmtRange, mb, num, timeAt } from '@ar-io/index-client';
 import { CONFIG } from '../config.js';
 import { useApp } from '../context.js';
 import { PRESETS, presetSql, QUESTIONS } from '../data/questions.js';
+import { reveal } from './reveal.js';
 
 export function Questions() {
   const { store, flows } = useApp();
   const enabled = store.asksEnabled.value;
-  const asked = store.asked.value;
+  const asked = store.view.value.kind === 'query' ? store.asked.value : null;
   return (
     <div class="asks" id="asks">
       {QUESTIONS.map((q, i) => (
@@ -17,13 +18,7 @@ export function Questions() {
           disabled={!enabled}
           aria-pressed={asked === i ? 'true' : 'false'}
           onClick={() => {
-            void flows
-              .ask(i)
-              .then(() =>
-                document
-                  .getElementById('view')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
-              );
+            void flows.ask(i).then(() => reveal(store));
           }}
         >
           <span>{q.title}</span>
@@ -118,7 +113,10 @@ export function SqlDrawer() {
             onClick={() => {
               store.asked.value = null;
               const label = PRESETS.findIndex((_, i) => fill(i) === sql);
-              void flows.runQuery({ title: label >= 0 ? PRESETS[label]!.label : 'Your query' });
+              void flows.runQuery({
+                title: label >= 0 ? PRESETS[label]!.label : 'Your query',
+                labels: label >= 0,
+              });
             }}
           >
             Run query

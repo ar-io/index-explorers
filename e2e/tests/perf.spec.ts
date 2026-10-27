@@ -23,7 +23,7 @@ test('the 20,000-record drive: first rows, long tasks, windowed rendering, sorts
   page,
 }) => {
   test.setTimeout(LIVE ? 900_000 : 300_000);
-  await openPage(page);
+  await openPage(page, 'browse');
   await until(
     page,
     async () => (await page.locator('#results tbody tr').count()) > 0,

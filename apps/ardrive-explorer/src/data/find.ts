@@ -16,6 +16,7 @@ import {
 } from '@ar-io/index-client';
 
 import { toRecord } from '../model/arfs.js';
+import type { RunOptions } from './query.js';
 import type { Session } from '../session.js';
 import { emptyContent, type Fact } from '../store.js';
 
@@ -35,12 +36,7 @@ export function createFindFlows(
     browse: (reset: boolean) => Promise<void>;
     openDrive: (id: string, confirmed: boolean, folder: string | null) => Promise<void>;
     openWallet: (addr: string, everything: boolean) => Promise<void>;
-    runQuery: (opts: {
-      title?: string | null;
-      caption?: string | null;
-      confirmed?: boolean;
-      sql?: string;
-    }) => Promise<void>;
+    runQuery: (opts: RunOptions) => Promise<void>;
   },
 ) {
   const st = s.store;
@@ -161,10 +157,16 @@ export function createFindFlows(
   async function openHeight(h: number): Promise<void> {
     st.sql.value = `SELECT id, owner, data_size, content_type, app, is_record\nFROM uploads_between(${h}, ${h})\nORDER BY data_size DESC;`;
     st.asked.value = null;
-    await go.runQuery({ title: `Block ${num(h)}`, caption: null });
+    await go.runQuery({
+      title: `Block ${num(h)}`,
+      caption: null,
+      labels: true,
+      empty: 'No uploads in this block.',
+    });
   }
 
-  function find(raw: string): void {
+  /** Settles once the answer (or the reason there is none) is shown. */
+  async function find(raw: string): Promise<void> {
     const v = raw.trim();
     // A rejection must not be overwritten by a listing still finishing.
     s.nav += 1;
@@ -176,16 +178,13 @@ export function createFindFlows(
       st.say('The publication is still being checked; this will work in a moment.', 'bad');
       return;
     }
-    if (isUuid(v)) {
-      void go.openDrive(v, false, null);
-      return;
-    }
-    if (isId43(v)) {
-      void openId(v);
-      return;
-    }
-    if (/^\d[\d,_]*$/.test(v)) {
-      void openHeight(Number(v.replace(/[,_]/g, '')));
+    if (isUuid(v)) return go.openDrive(v, false, null);
+    if (isId43(v)) return openId(v);
+    const height = /^\d[\d,_]*$/.test(v) ? Number(v.replace(/[,_]/g, '')) : NaN;
+    // Past 2^53 a number is rounded, so the block shown would not be the one typed.
+    if (Number.isSafeInteger(height)) return openHeight(height);
+    if (!Number.isNaN(height)) {
+      st.say(`${v.slice(0, 48)} is too large to be a block height.`, 'bad');
       return;
     }
     st.say(
