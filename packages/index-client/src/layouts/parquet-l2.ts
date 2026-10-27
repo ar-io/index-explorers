@@ -382,11 +382,13 @@ export function tagValuesReadAhead(
 }
 
 /**
- * A Unix-Time stamped in milliseconds (some apps did) would throw in
- * Date#toISOString; the value is bounded here so no formatter ever sees it.
+ * The time an upload's Unix-Time tag stamps. Some apps stamp milliseconds:
+ * those are converted, not dropped. Anything outside both ranges (or no tag
+ * at all) is NULL, so no formatter ever sees a year past 2096.
  */
 export const CREATED_AT = (expr: string): string =>
-  `CASE WHEN ${expr} BETWEEN 1000000000 AND 4000000000 THEN epoch_ms(${expr} * 1000) END`;
+  `CASE WHEN ${expr} BETWEEN 1000000000 AND 4000000000 THEN epoch_ms(${expr} * 1000)
+        WHEN ${expr} BETWEEN 1000000000000 AND 4000000000000 THEN epoch_ms(${expr}) END`;
 
 /**
  * Every upload in a window with the app that made it and the time it stamped.
@@ -482,6 +484,26 @@ export function l2BaseSql(bands: readonly RegisteredL2Band[]): string[] {
   }
   return out;
 }
+
+/**
+ * With lookups, the macros `l2BaseSql` defines that answer from them by key:
+ * kilobytes, whatever the period. Without lookups they scan the period instead.
+ */
+export const L2_KEYED_SOURCES = ['tag_counts', 'wallet_totals'];
+
+/**
+ * With lookups, every source `l2BaseSql` defines that reads every registered
+ * band rather than the period's: a result from these alone covers the whole index.
+ */
+export const L2_WHOLE_SOURCES = [
+  ...L2_KEYED_SOURCES,
+  'find_id',
+  'lookup_id',
+  'lookup_wallet',
+  'lookup_tag',
+  'items_all',
+  'tags_all',
+];
 
 /** The period's generic views: `uploads` and `tags`, bounded to the period's heights. */
 export function l2PeriodViewsSql(

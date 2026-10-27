@@ -137,6 +137,8 @@ export interface DriveUi {
 export interface StatusLine {
   text: string;
   cls: '' | 'ok' | 'bad';
+  /** A way out the line offers, such as a reload. */
+  action?: { label: string; go: () => void };
 }
 
 export class Store {
@@ -205,8 +207,8 @@ export class Store {
   /** A trace of the load path, for tests. */
   readonly trace: string[] = [];
 
-  say(text: string, cls: '' | 'ok' | 'bad' = ''): void {
-    this.status.value = { text, cls };
+  say(text: string, cls: '' | 'ok' | 'bad' = '', action?: StatusLine['action']): void {
+    this.status.value = action ? { text, cls, action } : { text, cls };
   }
 
   setCheck(k: keyof ProofChecks, state: CheckState): void {

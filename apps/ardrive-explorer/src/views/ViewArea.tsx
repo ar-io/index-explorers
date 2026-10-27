@@ -190,8 +190,11 @@ function GenericTable({ table }: { table: TableContent }) {
     row: Record<string, unknown>,
   ): { node: ComponentChildren; num: boolean } => {
     if (c.render) return { node: c.render(v, row), num: !!c.num };
+    // An upload with no Unix-Time tag has no date: said, not a blank cell.
+    if (isTime.has(c.key) && !(Number(v) > 0))
+      return { node: <span class="nodate">(no date)</span>, num: false };
     if (v === null || v === undefined) return { node: '', num: false };
-    if (isTime.has(c.key)) return { node: Number(v) > 0 ? fmtWhen(v) : '', num: false };
+    if (isTime.has(c.key)) return { node: fmtWhen(v), num: false };
     const text = String(v);
     if (c.key === 'owner' && isId43(text))
       return {

@@ -521,6 +521,32 @@ test('periods: all history asks first for a question; a calendar year browses', 
   await page.selectOption('#scope', 'month');
 });
 
+test('a link opens over its own period, All history too; a lookup-only answer covers the whole index', async ({
+  browser,
+}) => {
+  const sql = "SELECT value, uploads FROM tag_counts('App-Name') ORDER BY uploads DESC LIMIT 5";
+  const link = (period: string, q = sql) =>
+    `#gw=${encodeURIComponent(GW)}&period=${period}&sql=${encodeURIComponent(q)}`;
+  const m = await browser.newPage({ colorScheme: 'dark' });
+  await m.goto(link('all'));
+  await until(m, async () => /rows? in /.test(await status(m)), 180_000, 'answer');
+  expect(await m.locator('#scope').inputValue()).toBe('all');
+  expect(await m.locator('#cost').isVisible()).toBe(false);
+  expect(await status(m)).toMatch(/over the whole index/);
+  expect(await rows(m)).toBeGreaterThan(0);
+  await m.close();
+  // A period the index does not cover: opened over Last 30 days, and said.
+  const n = await browser.newPage({ colorScheme: 'dark' });
+  await n.goto(link('y1999', 'SELECT CAST(NULL AS TIMESTAMP) AS created_at, 1 AS n'));
+  await until(n, async () => /rows? in /.test(await status(n)), 180_000, 'answer');
+  expect(await n.locator('#scope').inputValue()).toBe('month');
+  expect(await status(n)).toMatch(/^The link asked for a period this index does not cover/);
+  expect(await status(n)).toMatch(/over Last 30 days/);
+  // An upload with no date says so.
+  expect(await n.locator('#results tbody td').first().innerText()).toBe('(no date)');
+  await n.close();
+});
+
 test('the data-source drawer: another gateway is refused with a reason, switching back re-verifies', async () => {
   await page.locator('#datadrawer > summary').click();
   const options = await page
@@ -539,6 +565,15 @@ test('the data-source drawer: another gateway is refused with a reason, switchin
     const txt = await page.locator('#proof-text').innerText();
     expect(/no index of ArDrive's data items|Refusing|not|Verified/i.test(txt), txt).toBe(true);
   }
+  // The page counts its navigations: reading the publication again is one, and
+  // reopening the listing over it another, after the old listing was cleared.
+  // A listing the previous test left loading can repaint before then.
+  const nav = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __explorer: { session: { nav: number } } }).__explorer.session.nav,
+    );
+  const before = await nav();
   await page.selectOption('#gwsel', 'custom');
   await page.fill('#gw', GW);
   await page.click('#connect');
@@ -548,8 +583,9 @@ test('the data-source drawer: another gateway is refused with a reason, switchin
     60_000,
     'back',
   );
-  await until(page, async () => (await rows(page)) > 0, 180_000, 'browse after switch');
-  expect(await rows(page)).toBeGreaterThan(0);
+  const fresh = async () => (await nav()) >= before + 2 && (await rows(page)) > 0;
+  await until(page, fresh, 180_000, 'browse after switch');
+  expect(await fresh()).toBe(true);
 });
 
 test('light theme renders; phone width has no horizontal scroll', async ({ browser }) => {

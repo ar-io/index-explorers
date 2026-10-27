@@ -76,12 +76,17 @@ export function SqlDrawer() {
             </button>
           ))}
         </div>
-        <label for="sql" class="note" style="display:block;margin:4px 0 6px">
+        <label for="sql" class="note" style="display:block;margin:4px 0 2px">
           SQL over <code>drives</code>, <code>folders</code>, <code>files</code>,{' '}
           <code>entities</code>, <code>uploads</code> and <code>tags</code>
         </label>
+        <p class="note" id="sqlnote" style="margin:0 0 6px">
+          <code>created_at</code> is the Unix-Time tag the app stamped. File data from ArDrive-CLI
+          and ArDrive-Core carries none, so it has no date; the file’s record does.
+        </p>
         <textarea
           id="sql"
+          aria-describedby="sqlnote"
           spellcheck={false}
           value={sql}
           onInput={(e) => (store.sql.value = (e.target as HTMLTextAreaElement).value)}

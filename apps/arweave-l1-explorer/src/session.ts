@@ -674,7 +674,8 @@ export class Session {
     } catch (e) {
       const why = explainReadError(e, this.reader?.watching ?? null, this.mirrors);
       st.loadedKey.value = null;
-      await this.forgetRanged(sel);
+      if (why.oom) await this.restartEngine();
+      else await this.forgetRanged(sel);
       st.say(why.stopped ? why.msg : 'Load failed: ' + why.msg, 'bad');
       st.switchTo.value = why.switchTo ?? null;
       return false;
@@ -686,6 +687,23 @@ export class Session {
       }
       st.progress.value = { ...st.progress.value, stop: false };
       st.barHide();
+    }
+  }
+
+  /**
+   * After the engine's memory ran out: a new engine, every band registered
+   * again on the next read (the checked pieces stay in the range reader),
+   * and one cheap query to show it answers. False when it does not.
+   */
+  private async restartEngine(): Promise<boolean> {
+    this.registered.clear();
+    this.store.loadedKey.value = null;
+    try {
+      await this.engine?.restart();
+      await this.engine?.query('SELECT 1');
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -846,9 +864,13 @@ export class Session {
       const why = explainReadError(e, watch, this.mirrors);
       if (why.integrity) st.setCheck('pieces', 'bad');
       if (why.oom) {
-        await this.engine?.resetConnection().catch(() => {});
-        await this.forgetRanged(win.bands);
-        st.loadedKey.value = null;
+        if (!(await this.restartEngine())) {
+          st.say(
+            `${why.msg} The engine could not be restarted; reload the page to ask again.`,
+            'bad',
+          );
+          return;
+        }
       } else if (
         watch?.fail ||
         /magic bytes|IO Error|HTTP/i.test(e instanceof Error ? e.message : String(e))
@@ -856,7 +878,7 @@ export class Session {
         await this.forgetRanged(win.bands);
         st.loadedKey.value = null;
       }
-      st.say(why.stopped ? why.msg : 'Query error: ' + why.msg, 'bad');
+      st.say(why.stopped || why.oom ? why.msg : 'Query error: ' + why.msg, 'bad');
       st.switchTo.value = why.switchTo ?? null;
     } finally {
       st.progress.value = { ...st.progress.value, stop: false };

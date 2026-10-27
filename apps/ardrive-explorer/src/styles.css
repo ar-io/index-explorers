@@ -388,3 +388,14 @@
 #viewtitle {
   scroll-margin: 16px;
 }
+
+/* The status line's way out, such as a reload, sits after its sentence. */
+#status .statusbtn {
+  margin-left: 10px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.nodate {
+  color: var(--muted);
+}

@@ -105,6 +105,12 @@ export function arfsBaseSql(bands: readonly RegisteredL2Band[]): string[] {
   return out;
 }
 
+/** With lookups, the ArFS macros that answer from them by key (`L2_KEYED_SOURCES` has the generic ones). */
+export const ARFS_KEYED_SOURCES = ['drive_window'];
+
+/** With lookups, the ArFS macros that ignore the period: a drive is read over its own window. */
+export const ARFS_WHOLE_SOURCES = [...ARFS_KEYED_SOURCES, 'drive'];
+
 /**
  * The period's ArFS views: `entities` (every record, every version) and one
  * row per drive, folder or file (`drives`, `folders`, `files`: the newest

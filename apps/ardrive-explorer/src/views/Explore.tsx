@@ -169,6 +169,11 @@ export function Explore() {
       </div>
       <div id="status" aria-live="polite">
         {status.text ? <span class={status.cls}>{status.text}</span> : null}
+        {status.action ? (
+          <button type="button" class="secondary statusbtn" onClick={status.action.go}>
+            {status.action.label}
+          </button>
+        ) : null}
       </div>
       <ProgressBar state={store.progress.value} onStop={() => void session.stop()} />
       <ViewArea />

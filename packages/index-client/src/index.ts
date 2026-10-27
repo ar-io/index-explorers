@@ -41,3 +41,4 @@ export * from './util/bytes.js';
 export * from './util/base58.js';
 export * from './util/fetch.js';
 export * from './util/format.js';
+export * from './util/sql.js';

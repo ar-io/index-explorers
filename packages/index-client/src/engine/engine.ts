@@ -75,9 +75,11 @@ export class Engine {
   private files = new Map<string, { url: string; size: number }>();
 
   private constructor(
-    public readonly db: duckdb.AsyncDuckDB,
+    private db: duckdb.AsyncDuckDB,
     private conn: duckdb.AsyncDuckDBConnection,
     private readonly opts: EngineOptions,
+    /** The checked worker and wasm, kept so a restart needs no fetch and no new check. */
+    private readonly urls: { worker: string; wasm: string },
   ) {}
 
   static async open(opts: EngineOptions): Promise<Engine> {
@@ -106,9 +108,21 @@ export class Engine {
     );
     say('Starting the engine');
     opts.onProgress?.({ busy: 'Starting the engine' });
+    const urls = { worker: workerUrl, wasm: wasmUrl };
+    const { db, conn } = await Engine.start(urls);
+    const engine = new Engine(db, conn, opts, urls);
+    await engine.configure(conn);
+    await engine.loadExtension(conn);
+    return engine;
+  }
+
+  private static async start(urls: {
+    worker: string;
+    wasm: string;
+  }): Promise<{ db: duckdb.AsyncDuckDB; conn: duckdb.AsyncDuckDBConnection }> {
     // VoidLogger: ConsoleLogger writes a line to the console for every query.
-    const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), new Worker(workerUrl));
-    await db.instantiate(wasmUrl);
+    const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), new Worker(urls.worker));
+    await db.instantiate(urls.wasm);
     // Range reads: a HEAD for the size, then ranged GETs, never a whole file.
     // forceFullHTTPReads must be said: left unset, the engine falls back to
     // whole-file reads.
@@ -119,27 +133,24 @@ export class Engine {
         forceFullHTTPReads: false,
       },
     });
-    const conn = await db.connect();
-    const engine = new Engine(db, conn, opts);
-    await engine.configure(conn);
-    let loaded = false;
-    for (const host of opts.hosts) {
+    return { db, conn: await db.connect() };
+  }
+
+  /** The Parquet reader, from Arweave's copies first. */
+  private async loadExtension(conn: duckdb.AsyncDuckDBConnection): Promise<void> {
+    for (const host of this.opts.hosts) {
       try {
-        await conn.query(`LOAD '${joinUrl(host, opts.pins.extension.path)}'`);
-        loaded = true;
-        break;
+        await conn.query(`LOAD '${joinUrl(host, this.opts.pins.extension.path)}'`);
+        return;
       } catch {
         /* next */
       }
     }
-    if (!loaded) {
-      // Arweave's copies unreachable: let DuckDB fetch its own. Still checked
-      // against DuckDB's signature, but a third party is now involved.
-      await conn.query('SET autoinstall_known_extensions = true');
-      await conn.query('SET autoload_known_extensions = true');
-      engine.extFallback = true;
-    }
-    return engine;
+    // Arweave's copies unreachable: let DuckDB fetch its own. Still checked
+    // against DuckDB's signature, but a third party is now involved.
+    await conn.query('SET autoinstall_known_extensions = true');
+    await conn.query('SET autoload_known_extensions = true');
+    this.extFallback = true;
   }
 
   /** Session settings, applied to every connection the engine opens. */
@@ -205,20 +216,26 @@ export class Engine {
   }
 
   /**
-   * After the engine ran out of memory, its open files and this connection
-   * are not to be trusted: the next read through them has failed in odd ways
-   * ("too small to be a Parquet file"). A fresh connection; the caller
-   * registers its bands again (the checked pieces stay in the reader).
+   * After the engine ran out of memory, neither its open files nor a fresh
+   * connection can be trusted: the next read has failed in odd ways ("too
+   * small to be a Parquet file"), because the worker's memory stays as full
+   * as the failure left it. A new worker from the same checked bytes; every
+   * registered file is gone, so the caller registers its bands again (the
+   * checked pieces stay in the range reader).
    */
-  async resetConnection(): Promise<void> {
+  async restart(): Promise<void> {
     try {
-      await this.conn.close();
+      await this.db.terminate();
     } catch {
       /* already gone */
     }
-    this.conn = await this.db.connect();
-    await this.configure(this.conn);
+    const { db, conn } = await Engine.start(this.urls);
+    this.db = db;
+    this.conn = conn;
+    this.files.clear();
     this.chain = Promise.resolve();
+    await this.configure(conn);
+    await this.loadExtension(conn);
   }
 
   async close(): Promise<void> {
