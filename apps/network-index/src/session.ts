@@ -315,7 +315,11 @@ export class Session {
         text: (checking ? 'Not verified · ' : 'Could not read the publication · ') + msg,
       };
       st.pub.value = { ...st.pub.value, verified: false, doc: null };
-      st.say('Refusing this publication: ' + msg, 'bad');
+      // Refusing is for a publication that was read; one never read was not refused.
+      st.say(
+        checking ? 'Refusing this publication: ' + msg : msg.charAt(0).toUpperCase() + msg.slice(1),
+        'bad',
+      );
     }
   }
 

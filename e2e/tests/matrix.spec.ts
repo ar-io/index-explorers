@@ -575,6 +575,25 @@ test('light theme renders; phone width has no horizontal scroll', async ({ brows
   await m.close();
 });
 
+test('with every gateway unreachable, the page says so, not that none publishes the index', async ({
+  browser,
+}) => {
+  const m = await browser.newPage({ colorScheme: 'dark' });
+  await m.route(/\/ar-io\/indexes$/, (r) => r.abort('internetdisconnected'));
+  // No gateway in the link: the page tries every known publisher.
+  await m.goto('#period=month');
+  await until(
+    m,
+    async () => (await m.locator('#proof').getAttribute('data-state')) === 'bad',
+    120_000,
+    'refused',
+  );
+  expect(await m.locator('#proof-text').innerText()).toMatch(/could not reach/i);
+  expect(await status(m)).toMatch(/^Could not reach/);
+  expect(await status(m)).not.toMatch(/Refusing|publish/);
+  await m.close();
+});
+
 test('a drive at 375, 800 and 1280 px: row lines run the full width and Size shows; a phone fits the masthead and the Find hint', async ({
   browser,
 }) => {

@@ -29,6 +29,7 @@ import {
   rangeable,
   rangeSpec,
   type Receipt,
+  notesText,
   receiptText,
   registerRangeReader,
   rowsOf,
@@ -391,7 +392,11 @@ export class Session {
       );
       st.pub.value = { ...st.pub.value, verified: false };
       st.windows.value = [];
-      st.say('Refusing this publication: ' + msg, 'bad');
+      // Refusing is for a publication that was read; one never read was not refused.
+      st.say(
+        checking ? 'Refusing this publication: ' + msg : msg.charAt(0).toUpperCase() + msg.slice(1),
+        'bad',
+      );
     }
   }
 
@@ -805,7 +810,7 @@ export class Session {
           )
         : null;
       const receipt =
-        receiptText(read, mb) + (watch?.notes.length ? ' ' + watch.notes.join(' ') : '');
+        receiptText(read, mb) + (watch?.notes.length ? ' ' + notesText(watch.notes) : '');
       st.result.value = {
         cols,
         rows,

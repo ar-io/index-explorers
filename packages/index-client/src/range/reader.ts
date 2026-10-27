@@ -32,10 +32,20 @@ export interface Watch {
   before: RangeTotals;
   /** The first refusal the worker sent while watching, if any. */
   fail: { code: string; msg: string } | null;
-  notes: string[];
+  /** Failovers and the like, one per source and kind: the first one's words and how many there were. */
+  notes: WatchNote[];
   /** Ends the watch and returns what was read. */
   done(): Promise<Receipt>;
 }
+
+export interface WatchNote {
+  key: string;
+  msg: string;
+  count: number;
+}
+
+/** The most kinds of note a watch keeps; past it, notes are only counted. */
+const MAX_NOTE_KINDS = 20;
 
 export interface RangeReaderOptions {
   /** The worker script, relative to the page. Default `./sw.js`. */
@@ -153,10 +163,7 @@ class Reader implements RangeReader {
     } else if (e.type === 'fail') {
       if (this.watching && !this.watching.fail) this.watching.fail = { code: e.code, msg: e.msg };
     } else if (e.type === 'note') {
-      if (this.watching) {
-        const msg = e.msg.charAt(0).toUpperCase() + e.msg.slice(1);
-        if (!this.watching.notes.includes(msg)) this.watching.notes.push(msg);
-      }
+      if (this.watching) addNote(this.watching.notes, e.msg, e.key);
     }
     for (const l of this.listeners) l(e);
   }
@@ -297,6 +304,38 @@ export function explainReadError(
     return out;
   }
   return { msg: `${first}.` };
+}
+
+/**
+ * Adds a worker's note to a watch's: forty band files missing from one
+ * gateway are one kind of note, counted, not forty sentences. A note
+ * without a key is its own kind. At most MAX_NOTE_KINDS kinds are kept;
+ * past that, the last kind counts the rest.
+ */
+export function addNote(notes: WatchNote[], text: string, key?: string): void {
+  const msg = text.charAt(0).toUpperCase() + text.slice(1);
+  const k = key ?? msg;
+  const same = notes.find((n) => n.key === k);
+  if (same) same.count += 1;
+  else if (notes.length < MAX_NOTE_KINDS) notes.push({ key: k, msg, count: 1 });
+  else notes[notes.length - 1]!.count += 1;
+}
+
+/**
+ * A watch's notes as a few sentences for a status line: the first of each
+ * kind with how many more went the same way, at most `max` kinds, then a
+ * count of the rest. Empty when there were none.
+ */
+export function notesText(notes: readonly WatchNote[], max = 3): string {
+  const out = notes.slice(0, max).map((n) => {
+    const more = n.count - 1;
+    return more > 0
+      ? `${n.msg} The same happened to ${num(more)} more read${more === 1 ? '' : 's'}.`
+      : n.msg;
+  });
+  const rest = notes.slice(max).reduce((t, n) => t + n.count, 0);
+  if (rest) out.push(`${num(rest)} more read${rest === 1 ? '' : 's'} used another source too.`);
+  return out.join(' ');
 }
 
 /** The one-line receipt of what a listing read, and that it was checked. */
