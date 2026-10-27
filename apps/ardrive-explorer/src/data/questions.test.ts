@@ -1,3 +1,4 @@
+import { arfs, parquetL2, sourcesOf } from '@ar-io/index-client';
 import { describe, expect, it } from 'vitest';
 
 import { askedFor, columnLabel, PRESETS, presetSql, QUESTIONS } from './questions.js';
@@ -39,5 +40,34 @@ describe('a question or preset found again from its SQL', () => {
       expect(columnLabel(k)).not.toMatch(/_/);
     }
     expect(columnLabel('something_else')).toBe('something_else');
+  });
+});
+
+describe('what the questions read', () => {
+  const keyed = new Set([...parquetL2.L2_KEYED_SOURCES, ...arfs.ARFS_KEYED_SOURCES]);
+
+  it('each wide form answers from the lookups by key alone, so it is labelled the whole index', () => {
+    for (const q of QUESTIONS.filter((x) => x.wideSql)) {
+      const src = sourcesOf(q.wideSql!.replaceAll('{TOTAL}', '1'));
+      expect(src, q.title).not.toBeNull();
+      expect(src!.length, q.title).toBeGreaterThan(0);
+      expect(
+        src!.every((n) => keyed.has(n)),
+        q.title,
+      ).toBe(true);
+    }
+  });
+
+  it('each period form scans the period, so a wide period still asks first', () => {
+    for (const q of QUESTIONS) {
+      const src = sourcesOf(q.sql);
+      expect(src && src.every((n) => keyed.has(n)), q.title).toBe(false);
+    }
+  });
+
+  it('a grouping by day or month names the undated rows rather than leaving a blank', () => {
+    for (const sql of [...QUESTIONS.map((q) => q.sql), ...PRESETS.map((p) => p.sql)])
+      if (/strftime\(date_trunc/.test(sql))
+        expect(sql).toMatch(/coalesce\(strftime\(.*'\(no date\)'\)/);
   });
 });

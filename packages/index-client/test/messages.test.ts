@@ -5,7 +5,15 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { addNote, NoGatewayError, notesText, pickGateway, type WatchNote } from '../src/index.js';
+import {
+  addNote,
+  explainReadError,
+  NoGatewayError,
+  notesText,
+  pickGateway,
+  type Watch,
+  type WatchNote,
+} from '../src/index.js';
 import { LIVE_PUBLICATION, readJson } from './helpers.js';
 
 describe('failover notes', () => {
@@ -87,5 +95,34 @@ describe('no gateway offers the index', () => {
       fetch: () => Promise.resolve(new Response(JSON.stringify(doc))),
     }).catch((x: unknown) => x)) as NoGatewayError;
     expect(e.message).toBe('none of these publish a some-other-index index: a.example, b.example');
+  });
+});
+
+describe('a spent engine', () => {
+  it('says the memory ran out, over the period, whichever way the engine reports it', () => {
+    for (const raw of [
+      'Out of Memory Error: could not allocate block of size 256 KiB',
+      "Invalid Input Error: File 'r112_tg.parquet' too small to be a Parquet file",
+      'IO Error: No files found that match the pattern "r409_it.parquet"',
+    ]) {
+      const why = explainReadError(new Error(raw), null, [], 'Last 12 months');
+      expect(why.oom).toBe(true);
+      expect(why.msg).toMatch(
+        /^This question needs more memory than a browser tab allows over Last 12 months\./,
+      );
+      expect(why.msg).not.toMatch(/parquet|Error/);
+      expect(why.detail).toBe(raw);
+    }
+  });
+
+  it('a file the reader refused is the reader’s failure, not the engine’s', () => {
+    const watch = { fail: { code: 'integrity', msg: 'a piece did not match' } } as unknown as Watch;
+    const why = explainReadError(
+      new Error("Invalid Input Error: File 'r1_tg.parquet' too small to be a Parquet file"),
+      watch,
+      [],
+    );
+    expect(why.oom).toBeUndefined();
+    expect(why.integrity).toBe(true);
   });
 });

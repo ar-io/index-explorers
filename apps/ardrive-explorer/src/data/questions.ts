@@ -30,7 +30,7 @@ export const QUESTIONS: Question[] = [
   {
     title: 'How many drives were created?',
     sub: 'Public and private, by month',
-    sql: "SELECT strftime(date_trunc('month', created_at), '%Y-%m') AS month,\n       count(*) FILTER (WHERE privacy = 'public') AS public_drives,\n       count(*) FILTER (WHERE privacy = 'private') AS private_drives,\n       count(DISTINCT owner) AS owners\nFROM drives\nGROUP BY date_trunc('month', created_at)\nORDER BY date_trunc('month', created_at);",
+    sql: "SELECT coalesce(strftime(date_trunc('month', created_at), '%Y-%m'), '(no date)') AS month,\n       count(*) FILTER (WHERE privacy = 'public') AS public_drives,\n       count(*) FILTER (WHERE privacy = 'private') AS private_drives,\n       count(DISTINCT owner) AS owners\nFROM drives\nGROUP BY date_trunc('month', created_at)\nORDER BY date_trunc('month', created_at);",
     caption: 'Drives whose record was written {RANGE}, by the month the app stamped on it.',
     wideSql:
       "SELECT value AS kind, uploads AS records\nFROM tag_counts('Entity-Type')\nORDER BY records DESC;",
@@ -75,7 +75,7 @@ export const QUESTIONS: Question[] = [
   {
     title: 'New wallets',
     sub: 'First-time uploaders, by month',
-    sql: "WITH firsts AS (\n  SELECT owner, min(created_at) AS first_seen FROM uploads GROUP BY owner\n)\nSELECT strftime(date_trunc('month', first_seen), '%Y-%m') AS month, count(*) AS new_wallets\nFROM firsts\nGROUP BY date_trunc('month', first_seen)\nORDER BY date_trunc('month', first_seen);",
+    sql: "WITH firsts AS (\n  SELECT owner, min(created_at) AS first_seen FROM uploads GROUP BY owner\n)\nSELECT coalesce(strftime(date_trunc('month', first_seen), '%Y-%m'), '(no date)') AS month, count(*) AS new_wallets\nFROM firsts\nGROUP BY date_trunc('month', first_seen)\nORDER BY date_trunc('month', first_seen);",
     caption:
       'Wallets whose first ArDrive upload in this period fell in each month. Over a short period, every wallet looks new: widen it for the real picture.',
   },
@@ -109,7 +109,7 @@ export const PRESETS: Preset[] = [
   { label: 'One wallet: totals', sql: "SELECT * FROM wallet_totals('{WALLET}');" },
   {
     label: 'Files by day',
-    sql: "SELECT strftime(date_trunc('day', created_at), '%Y-%m-%d') AS day, count(*) AS files, count(DISTINCT drive_id) AS drives\nFROM files\nGROUP BY date_trunc('day', created_at)\nORDER BY date_trunc('day', created_at);",
+    sql: "SELECT coalesce(strftime(date_trunc('day', created_at), '%Y-%m-%d'), '(no date)') AS day, count(*) AS files, count(DISTINCT drive_id) AS drives\nFROM files\nGROUP BY date_trunc('day', created_at)\nORDER BY date_trunc('day', created_at);",
   },
   {
     label: 'Deepest folders',

@@ -77,6 +77,8 @@ export class Session {
   readonly names: NamePool;
   private tickTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingLink: ReturnType<typeof parseFragment> | null = null;
+  /** Said after a link opens over another period than the one it asked for. */
+  private periodNote: string | null = null;
 
   constructor(readonly store: Store) {
     this.names = new NamePool({
@@ -183,10 +185,20 @@ export class Session {
         scanFiles: ['tags.parquet', 'data_items.parquet'],
       });
       st.periods.value = periods;
-      const wantPeriod = this.pendingLink?.period ?? st.periodId.value;
-      st.periodId.value = periods.some((p) => p.id === wantPeriod && wantPeriod !== 'all')
-        ? wantPeriod
-        : 'month';
+      // A link's period is honoured, All history too: a question over it still
+      // asks first. One this page cannot load opens over Last 30 days, and says so.
+      const linked = this.pendingLink?.period;
+      const wantPeriod = linked ?? st.periodId.value;
+      const usable = periods.some((p) => p.id === wantPeriod && !this.periodDisabled(p));
+      st.periodId.value = usable ? wantPeriod : 'month';
+      const asked = periods.find((p) => p.id === linked);
+      const fallback = periods.find((p) => p.id === 'month')?.label ?? 'Last 30 days';
+      this.periodNote =
+        !linked || usable
+          ? null
+          : asked
+            ? `The link asked for ${asked.label}, too much to download whole here, so this opened over ${fallback}.`
+            : `The link asked for a period this index does not cover, so this opened over ${fallback}.`;
       const publisherName = proof.publisherUrl ? hostOf(proof.publisherUrl) : null;
       const records = this.bands.reduce((t, b) => t + b.records, 0);
       const first = this.bands[0]!;
@@ -237,6 +249,11 @@ export class Session {
       this.pendingLink = null;
       // A link's view on the first load; after a change of gateway, the view the reader was on.
       await this.openFromLink(want?.view ?? st.view.value);
+      if (this.periodNote) {
+        const now = st.status.value;
+        st.say(`${this.periodNote} ${now.text}`.trim(), now.cls === 'ok' ? '' : now.cls);
+        this.periodNote = null;
+      }
     } catch (e) {
       if (this.overtaken(my)) return;
       this.bands = [];
@@ -483,7 +500,16 @@ export class Session {
       }
       return true;
     } catch (e) {
-      const why = explainReadError(e, this.reader?.watching ?? null, this.mirrors);
+      const why = explainReadError(e, this.reader?.watching ?? null, this.mirrors, p.label);
+      if (why.oom) {
+        st.tr(`engine spent: ${why.detail}`);
+        if (!(await this.restartEngine())) {
+          this.sayReload('The engine stopped answering.');
+          return false;
+        }
+        st.say('The engine had run out of memory and was restarted. Ask again.', 'bad');
+        return false;
+      }
       st.say(why.stopped ? why.msg : 'Load failed: ' + why.msg, 'bad');
       return false;
     } finally {
@@ -621,15 +647,21 @@ export class Session {
       };
     } catch (e) {
       if (watch) await watch.done();
-      const why = explainReadError(e, watch, this.mirrors);
+      const why = explainReadError(e, watch, this.mirrors, st.currentPeriod()?.label);
       if (why.integrity) st.setCheck('pieces', 'bad');
-      if (why.oom) await this.resetAfterOom();
-      else if (
+      if (why.oom) {
+        st.tr(`engine spent: ${why.detail}`);
+        st.say(`${why.msg} Restarting the engine…`, 'bad');
+        if (!(await this.restartEngine())) {
+          this.sayReload(why.msg);
+          return null;
+        }
+      } else if (
         watch?.fail ||
-        /magic bytes|IO Error|HTTP|too small/i.test(e instanceof Error ? e.message : String(e))
+        /magic bytes|IO Error|HTTP/i.test(e instanceof Error ? e.message : String(e))
       )
         await this.forgetRanged();
-      st.say(why.stopped ? why.msg : 'Could not read: ' + why.msg, 'bad');
+      st.say(why.stopped || why.oom ? why.msg : 'Could not read: ' + why.msg, 'bad');
       return null;
     } finally {
       st.showStop(false);
@@ -660,17 +692,35 @@ export class Session {
   }
 
   /**
-   * After the engine ran out of memory, its open files and this connection
-   * are not to be trusted. A fresh connection, and every band registered
-   * again, costs nothing: the checked pieces stay in the reader.
+   * After the engine's memory ran out: a new engine, every band registered
+   * again on the next read (the checked pieces stay in the range reader),
+   * and one cheap query to show it answers. False when it does not.
    */
-  private async resetAfterOom(): Promise<void> {
+  private async restartEngine(): Promise<boolean> {
+    this.registered.clear();
+    this.extras.clear();
+    this.loadedPeriod = null;
+    this.readying = null;
     try {
-      await this.engine?.resetConnection();
-    } catch {
-      /* ignore */
+      await this.engine?.restart();
+      await this.engine?.query('SELECT 1');
+      return true;
+    } catch (e) {
+      this.store.tr(`restart failed: ${e instanceof Error ? e.message : String(e)}`);
+      return false;
     }
-    await this.forgetRanged();
+  }
+
+  /** Only a reload helps: said, with the button that does it. */
+  private sayReload(why: string): void {
+    this.store.say(
+      `${why} The engine could not be restarted; reload the page to ask again.`,
+      'bad',
+      {
+        label: 'Reload the page',
+        go: () => location.reload(),
+      },
+    );
   }
 
   /** After a cancelled or failed read, the bands are registered afresh next time. */

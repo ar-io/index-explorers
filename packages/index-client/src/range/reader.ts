@@ -270,23 +270,37 @@ export const rangeable = (reader: RangeReader | null, band: Band): boolean =>
 /**
  * A worker refusal, in words, in place of DuckDB's "HTTP GET error ... (502)".
  * `switchTo` is another publisher of the same files, when the refusal is one
- * another gateway could avoid.
+ * another gateway could avoid. `oom` says the engine itself is spent: the
+ * caller restarts it before the next question. `detail` keeps the engine's
+ * own words for a bug report, never for the status line.
  */
 export function explainReadError(
   e: unknown,
   watch: Watch | null,
   mirrors: string[],
-): { msg: string; stopped?: boolean; switchTo?: string; integrity?: boolean; oom?: boolean } {
+  period?: string,
+): {
+  msg: string;
+  stopped?: boolean;
+  switchTo?: string;
+  integrity?: boolean;
+  oom?: boolean;
+  detail?: string;
+} {
   const message = e instanceof Error ? e.message : String(e);
-  if (/Out of Memory/i.test(message)) {
-    return {
-      msg:
-        'This question needs more memory than a browser tab allows over this period. ' +
-        'Pick a shorter period, or add a WHERE on height, or run it with DuckDB on the command line (see the footer).',
-      oom: true,
-    };
-  }
+  const spent = {
+    msg:
+      `This question needs more memory than a browser tab allows over ${period ?? 'this period'}. ` +
+      'Pick a shorter period, or add a WHERE on height, or run it with DuckDB on the command line (see the footer).',
+    oom: true,
+    detail: message,
+  };
+  if (/Out of Memory/i.test(message)) return spent;
   const f = watch?.fail;
+  // With no refusal from the reader, a file the engine finds empty or gone
+  // is the engine's own state after its memory ran out: the same failure,
+  // reported another way.
+  if (!f && /too small to be a Parquet file|No files found that match/i.test(message)) return spent;
   if (!f) return { msg: message };
   if (f.code === 'cancelled')
     return { msg: 'Stopped. Nothing partial is shown; ask again any time.', stopped: true };
