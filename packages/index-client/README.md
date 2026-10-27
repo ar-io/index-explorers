@@ -33,10 +33,10 @@ The formats are documented in ar-io/ar-io-node under `docs/`
 | module | exports |
 | --- | --- |
 | `publication.ts` | `fetchPublication`, `parsePublication`, `lookupRegistry`, `verifyPublication`, `verifySignature`, `signingBase`, `selectIndex`, `tipOf`, the `Publication`/`Band` types |
-| `gateway.ts` | `pickGateway`, `autoCandidates`, `mirrorsOf`, `fetchBandDates`, `KNOWN_PUBLISHERS`, `REGISTRY_GATEWAYS` |
+| `gateway.ts` | `pickGateway` (a `NoGatewayError` says per host why none offered the index), `autoCandidates`, `mirrorsOf`, `fetchBandDates`, `KNOWN_PUBLISHERS`, `REGISTRY_GATEWAYS` |
 | `range/torrent.ts` | `checkTorrent`, `pieceOk`, `bdecode`/`bencode`, `buildTorrent` (fixtures), `Refusal` |
 | `range/sw.ts` | the service worker (built to `sw.js` by the Vite plugin in `vite.ts`) |
-| `range/reader.ts` | `registerRangeReader`, `rangeSpec`, `rangeable`, receipts (`Watch`, `receiptText`), `explainReadError` |
+| `range/reader.ts` | `registerRangeReader`, `rangeSpec`, `rangeable`, receipts (`Watch`, `receiptText`; failovers grouped per source and kind, `notesText`), `explainReadError` |
 | `range/protocol.ts` | the page–worker protocol: `RangeSpec`, `encodeSpec`/`decodeSpec`, `RangeTotals` |
 | `engine/read-ahead.ts` | `planReads`, `readAhead`, `readAheadSql`, `engineReads`: work out from the files' footers exactly what a query will fetch, and fetch it in parallel before DuckDB asks for it one range at a time |
 | `engine/engine.ts` | `openEngine`/`Engine` (one serialised connection, `registerUrl`, `resetConnection`), `rowsOf`, `columnsOf`, `timeColumnsOf` |

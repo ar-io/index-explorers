@@ -35,7 +35,8 @@ export interface RangeTotals {
 export type RangeEvent =
   | ({ type: 'progress' } & RangeTotals)
   | { type: 'fail'; code: string; msg: string }
-  | { type: 'note'; msg: string };
+  /** `key` groups notes of one kind from one source (host and refusal code), so a page can count them. */
+  | { type: 'note'; msg: string; key?: string };
 
 export type WorkerRequest =
   | { type: 'cancel' }

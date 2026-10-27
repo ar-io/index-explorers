@@ -67,7 +67,8 @@ function progress(): void {
       channel.postMessage({ type: 'progress', ...totals });
     }, 160);
 }
-const note = (msg: string) => channel.postMessage({ type: 'note', msg });
+const note = (msg: string, key?: string) =>
+  channel.postMessage(key ? { type: 'note', msg, key } : { type: 'note', msg });
 const hostOf = (u: string) => {
   try {
     return new URL(u).host;
@@ -322,7 +323,10 @@ function verifiedTorrent(spec: RangeSpec): Promise<Map<string, FileTree>> {
         errors.push(r);
         if (t !== last && r.code === 'integrity') {
           totals.failovers += 1;
-          note(`${r.message}. Using another gateway’s copy, checked the same way.`);
+          note(
+            `${r.message}. Using another gateway’s copy, checked the same way.`,
+            `${hostOf(t)} ${r.code}`,
+          );
         }
       }
     }
@@ -620,7 +624,10 @@ async function fetchRun(
       }
       if (i < plan.length - 1) {
         totals.failovers += 1;
-        note(`${r.message}. Trying another source; every byte is still checked.`);
+        note(
+          `${r.message}. Trying another source; every byte is still checked.`,
+          `${hostOf(plan[i]!.u)} ${r.code}`,
+        );
       }
     }
   }

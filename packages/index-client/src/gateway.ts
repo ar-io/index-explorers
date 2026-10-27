@@ -75,6 +75,52 @@ export interface PickOptions {
   fetch?: typeof fetch;
 }
 
+/**
+ * Why a gateway gave no publication, in words: it could not be reached, it
+ * did not answer in time, or what it answered.
+ */
+export function unreachedWhy(e: unknown): string {
+  if (e instanceof Error && e.name === 'AbortError') return 'did not answer in time';
+  if (e instanceof TypeError) return 'could not be reached';
+  return e instanceof Error ? e.message : String(e);
+}
+
+/** No candidate offered the index; `reasons` says why, per host. */
+export class NoGatewayError extends Error {
+  constructor(
+    public readonly reasons: readonly { host: string; why: string }[],
+    indexName: string,
+  ) {
+    super(noGatewayText(reasons, indexName));
+    this.name = 'NoGatewayError';
+  }
+
+  /** Whether no candidate answered at all (offline, or every gateway down). */
+  get unreachable(): boolean {
+    return this.reasons.every(
+      (r) => r.why === 'could not be reached' || r.why === 'did not answer in time',
+    );
+  }
+}
+
+const NO_INDEX = 'answered without the index';
+const article = (word: string): string => (/^[aeiou]/i.test(word) ? 'an' : 'a');
+
+function noGatewayText(
+  reasons: readonly { host: string; why: string }[],
+  indexName: string,
+): string {
+  const hosts = reasons.map((r) => r.host);
+  const list = (xs: string[]) =>
+    xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`;
+  if (!reasons.length) return `no gateway to ask for ${article(indexName)} ${indexName} index`;
+  if (reasons.every((r) => r.why === 'could not be reached' || r.why === 'did not answer in time'))
+    return `could not reach ${list(hosts)}: the network may be down, or the gateways are`;
+  if (reasons.every((r) => r.why === NO_INDEX))
+    return `none of these publish ${article(indexName)} ${indexName} index: ${hosts.join(', ')}`;
+  return `no gateway offered ${article(indexName)} ${indexName} index: ${reasons.map((r) => `${r.host} ${r.why}`).join('; ')}`;
+}
+
 /** The first candidate that actually publishes the index. */
 export async function pickGateway(opts: PickOptions): Promise<PickedGateway> {
   if (opts.choice !== 'auto') {
@@ -83,8 +129,10 @@ export async function pickGateway(opts: PickOptions): Promise<PickedGateway> {
     return { gateway: gw, auto: false, tried: [], publication: null };
   }
   const tried: string[] = [];
+  const reasons: { host: string; why: string }[] = [];
   for (const c of opts.candidates ?? KNOWN_PUBLISHERS) {
-    tried.push(hostOf(c));
+    const host = hostOf(c);
+    tried.push(host);
     try {
       const fo: { timeoutMs: number; fetch?: typeof fetch } = { timeoutMs: opts.timeoutMs ?? 6000 };
       if (opts.fetch) fo.fetch = opts.fetch;
@@ -92,11 +140,13 @@ export async function pickGateway(opts: PickOptions): Promise<PickedGateway> {
       const offers =
         opts.offers ?? ((d: Publication) => d.indexes.some((i) => i.name === opts.indexName));
       if (offers(pub.doc)) return { gateway: pub.gateway, auto: true, tried, publication: pub };
-    } catch {
-      /* unreachable, or no index here: try the next */
+      reasons.push({ host, why: NO_INDEX });
+    } catch (e) {
+      // Unreachable, slow, or not a publication: said per host, then the next is tried.
+      reasons.push({ host, why: unreachedWhy(e) });
     }
   }
-  throw new Error(`none of these publish an ${opts.indexName} index: ${tried.join(', ')}`);
+  throw new NoGatewayError(reasons, opts.indexName);
 }
 
 /**
