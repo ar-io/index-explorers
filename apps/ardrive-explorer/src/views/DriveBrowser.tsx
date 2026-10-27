@@ -229,27 +229,29 @@ function Row({
         if (e.key === 'Enter') open();
       }}
     >
-      <td class="b-namecell">
-        <Icon name={folder ? 'folder' : isPrivate ? 'lock' : iconFor(x.type, x.name)} />
-        {isPrivate ? (
-          <span class="name">{folder ? 'Encrypted folder' : 'Encrypted file'}</span>
-        ) : x.name ? (
-          <span class="name">{x.name}</span>
-        ) : x.failed ? (
-          <span class="name mismatch" title={x.failed}>
-            name unavailable
-          </span>
-        ) : (
-          <span class="name pending">{folder ? 'folder…' : 'file…'}</span>
-        )}
-        {parentName !== undefined &&
-        parentName !== null &&
-        x.parent &&
-        d.folders.get(x.parent) &&
-        d.folders.get(x.parent) !== currentFolder(d, [])
-          ? null
-          : null}
-        {x.versions.length > 1 ? <span class="b-ver">{x.versions.length} versions</span> : null}
+      <td class="b-name">
+        <div class="b-namecell">
+          <Icon name={folder ? 'folder' : isPrivate ? 'lock' : iconFor(x.type, x.name)} />
+          {isPrivate ? (
+            <span class="name">{folder ? 'Encrypted folder' : 'Encrypted file'}</span>
+          ) : x.name ? (
+            <span class="name">{x.name}</span>
+          ) : x.failed ? (
+            <span class="name mismatch" title={x.failed}>
+              name unavailable
+            </span>
+          ) : (
+            <span class="name pending">{folder ? 'folder…' : 'file…'}</span>
+          )}
+          {parentName !== undefined &&
+          parentName !== null &&
+          x.parent &&
+          d.folders.get(x.parent) &&
+          d.folders.get(x.parent) !== currentFolder(d, [])
+            ? null
+            : null}
+          {x.versions.length > 1 ? <span class="b-ver">{x.versions.length} versions</span> : null}
+        </div>
       </td>
       <td class="b-dim">{fmtDate(x.modified ?? x.latest.created_at)}</td>
       <td class="num b-dim">
