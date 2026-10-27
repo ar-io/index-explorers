@@ -4,11 +4,15 @@ import { useState } from 'preact/hooks';
 
 import { APPS } from '../config.js';
 import { useApp } from '../context.js';
+import { useMedia } from './useMedia.js';
 import { ViewArea } from './ViewArea.js';
 
 export function Explore() {
   const { store, session, flows } = useApp();
   const [findText, setFindText] = useState('');
+  // The full hint is cut mid-word in a phone's box, so a phone gets a short one.
+  const narrow = useMedia('(max-width: 480px)');
+  const narrowest = useMedia('(max-width: 360px)');
   const pub = store.pub.value;
   const periods = store.periods.value;
   const p = store.currentPeriod();
@@ -40,7 +44,13 @@ export function Explore() {
           </label>
           <input
             id="find"
-            placeholder="Drive id, wallet address, file or folder id, or a block height"
+            placeholder={
+              narrowest
+                ? 'Id or block'
+                : narrow
+                  ? 'Id, address or block'
+                  : 'Drive id, wallet address, file or folder id, or a block height'
+            }
             spellcheck={false}
             autocomplete="off"
             value={findText}

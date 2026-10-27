@@ -501,3 +501,52 @@ test('light theme renders; phone width has no horizontal scroll', async ({ brows
   await m.screenshot({ path: 'e2e/out/mobile.png', fullPage: true });
   await m.close();
 });
+
+test('a drive at 375, 800 and 1280 px: row lines run the full width and Size shows; a phone fits the masthead and the Find hint', async ({
+  browser,
+}) => {
+  for (const width of [375, 800, 1280]) {
+    const m = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: 'dark' });
+    await openPage(m, `drive=${KNOWN.typicalDrive}`);
+    expect(await driveListed(m, LIVE ? 300_000 : 60_000), `${width} px`).toBe(true);
+    const found = await m.evaluate(() => {
+      const out: string[] = [];
+      const wrap = document.querySelector('.b-listwrap') as HTMLElement;
+      if (wrap.scrollWidth > wrap.clientWidth + 1)
+        out.push(`the list scrolls sideways (${wrap.scrollWidth} px in ${wrap.clientWidth})`);
+      const box = wrap.getBoundingClientRect();
+      const table = document.getElementById('b-list')!.getBoundingClientRect();
+      for (const tr of [...document.querySelectorAll('#b-list tbody tr.b-row')].slice(0, 30)) {
+        const cells = [...tr.children]
+          .filter((td) => getComputedStyle(td).display !== 'none')
+          .map((td) => td.getBoundingClientRect());
+        for (let i = 0; i + 1 < cells.length; i++)
+          if (cells[i + 1]!.left - cells[i]!.right > 1) out.push('a row line stops short');
+        if (cells[0]!.left > table.left + 1 || cells.at(-1)!.right < table.right - 1)
+          out.push('a row line does not span the table');
+        if (cells.at(-1)!.right > box.right + 1) out.push('the last column is cut off');
+      }
+      return [...new Set(out)];
+    });
+    expect(found, `${width} px`).toEqual([]);
+    if (width === 375) {
+      const fits = await m.evaluate(() => {
+        const out: string[] = [];
+        const head = document.querySelector('header.framed')!.getBoundingClientRect();
+        const pill = document.querySelector('header.framed .bar .pill')!.getBoundingClientRect();
+        if (pill.right > head.right || pill.left < head.left)
+          out.push('the pill leaves the masthead');
+        const input = document.getElementById('find') as HTMLInputElement;
+        const cs = getComputedStyle(input);
+        const ctx = document.createElement('canvas').getContext('2d')!;
+        ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const room = input.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        if (ctx.measureText(input.placeholder).width > room)
+          out.push(`the Find hint is cut ("${input.placeholder}" in ${Math.round(room)} px)`);
+        return out;
+      });
+      expect(fits).toEqual([]);
+    }
+    await m.close();
+  }
+});
