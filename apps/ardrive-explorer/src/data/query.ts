@@ -72,6 +72,7 @@ export function createQueryFlow(s: Session) {
     ) {
       // A question over years of ArDrive reads most of the period's tables:
       // gigabytes, and more memory than a tab has. Said first, plainly.
+      st.say('');
       st.content.value = {
         ...st.content.value,
         cost: {
