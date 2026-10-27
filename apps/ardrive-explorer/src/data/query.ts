@@ -15,7 +15,7 @@ import {
 } from '@ar-io/index-client';
 
 import { CONFIG } from '../config.js';
-import { captionSegments, QUESTIONS } from './questions.js';
+import { captionSegments, columnLabel, QUESTIONS } from './questions.js';
 import type { Session } from '../session.js';
 import { emptyContent } from '../store.js';
 
@@ -24,6 +24,10 @@ export interface RunOptions {
   caption?: string | null;
   confirmed?: boolean;
   sql?: string;
+  /** Column headers in words (a question's or preset's); a typed query keeps its SQL names. */
+  labels?: boolean;
+  /** What the view says when nothing comes back. */
+  empty?: string;
 }
 
 export function createQueryFlow(s: Session) {
@@ -85,7 +89,13 @@ export function createQueryFlow(s: Session) {
         ...emptyContent(),
         title,
         caption,
-        table: { cols: cols.map((c) => ({ key: c, label: c })), rows: rows.slice(0, 200), isTime },
+        // An empty answer says so in the view, not only in the status line.
+        sub: rows.length ? '' : (opts.empty ?? 'No rows.'),
+        table: {
+          cols: cols.map((c) => ({ key: c, label: opts.labels ? columnLabel(c) : c })),
+          rows: rows.slice(0, 200),
+          isTime,
+        },
         exportable: { cols, rows, isTime, slug: 'query' },
       };
       const more =
@@ -128,6 +138,7 @@ export function createQueryFlow(s: Session) {
       caption: wide ? q.wideCaption!.replaceAll('{TOTAL_TEXT}', num(total)) : q.caption,
       confirmed: wide,
       sql,
+      labels: true,
     });
   }
 

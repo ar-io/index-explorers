@@ -5,6 +5,7 @@ import { encodeFragment, parseFragment } from './router.js';
 describe('fragment round trips', () => {
   it('encodes and parses every view kind', () => {
     const cases = [
+      { kind: 'home' as const },
       { kind: 'browse' as const },
       { kind: 'drive' as const, key: '05b211dd-ae1e-44ef-b055-2e102933e4e8', folder: null },
       {
@@ -32,6 +33,11 @@ describe('fragment round trips', () => {
       folder: null,
     });
     expect(parseFragment('')).toEqual({ gw: null, period: null, view: null });
-    expect(parseFragment('#period=week').view).toEqual({ kind: 'browse' });
+    expect(parseFragment('#period=week').view).toEqual({ kind: 'home' });
+    expect(parseFragment('#browse').view).toEqual({ kind: 'browse' });
+    expect(parseFragment('#period=week&browse').view).toEqual({ kind: 'browse' });
+    expect(encodeFragment({ gw: null, period: 'week', view: { kind: 'browse' } })).toBe(
+      '#period=week&browse',
+    );
   });
 });

@@ -322,12 +322,19 @@ export function DriveBrowser() {
     `${num(d.files)} file${d.files === 1 ? '' : 's'}`,
     `${num(d.folders.size)} folder${d.folders.size === 1 ? '' : 's'}`,
   ];
-  if (d.sizeKnown)
+  // Names and sizes come from the same record reads, so while they run they
+  // are one phrase: the bytes so far, then how far the reads have got.
+  if (pending > 0) {
+    if (d.sizeKnown) parts.push(`${bytesText(d.bytes)} so far`);
+  } else if (d.sizeKnown)
     parts.push(
-      `${bytesText(d.bytes)}${d.sizeKnown < d.files ? ` in ${num(d.sizeKnown)} of ${num(d.files)} files so far` : ''}`,
+      `${bytesText(d.bytes)}${d.sizeKnown < d.files ? ` in ${num(d.sizeKnown)} of ${num(d.files)} files` : ''}`,
     );
   if (d.capped) parts.push(`listing capped at ${num(CONFIG.listCap)} records`);
-  if (pending > 0) parts.push(`reading names ${num(progress.loaded)} of ${num(progress.wanted)}`);
+  if (pending > 0)
+    parts.push(
+      `reading names and sizes: ${num(progress.loaded)} of ${num(progress.wanted)} records`,
+    );
   const selected = ui.selected ? (d.byId.get(ui.selected) ?? null) : null;
   const headers: [SortKey, string, boolean][] = [
     ['name', 'Name', false],

@@ -382,3 +382,9 @@
   text-decoration: line-through;
   color: var(--bad);
 }
+
+/* Find and the questions scroll these into view; leave a little room around them. */
+#status,
+#viewtitle {
+  scroll-margin: 16px;
+}

@@ -42,6 +42,8 @@ import {
 import { CONFIG } from './config.js';
 import { applyMeta, type DriveItem, type DriveModel, setDriveMeta } from './model/arfs.js';
 import { NamePool, type NameResult } from './model/names.js';
+import type { RunOptions } from './data/query.js';
+import { askedFor } from './data/questions.js';
 import { encodeFragment, parseFragment, type ViewState } from './router.js';
 import { emptyContent, type Store } from './store.js';
 
@@ -232,8 +234,8 @@ export class Session {
       st.say('');
       const want = this.pendingLink;
       this.pendingLink = null;
-      if (want?.view && want.view.kind !== 'browse') await this.openFromLink(want.view);
-      else await this.browse(true);
+      // A link's view on the first load; after a change of gateway, the view the reader was on.
+      await this.openFromLink(want?.view ?? st.view.value);
     } catch (e) {
       if (this.overtaken(my)) return;
       this.bands = [];
@@ -262,6 +264,7 @@ export class Session {
   /** Forget everything loaded from the previous publication. Band ids repeat across publishers. */
   private async forgetLoaded(): Promise<void> {
     this.loadedPeriod = null;
+    this.readying = null;
     this.heroDone = false;
     if (this.engine) {
       for (const s of [...arfs.arfsDropSql(), ...parquetL2.l2DropSql()])
@@ -420,6 +423,20 @@ export class Session {
 
   /** Loads whatever the current period needs; true when ready to query. */
   async ready(): Promise<boolean> {
+    // One load at a time: a second caller (a click while the page is still
+    // loading) waits for the first rather than querying views not yet defined.
+    const key = `${this.store.pub.value.gateway} ${this.store.periodId.value}`;
+    if (this.readying?.key === key) return this.readying.run;
+    const run = this.load().finally(() => {
+      if (this.readying?.run === run) this.readying = null;
+    });
+    this.readying = { key, run };
+    return run;
+  }
+
+  private readying: { key: string; run: Promise<boolean> } | null = null;
+
+  private async load(): Promise<boolean> {
     const st = this.store;
     st.tr('ready');
     const p = st.currentPeriod();
@@ -745,6 +762,8 @@ export class Session {
 
   pushHistory(view: ViewState, replace = false): void {
     this.store.view.value = view;
+    // A question's card is pressed only while its answer is the view.
+    if (view.kind !== 'query') this.store.asked.value = null;
     if (this.fromHistory) return;
     const url = this.shareUrl(view);
     if (replace || location.href === url) history.replaceState(view, '', url);
@@ -757,12 +776,7 @@ export class Session {
     openDrive: (id: string, confirmed: boolean, folder: string | null) => Promise<void>;
     openWallet: (addr: string, everything: boolean) => Promise<void>;
     openId: (id: string) => Promise<void>;
-    runQuery: (opts: {
-      title?: string | null;
-      caption?: string | null;
-      confirmed?: boolean;
-      sql?: string;
-    }) => Promise<void>;
+    runQuery: (opts: RunOptions) => Promise<void>;
     setFolder: (path: string[]) => void;
   } | null = null;
 
@@ -776,10 +790,39 @@ export class Session {
     else if (v.kind === 'wallet') await f.openWallet(v.key, false);
     else if (v.kind === 'id') await f.openId(v.key);
     else if (v.kind === 'query') {
-      this.store.sql.value = v.sql ?? '';
-      this.store.editorOpen.value = true;
-      await f.runQuery({ title: 'Shared query', sql: v.sql ?? '' });
-    } else await f.browse(true);
+      const sql = v.sql ?? '';
+      // A question or preset is known again by its SQL, so it keeps its own title.
+      const a = askedFor(sql);
+      const total = this.bands.reduce((t, x) => t + x.records, 0);
+      this.store.sql.value = sql;
+      this.store.asked.value = a?.question ?? null;
+      if (!a) this.store.editorOpen.value = true;
+      await f.runQuery({
+        title: a?.title ?? 'Shared query',
+        caption: a?.caption?.replaceAll('{TOTAL_TEXT}', num(total)) ?? null,
+        confirmed: !!a?.wide,
+        labels: !!a,
+        sql,
+      });
+    } else if (v.kind === 'browse') await f.browse(true);
+    else await this.home();
+  }
+
+  /**
+   * A plain visit: nothing listed until the reader asks, so the page never
+   * opens on other people's drives. The counts still load.
+   */
+  async home(): Promise<void> {
+    this.nav += 1;
+    this.pushHistory({ kind: 'home' }, true);
+    this.clearView();
+    this.store.content.value = {
+      ...emptyContent(),
+      title: 'Nothing listed yet',
+      sub: 'Look up a drive, a wallet, a file or a block above, ask a question below, or list the drives created most recently.',
+      more: [{ kind: 'button', label: 'Newest drives', go: () => void this.browse(true) }],
+    };
+    await this.ready();
   }
 
   private async onPopState(e: PopStateEvent): Promise<void> {

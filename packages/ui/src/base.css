@@ -419,6 +419,21 @@ button:disabled {
 a {
   color: var(--label);
 }
+/* A skip link: off screen until focused, then at the top of the page. */
+.skip {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  z-index: 10;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 600;
+}
+.skip:focus {
+  top: 12px;
+}
 .sr-only {
   position: absolute;
   width: 1px;

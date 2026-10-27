@@ -1,6 +1,7 @@
 import { createContext } from 'preact';
 import { useContext } from 'preact/hooks';
 
+import type { RunOptions } from './data/query.js';
 import type { Session } from './session.js';
 import type { Store } from './store.js';
 
@@ -9,14 +10,9 @@ export interface Flows {
   openDrive: (id: string, confirmed: boolean, folder: string | null) => Promise<void>;
   openWallet: (addr: string, everything: boolean) => Promise<void>;
   openId: (id: string) => Promise<void>;
-  runQuery: (opts: {
-    title?: string | null;
-    caption?: string | null;
-    confirmed?: boolean;
-    sql?: string;
-  }) => Promise<void>;
+  runQuery: (opts: RunOptions) => Promise<void>;
   ask: (i: number) => Promise<void>;
-  find: (raw: string) => void;
+  find: (raw: string) => Promise<void>;
   setFolder: (path: string[], replace?: boolean) => void;
 }
 

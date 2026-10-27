@@ -14,7 +14,7 @@ import {
 test('the page verifies the publication, lists drives with names, and opens a drive', async ({
   page,
 }) => {
-  await openPage(page);
+  await openPage(page, 'browse');
   expect(
     await page.evaluate(() => !!(navigator.serviceWorker && navigator.serviceWorker.controller)),
   ).toBe(true);
