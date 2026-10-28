@@ -72,6 +72,8 @@ export class Session {
   nav = 0;
   loadedPeriod: string | null = null;
   heroDone = false;
+  /** The last measured read ran out of the engine's memory. */
+  lastReadOom = false;
   /** Set while a popstate is being applied, so applying one does not push another. */
   fromHistory = false;
   readonly names: NamePool;
@@ -205,6 +207,8 @@ export class Session {
       const yr = (t: number) => new Date(t * 1000).getUTCFullYear();
       st.hero.value = {
         ...st.hero.value,
+        // Drives and files wait for the engine; uploads and span are in the publication.
+        counting: st.hero.value.drives === '—',
         items: records ? num(records) : '—',
         span:
           first.fromTime && last.toTime
@@ -514,6 +518,7 @@ export class Session {
       return false;
     } finally {
       st.barHide();
+      if (st.hero.value.counting) st.hero.value = { ...st.hero.value, counting: false };
     }
   }
 
@@ -628,6 +633,7 @@ export class Session {
       );
       return null;
     }
+    this.lastReadOom = false;
     const watch = ranged && this.reader ? await this.reader.watch(label) : null;
     if (watch) {
       st.showStop(true);
@@ -648,6 +654,7 @@ export class Session {
     } catch (e) {
       if (watch) await watch.done();
       const why = explainReadError(e, watch, this.mirrors, st.currentPeriod()?.label);
+      this.lastReadOom = !!why.oom;
       if (why.integrity) st.setCheck('pieces', 'bad');
       if (why.oom) {
         st.tr(`engine spent: ${why.detail}`);
@@ -661,7 +668,11 @@ export class Session {
         /magic bytes|IO Error|HTTP/i.test(e instanceof Error ? e.message : String(e))
       )
         await this.forgetRanged();
-      st.say(why.stopped || why.oom ? why.msg : 'Could not read: ' + why.msg, 'bad');
+      // A question the engine could not run is said as it is, with DuckDB's
+      // pointer into it apart; anything else is a read that failed.
+      st.say(why.stopped || why.oom || why.query ? why.msg : 'Could not read: ' + why.msg, 'bad', {
+        ...(why.context ? { detail: why.context } : {}),
+      });
       return null;
     } finally {
       st.showStop(false);
@@ -717,8 +728,10 @@ export class Session {
       `${why} The engine could not be restarted; reload the page to ask again.`,
       'bad',
       {
-        label: 'Reload the page',
-        go: () => location.reload(),
+        action: {
+          label: 'Reload the page',
+          go: () => location.reload(),
+        },
       },
     );
   }

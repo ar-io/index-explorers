@@ -139,8 +139,19 @@ header.framed .pill {
   font-size: clamp(1.4rem, 4.2vw, 2.1rem);
   line-height: 1.05;
   letter-spacing: -0.02em;
-  font-variant-numeric: lining-nums tabular-nums;
+  /* Proportional: the counts never change in place, and a headline face's
+     tabular zero sits narrow in a wide cell ("80,60 5,719"). */
+  font-variant-numeric: lining-nums;
   white-space: nowrap;
+}
+/* Said while a count is still being read, under the counts. */
+.stats-note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.stats-note[hidden] {
+  display: none;
 }
 .stat dt {
   margin-top: 5px;
@@ -570,6 +581,13 @@ a {
 #status .bad {
   color: var(--bad);
 }
+/* The engine's pointer into a query (its line and caret), kept as written. */
+#status .statusdetail {
+  margin: 6px 0 0;
+  font: inherit;
+  white-space: pre;
+  overflow-x: auto;
+}
 
 /* progress */
 #progress {
@@ -724,6 +742,22 @@ a {
   overflow-x: auto;
   margin-top: 14px;
 }
+/* An edge with more table past it fades out, so a phone shows the table scrolls. */
+.tablewrap.more-right {
+  mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+}
+.tablewrap.more-left {
+  mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent);
+}
+.tablewrap.more-left.more-right {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 48px,
+    #000 calc(100% - 48px),
+    transparent
+  );
+}
 table {
   border-collapse: collapse;
   font-size: 14px;
@@ -746,6 +780,10 @@ th {
   position: sticky;
   top: 0;
   background: var(--surface);
+}
+/* A unit (MiB, GiB) keeps its case in an upper-case header. */
+th .unit {
+  text-transform: none;
 }
 td.num,
 th.num {

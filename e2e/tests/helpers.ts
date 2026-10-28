@@ -136,6 +136,8 @@ export const waitAnswer = (page: Page, ms = LIVE ? 240_000 : 60_000) =>
     async () =>
       /rows? in|Read |Nothing new|Answered from/.test(await status(page)) ||
       /error|could not|bad/i.test(await status(page)) ||
+      // A failure is said in words (no "error" in them) on the status line's bad class.
+      (await page.locator('#status .bad').count()) > 0 ||
       (await page.locator('#cost').isVisible()),
     ms,
     'answer',

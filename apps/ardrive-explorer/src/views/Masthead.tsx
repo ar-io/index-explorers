@@ -55,6 +55,10 @@ export function Masthead() {
           <dt>Covering</dt>
         </div>
       </dl>
+      <p class="stats-note" id="statsnote" hidden={!hero.counting}>
+        Counting drive and file records in this tab. The query engine starts first, which can take a
+        few seconds on a first visit.
+      </p>
       <Proof
         state={pub.proofState}
         text={pub.proofText}

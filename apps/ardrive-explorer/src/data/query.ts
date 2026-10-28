@@ -36,6 +36,9 @@ export interface RunOptions {
 export function createQueryFlow(s: Session) {
   const st = s.store;
   let busy = false;
+  /** Statements that ran out of a tab's memory, with the period they were asked over. */
+  const spent = new Set<string>();
+  const spentKey = (sql: string, period: string) => `${period}\n${sql}`;
 
   /**
    * Where a statement reads, with lookups: `keyed` when it answers from them
@@ -55,7 +58,11 @@ export function createQueryFlow(s: Session) {
 
   async function runQuery(opts: RunOptions = {}): Promise<void> {
     const sql = (opts.sql ?? st.sql.value).trim().replace(/;+\s*$/, '');
-    if (!sql || busy) return;
+    if (busy) return;
+    if (!sql) {
+      st.say('Type a query first.', 'bad');
+      return;
+    }
     const my = ++s.nav;
     if (!(await s.ready()) || s.overtaken(my)) return;
     s.clearView();
@@ -71,20 +78,30 @@ export function createQueryFlow(s: Session) {
       !at.keyed
     ) {
       // A question over years of ArDrive reads most of the period's tables:
-      // gigabytes, and more memory than a tab has. Said first, plainly.
+      // gigabytes, and more memory than a tab has. Said first, plainly; once
+      // it has run out of memory over this period, it is not offered again.
+      const failed = spent.has(spentKey(sql, p0.id));
       st.say('');
       st.content.value = {
         ...st.content.value,
         cost: {
-          text: [
-            `${p0.label} holds about `,
-            mb(p0.size),
-            ' of index, and a question over it can read most of that. One that groups every upload usually runs out of a tab’s memory after a few minutes. A calendar year or a shorter period, or a WHERE height BETWEEN, is the way to ask it here.',
-          ],
-          action: {
-            label: `Run it over ${p0.label}`,
-            go: () => void runQuery({ ...opts, sql, confirmed: true }),
-          },
+          text: failed
+            ? [
+                `This query ran out of a tab’s memory over ${p0.label} earlier in this tab. That period holds about `,
+                mb(p0.size),
+                ' of index, so it is not offered again. A calendar year or a shorter period, or a WHERE height BETWEEN, is the way to ask it here.',
+              ]
+            : [
+                `${p0.label} holds about `,
+                mb(p0.size),
+                ' of index, and a question over it can read most of that. One that groups every upload usually runs out of a tab’s memory after a few minutes. A calendar year or a shorter period, or a WHERE height BETWEEN, is the way to ask it here.',
+              ],
+          action: failed
+            ? null
+            : {
+                label: `Run it over ${p0.label}`,
+                go: () => void runQuery({ ...opts, sql, confirmed: true }),
+              },
         },
       };
       return;
@@ -96,7 +113,13 @@ export function createQueryFlow(s: Session) {
       st.say(`Reading over ${over}…`);
       const t0 = performance.now();
       const r = await s.measured('Reading', () => s.engine!.query(sql));
-      if (!r || s.overtaken(my)) return;
+      if (s.overtaken(my)) return;
+      if (!r) {
+        if (s.lastReadOom) spent.add(spentKey(sql, p.id));
+        // Why there is no answer, where the answer would be too.
+        st.content.value = { ...emptyContent(), title, sub: st.status.value.text };
+        return;
+      }
       const table = r.out;
       const secs = ((performance.now() - t0) / 1000).toFixed(2);
       const rows = rowsOf(table);

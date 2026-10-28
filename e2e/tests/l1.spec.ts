@@ -53,7 +53,9 @@ test.describe('arweave-l1-explorer', () => {
         async () => {
           const s = await status();
           return (
-            (/rows? in|Read |Nothing new|Answered/.test(s) || /error|could not/i.test(s)) &&
+            (/rows? in|Read |Nothing new|Answered/.test(s) ||
+              /error|could not/i.test(s) ||
+              (await page.locator('#status .bad').count()) > 0) &&
             !(await page.evaluate(
               () =>
                 (window as unknown as { __explorer: { store: { working: { value: boolean } } } })
@@ -69,6 +71,7 @@ test.describe('arweave-l1-explorer', () => {
     await page.locator('#asks button').nth(0).click();
     await answered();
     expect(await status()).not.toMatch(/error|could not/i);
+    expect(await page.locator('#status .bad').count()).toBe(0);
     expect(await rows()).toBeGreaterThan(0);
     expect(await page.locator('#caption').innerText()).toMatch(/Apps that sent transactions/);
     // A preset, while the period is still the last few days: a Find below
@@ -130,5 +133,92 @@ test.describe('arweave-l1-explorer', () => {
     }
     expect(errors).toEqual([]);
     await page.screenshot({ path: 'e2e/out/l1.png', fullPage: true });
+  });
+  test('Find brings its answer into view, and says what it searched for a block outside the index', async ({
+    browser,
+  }) => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await page.goto(`${BASE}#gw=${encodeURIComponent(GW)}&scope=latest`);
+    await until(
+      page,
+      async () => (await page.locator('#proof').getAttribute('data-state')) === 'ok',
+      90_000,
+      'proof',
+    );
+    type L1 = {
+      __explorer: {
+        session: {
+          bands: { from: number; to: number | null }[];
+          currentWindow(): unknown;
+          windowHeights(w: unknown): [number, number];
+        };
+        store: { working: { value: boolean }; say(t: string): void };
+      };
+    };
+    const status = () =>
+      page
+        .locator('#status')
+        .innerText()
+        .catch(() => '');
+    const inView = (sel: string) =>
+      page.evaluate((q) => {
+        const r = document.querySelector(q)!.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight;
+      }, sel);
+    const find = async (text: string) => {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.evaluate(() => (window as unknown as L1).__explorer.store.say(''));
+      await page.fill('#find', text);
+      await page.press('#find', 'Enter');
+    };
+    const done = (what: string) =>
+      until(
+        page,
+        async () =>
+          !!(await status()) &&
+          !/^Asking|^Reading|^Loading/.test(await status()) &&
+          !(await page.evaluate(() => (window as unknown as L1).__explorer.store.working.value)),
+        120_000,
+        what,
+      );
+    // A refusal: the error line comes into view.
+    await find('nonsense text');
+    await done('refusal');
+    await page.waitForTimeout(900);
+    expect(await status()).toMatch(/is not a block height/);
+    expect(await inView('#status'), 'the error line').toBe(true);
+    const { first, tip, lo } = await page.evaluate(() => {
+      const s = (window as unknown as L1).__explorer.session;
+      return {
+        first: s.bands[0]!.from,
+        tip: s.bands[s.bands.length - 1]!.to ?? 0,
+        lo: s.windowHeights(s.currentWindow())[0],
+      };
+    });
+    // Newer than the index: said, not "0 rows".
+    await find(String(tip + 1000));
+    await done('past the tip');
+    expect(await status()).toMatch(/newer than this index, which reaches block/);
+    // Older than the index: said too. (The fixture's one band is the whole
+    // period, so a block in the index but outside the period cannot be made here.)
+    expect(first).toBe(lo);
+    await find(String(first - 10));
+    await done('before the index');
+    expect(await status()).toMatch(/older than this index, which starts at block/);
+    // A block in the period: its answer in view, said in words when empty.
+    await find(String(first));
+    await done('a block');
+    await page.waitForTimeout(900);
+    expect(await page.locator('#answertitle').innerText()).toMatch(/^Block /);
+    expect(await status()).toMatch(/rows? in|No transactions in block/);
+    expect(await status()).not.toMatch(/^0 rows/);
+    expect(await inView('#answertitle'), 'the answer title').toBe(true);
+    // Asked again with the answer on screen: the page stays where it is.
+    const y = await page.evaluate(() => window.scrollY);
+    await page.press('#find', 'Enter');
+    await done('again');
+    await page.waitForTimeout(900);
+    expect(await page.evaluate(() => window.scrollY)).toBe(y);
+    await page.close();
   });
 });
