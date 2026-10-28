@@ -4,7 +4,7 @@ import { useState } from 'preact/hooks';
 
 import { APPS } from '../config.js';
 import { useApp } from '../context.js';
-import { reveal } from './reveal.js';
+import { revealAround } from './reveal.js';
 import { useMedia } from './useMedia.js';
 import { ViewArea } from './ViewArea.js';
 
@@ -12,12 +12,8 @@ export function Explore() {
   const { store, session, flows } = useApp();
   const [findText, setFindText] = useState('');
   // The answer, or why there is none, lands below the fold on a laptop: bring
-  // it into view at once (a rejection is said at once) and again once shown.
-  const find = () => {
-    const done = flows.find(findText);
-    requestAnimationFrame(() => reveal(store));
-    void done.then(() => reveal(store));
-  };
+  // the work into view at once (a rejection is said at once) and the answer once shown.
+  const find = () => revealAround(store, flows.find(findText));
   // The full hint is cut mid-word in a phone's box, so a phone gets a short one.
   const narrow = useMedia('(max-width: 480px)');
   const narrowest = useMedia('(max-width: 360px)');
