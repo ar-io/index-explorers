@@ -3,7 +3,7 @@ import { fmtRange, mb, num, timeAt } from '@ar-io/index-client';
 import { CONFIG } from '../config.js';
 import { useApp } from '../context.js';
 import { PRESETS, presetSql, QUESTIONS } from '../data/questions.js';
-import { reveal } from './reveal.js';
+import { revealAround } from './reveal.js';
 
 export function Questions() {
   const { store, flows } = useApp();
@@ -18,7 +18,7 @@ export function Questions() {
           disabled={!enabled}
           aria-pressed={asked === i ? 'true' : 'false'}
           onClick={() => {
-            void flows.ask(i).then(() => reveal(store));
+            revealAround(store, flows.ask(i));
           }}
         >
           <span>{q.title}</span>
@@ -118,10 +118,14 @@ export function SqlDrawer() {
             onClick={() => {
               store.asked.value = null;
               const label = PRESETS.findIndex((_, i) => fill(i) === sql);
-              void flows.runQuery({
-                title: label >= 0 ? PRESETS[label]!.label : 'Your query',
-                labels: label >= 0,
-              });
+              // The answer lands above the editor: bring the work, then the answer, into view.
+              revealAround(
+                store,
+                flows.runQuery({
+                  title: label >= 0 ? PRESETS[label]!.label : 'Your query',
+                  labels: label >= 0,
+                }),
+              );
             }}
           >
             Run query

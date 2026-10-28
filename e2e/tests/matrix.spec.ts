@@ -430,6 +430,56 @@ test('Find brings its answer into view on a laptop screen, and only when it is o
   await m.close();
 });
 
+test('Run query brings its work, its answer or its failure into view, and only when out of view', async ({
+  browser,
+}) => {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    const m = await browser.newPage({ viewport, colorScheme: 'dark' });
+    await openPage(m);
+    await until(m, async () => !/—/.test(await m.locator('#stats').innerText()), 60_000, 'counts');
+    const inView = (sel: string) =>
+      m.evaluate((s) => {
+        const r = document.querySelector(s)!.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight;
+      }, sel);
+    const settle = () => m.waitForTimeout(900);
+    await m.locator('#editor > summary').click();
+    const run = async (sql: string) => {
+      await m.fill('#sql', sql);
+      // The editor at the top of the screen, as after typing a long query: the answer is above.
+      await m.evaluate(() => document.getElementById('run')!.scrollIntoView({ block: 'start' }));
+      expect(await inView('#status'), 'the status line starts out of view').toBe(false);
+      await m.click('#run');
+    };
+    // Work that takes a while: its status line and Stop come into view as it runs.
+    await run('SELECT count(*) AS n FROM range(600000000) t(i) WHERE (i * 7) % 13 = 1');
+    await until(m, async () => m.locator('#stop').isVisible(), 30_000, 'working');
+    await settle();
+    expect(await inView('#status'), 'the working status line').toBe(true);
+    expect(await inView('#stop'), 'Stop').toBe(true);
+    await until(m, async () => /1 row/.test(await status(m)), 120_000, 'long answer');
+    // A failure: the status line says why, in view.
+    await run('selct 1');
+    await until(m, async () => /Could not read|rror/.test(await status(m)), 30_000, 'failure');
+    await settle();
+    expect(await inView('#status'), 'the failure').toBe(true);
+    // An answer: its title in view; asked again with it on screen, the page stays.
+    await run('select 2 as two');
+    await until(m, async () => /1 row/.test(await status(m)), 30_000, 'answer');
+    await settle();
+    expect(await inView('#viewtitle'), 'the answer title').toBe(true);
+    const y = await m.evaluate(() => window.scrollY);
+    await m.evaluate(() => (document.getElementById('run') as HTMLButtonElement).click());
+    await until(m, async () => /1 row/.test(await status(m)), 30_000, 'again');
+    await settle();
+    expect(await m.evaluate(() => window.scrollY)).toBe(y);
+    await m.close();
+  }
+});
+
 test('Back to a question keeps its title and pressed card; a card is pressed only for its own answer', async () => {
   const card = page.locator('#asks button').first();
   const q = await card.locator('span').first().innerText();
