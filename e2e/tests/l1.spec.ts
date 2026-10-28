@@ -199,14 +199,17 @@ test.describe('arweave-l1-explorer', () => {
     await find(String(tip + 1000));
     await done('past the tip');
     expect(await status()).toMatch(/newer than this index, which reaches block/);
-    // Older than the index: said too. (The fixture's one band is the whole
-    // period, so a block in the index but outside the period cannot be made here.)
-    expect(first).toBe(lo);
-    await find(String(first - 10));
-    await done('before the index');
-    expect(await status()).toMatch(/older than this index, which starts at block/);
+    // Older than the index: said too, where the index has blocks before it
+    // (the live one starts at block 0).
+    if (first >= 10) {
+      await find(String(first - 10));
+      await done('before the index');
+      expect(await status()).toMatch(/older than this index, which starts at block/);
+    }
     // A block in the period: its answer in view, said in words when empty.
-    await find(String(first));
+    // (A block in the index but outside the period is blocksScope's unit test:
+    // the fixture's one band is the whole period, and live it reads every band.)
+    await find(String(lo));
     await done('a block');
     await page.waitForTimeout(900);
     expect(await page.locator('#answertitle').innerText()).toMatch(/^Block /);
