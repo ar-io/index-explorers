@@ -7,6 +7,7 @@ import { CONFIG } from '../config.js';
 import { PRESETS, presetSql, QUESTIONS } from '../questions.js';
 import type { Session, Store, Window } from '../session.js';
 import { saveFile, toCsv, toJson } from '../util/export.js';
+import { revealAround } from './reveal.js';
 
 export const AppContext = createContext<{ store: Store; session: Session } | null>(null);
 const useApp = () => {
@@ -152,6 +153,9 @@ function Results() {
       <div id="status">
         {store.status.value.text ? (
           <span class={store.status.value.cls}>{store.status.value.text}</span>
+        ) : null}
+        {store.status.value.detail ? (
+          <pre class="statusdetail">{store.status.value.detail}</pre>
         ) : null}
       </div>
       <div class="row result-actions" id="resultactions" hidden={!r && !store.queried.value}>
@@ -655,14 +659,14 @@ export function App() {
               onKeyDown={(e) =>
                 e.key === 'Enter' &&
                 !store.working.value &&
-                (e.preventDefault(), session.find(findText))
+                (e.preventDefault(), revealAround(store, session.find(findText)))
               }
             />
             <button
               id="findgo"
               type="button"
               disabled={store.working.value}
-              onClick={() => session.find(findText)}
+              onClick={() => revealAround(store, session.find(findText))}
             >
               Find
             </button>
@@ -718,15 +722,7 @@ export function App() {
               type="button"
               disabled={!pub.verified || store.working.value}
               aria-pressed={store.asked.value === i ? 'true' : 'false'}
-              onClick={() =>
-                void session
-                  .ask(i)
-                  .then(() =>
-                    document
-                      .getElementById('answer')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
-                  )
-              }
+              onClick={() => revealAround(store, session.ask(i))}
             >
               <span>{q.title}</span>
               <small>{q.sub}</small>

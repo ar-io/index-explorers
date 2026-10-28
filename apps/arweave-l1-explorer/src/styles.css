@@ -30,3 +30,9 @@
   color: var(--label);
   text-decoration: none;
 }
+
+/* Find and the questions scroll these into view; leave a little room around them. */
+#status,
+#answertitle {
+  scroll-margin: 16px;
+}

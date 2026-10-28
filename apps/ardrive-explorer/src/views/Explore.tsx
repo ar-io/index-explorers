@@ -165,6 +165,7 @@ export function Explore() {
       </div>
       <div id="status" aria-live="polite">
         {status.text ? <span class={status.cls}>{status.text}</span> : null}
+        {status.detail ? <pre class="statusdetail">{status.detail}</pre> : null}
         {status.action ? (
           <button type="button" class="secondary statusbtn" onClick={status.action.go}>
             {status.action.label}

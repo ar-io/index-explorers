@@ -37,6 +37,8 @@ export interface Hero {
   files: string;
   items: string;
   span: string;
+  /** Drives and files are being counted (the engine starts first, which takes a while). */
+  counting?: boolean;
 }
 
 export interface Crumb {
@@ -139,6 +141,8 @@ export interface StatusLine {
   cls: '' | 'ok' | 'bad';
   /** A way out the line offers, such as a reload. */
   action?: { label: string; go: () => void };
+  /** Shown as it is under the sentence: the engine's pointer into a query. */
+  detail?: string;
 }
 
 export class Store {
@@ -207,8 +211,12 @@ export class Store {
   /** A trace of the load path, for tests. */
   readonly trace: string[] = [];
 
-  say(text: string, cls: '' | 'ok' | 'bad' = '', action?: StatusLine['action']): void {
-    this.status.value = action ? { text, cls, action } : { text, cls };
+  say(
+    text: string,
+    cls: '' | 'ok' | 'bad' = '',
+    more?: Pick<StatusLine, 'action' | 'detail'>,
+  ): void {
+    this.status.value = { text, cls, ...more };
   }
 
   setCheck(k: keyof ProofChecks, state: CheckState): void {
