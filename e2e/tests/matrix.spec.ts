@@ -214,6 +214,7 @@ test('every question answers, with a caption', async () => {
     const st = await status(page);
     expect(await rows(page), `${label}: ${st}`).toBeGreaterThan(0);
     expect(st, label).not.toMatch(/error|could not/i);
+    expect(await page.locator('#status .bad').count(), `${label}: ${st}`).toBe(0);
   }
   expect(await page.locator('#caption').isVisible()).toBe(true);
   await page.locator('#view').screenshot({ path: 'e2e/out/q-last.png' });
@@ -231,13 +232,18 @@ test('every preset runs; a bad query is reported; a drive_id link opens the driv
     await waitAnswer(page);
     const st = await status(page);
     expect(st, label).not.toMatch(/error|could not/i);
+    expect(await page.locator('#status .bad').count(), `${label}: ${st}`).toBe(0);
     expect(await rows(page), `${label}: ${st}`).toBeGreaterThan(0);
   }
   await page.fill('#sql', 'SELECT nope FROM nowhere');
   await clearStatus(page);
   await page.click('#run');
   await waitAnswer(page, 60_000);
-  expect(await status(page)).toMatch(/error|could not/i);
+  // Reported as a failure, in DuckDB's own sentence with its hint, and pointing into the query.
+  expect(await page.locator('#status > span.bad').innerText()).toMatch(
+    /^Table with name nowhere does not exist\. Did you mean /,
+  );
+  expect(await page.locator('#status .statusdetail').innerText()).toMatch(/^LINE 1: /);
   await page.locator('#presets button', { hasText: 'Newest drives' }).click();
   await clearStatus(page);
   await page.click('#run');
@@ -463,9 +469,22 @@ test('Run query brings its work, its answer or its failure into view, and only w
     await until(m, async () => /1 row/.test(await status(m)), 120_000, 'long answer');
     // A failure: the status line says why, in view.
     await run('selct 1');
-    await until(m, async () => /Could not read|rror/.test(await status(m)), 30_000, 'failure');
+    await until(m, async () => /rror/.test(await status(m)), 30_000, 'failure');
     await settle();
     expect(await inView('#status'), 'the failure').toBe(true);
+    // Said as a sentence, DuckDB's pointer into the query kept apart and as written;
+    // the result area says it too, and offers no export of nothing.
+    expect(await m.locator('#status > span').innerText()).toBe('Syntax error at or near "selct".');
+    expect(await m.locator('#status .statusdetail').innerText()).toMatch(
+      /^LINE 1: selct 1\n\s+\^$/,
+    );
+    expect(await m.locator('#viewsub').innerText()).toBe('Syntax error at or near "selct".');
+    expect(await m.locator('#csv, #json').count()).toBe(0);
+    expect(await m.locator('#copylink').isVisible()).toBe(true);
+    // An empty editor says so, in place of the last failure.
+    await run('');
+    await until(m, async () => /Type a query first/.test(await status(m)), 10_000, 'empty');
+    expect(await m.locator('#status .statusdetail').count()).toBe(0);
     // An answer: its title in view; asked again with it on screen, the page stays.
     await run('select 2 as two');
     await until(m, async () => /1 row/.test(await status(m)), 30_000, 'answer');
@@ -478,6 +497,68 @@ test('Run query brings its work, its answer or its failure into view, and only w
     expect(await m.evaluate(() => window.scrollY)).toBe(y);
     await m.close();
   }
+});
+
+test('on a phone, a question table shows it has more columns, and a wallet table starts at its left edge', async ({
+  browser,
+}) => {
+  const m = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
+  await openPage(m);
+  await until(m, async () => !/—/.test(await m.locator('#stats').innerText()), 60_000, 'counts');
+  await m.locator('#asks button', { hasText: 'Biggest files' }).click();
+  await until(m, async () => (await rows(m)) > 0, 60_000, 'biggest files');
+  // Ids shortened, whole in the link's title; units keep their case in the headers.
+  const id = m.locator('#results tbody td').first().locator('button');
+  expect(await id.innerText()).toMatch(/^.{6}….{4}$/);
+  expect(await id.getAttribute('title')).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  expect(await m.locator('#results thead th').allInnerTexts()).toContain('MiB');
+  const box = () =>
+    m.evaluate(() => {
+      const w = document.querySelector('.tablewrap') as HTMLElement;
+      const right = w.getBoundingClientRect().right;
+      return {
+        seen: [...w.querySelectorAll('thead th')].filter(
+          (t) => t.getBoundingClientRect().left < right,
+        ).length,
+        fades: w.className,
+        scrolls: w.scrollWidth > w.clientWidth,
+        left: w.scrollLeft,
+      };
+    });
+  const q = await box();
+  expect(q.seen, 'columns in view').toBeGreaterThan(1);
+  expect(/more-right/.test(q.fades)).toBe(q.scrolls);
+  // A wallet opened from Newest drives, after scrolling that table sideways.
+  await m.locator('#browse').click();
+  // The drives table itself, not the question's rows still on screen as it starts.
+  await until(
+    m,
+    async () =>
+      (await m.locator('#results thead th').first().textContent()) === 'Drive' &&
+      (await rows(m)) > 0,
+    120_000,
+    'browse',
+  );
+  await m.evaluate(() => {
+    const w = document.querySelector('.tablewrap') as HTMLElement;
+    w.scrollLeft = w.scrollWidth;
+  });
+  expect((await box()).left).toBeGreaterThan(0);
+  // The fade follows the scroll event, a frame later.
+  await until(m, async () => /more-left/.test((await box()).fades), 5_000, 'left fade');
+  expect((await box()).fades).toMatch(/more-left/);
+  await m.locator('#results tbody tr').first().locator('td').nth(1).locator('button').click();
+  await until(
+    m,
+    async () => /Wallet/.test(await title(m)) && (await rows(m)) > 0,
+    120_000,
+    'wallet',
+  );
+  await m.waitForTimeout(500);
+  const w = await box();
+  expect(w.left, 'the wallet table starts at its left edge').toBe(0);
+  expect(w.fades).not.toMatch(/more-left/);
+  await m.close();
 });
 
 test('Back to a question keeps its title and pressed card; a card is pressed only for its own answer', async () => {

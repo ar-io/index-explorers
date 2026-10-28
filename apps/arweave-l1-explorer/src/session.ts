@@ -40,7 +40,17 @@ import {
 } from '@ar-io/index-client';
 
 import { CONFIG } from './config.js';
-import { lookupSql, PRESETS, presetSql, QUESTIONS, txSql, walletSql } from './questions.js';
+import {
+  blockSpan,
+  blocksScope,
+  type BlockSpan,
+  lookupSql,
+  PRESETS,
+  presetSql,
+  QUESTIONS,
+  txSql,
+  walletSql,
+} from './questions.js';
 
 type L1Band = parquetL1.RegisteredL1Band;
 const DAY = 86400;
@@ -61,6 +71,8 @@ export interface QueryOpts {
   caption?: string | null;
   wallet?: string | null;
   note?: string | null;
+  /** What an empty answer says, in place of "0 rows" (a block with no transactions). */
+  empty?: string | null;
 }
 
 export interface Result {
@@ -119,7 +131,11 @@ export class Store {
   readonly scope = signal('latest');
   readonly pickedBand = signal<string | null>(null);
   readonly loadedKey = signal<string | null>(null);
-  readonly status = signal<{ text: string; cls: '' | 'ok' | 'bad' }>({ text: '', cls: '' });
+  /** `detail` is shown as it is under the sentence: the engine's pointer into a query. */
+  readonly status = signal<{ text: string; cls: '' | 'ok' | 'bad'; detail?: string }>({
+    text: '',
+    cls: '',
+  });
   readonly progress = signal<ProgressState>({
     visible: false,
     indeterminate: false,
@@ -143,8 +159,8 @@ export class Store {
   readonly sampleWallet = signal<string | null>(null);
   readonly switchTo = signal<string | null>(null);
   readonly trace: string[] = [];
-  say(text: string, cls: '' | 'ok' | 'bad' = ''): void {
-    this.status.value = { text, cls };
+  say(text: string, cls: '' | 'ok' | 'bad' = '', detail?: string): void {
+    this.status.value = detail ? { text, cls, detail } : { text, cls };
   }
   setCheck(k: keyof ProofChecks, state: CheckState): void {
     const p = this.proof.value;
@@ -847,6 +863,7 @@ export class Session {
       // A gateway offer belongs to the failure that raised it.
       st.switchTo.value = null;
       if (opts.note && rows.length === 0) st.say(`${opts.note} ${receipt}`.trim(), 'bad');
+      else if (opts.empty && rows.length === 0) st.say(`${opts.empty} ${receipt}`.trim(), 'ok');
       else if (caption) {
         const more =
           rows.length > 200 ? 'Showing the first 200 rows; CSV and JSON have them all. ' : '';
@@ -878,7 +895,12 @@ export class Session {
         await this.forgetRanged(win.bands);
         st.loadedKey.value = null;
       }
-      st.say(why.stopped || why.oom ? why.msg : 'Query error: ' + why.msg, 'bad');
+      // A question the engine could not run is said as it is, with DuckDB's pointer into it apart.
+      st.say(
+        why.stopped || why.oom || why.query ? why.msg : 'Query error: ' + why.msg,
+        'bad',
+        why.context,
+      );
       st.switchTo.value = why.switchTo ?? null;
     } finally {
       st.progress.value = { ...st.progress.value, stop: false };
@@ -1064,11 +1086,11 @@ export class Session {
     await this.runQuery({ label, note });
   }
 
-  find(raw: string): void {
+  async find(raw: string): Promise<void> {
     const st = this.store;
     const sql = lookupSql(raw);
     if (sql === 'id') {
-      void this.findId(raw.trim());
+      await this.findId(raw.trim());
       return;
     }
     if (sql === null) {
@@ -1082,17 +1104,42 @@ export class Session {
       );
       return;
     }
+    if (!st.pub.value.verified) {
+      st.say('The publication is still being checked; this will work in a moment.', 'bad');
+      return;
+    }
+    const span = blockSpan(raw)!;
+    const blocks = span.range
+      ? `Blocks ${num(span.lo)} to ${num(span.hi)}`
+      : `Block ${num(span.lo)}`;
+    if (!this.bringIntoScope(span, blocks)) return;
     st.sql.value = sql;
     st.asked.value = null;
-    const t = raw.trim();
-    const m = /^(\d+)\s*-\s*(\d+)$/.exec(t);
-    const label = /^\d+$/.test(t)
-      ? `Block ${num(t)}`
-      : m
-        ? `Blocks ${num(m[1]!)} to ${num(m[2]!)}`
-        : `Results for ${t.slice(0, 12)}`;
-    if (st.pub.value.verified) void this.runQuery({ label });
-    else st.say('The publication is still being checked; this will work in a moment.', 'bad');
+    await this.runQuery({
+      label: blocks,
+      empty: span.range
+        ? `No transactions in blocks ${num(span.lo)} to ${num(span.hi)}.`
+        : `No transactions in block ${num(span.lo)}.`,
+    });
+  }
+
+  /**
+   * Blocks outside the period would answer "0 rows", as if they were empty
+   * (blocksScope says what to do instead). False when nothing should run.
+   */
+  private bringIntoScope(span: BlockSpan, blocks: string): boolean {
+    const st = this.store;
+    const w = this.currentWindow();
+    if (!w) return false;
+    const to = blocksScope(span, blocks, this.bands, this.windowHeights(w), {
+      canWiden:
+        !!this.reader?.ok &&
+        this.bands.every((b) => this.isRangeable(b)) &&
+        st.windows.value.some((x) => x.id === 'all'),
+    });
+    if (to.say) st.say(to.say, 'bad');
+    if (to.widen) st.scope.value = 'all';
+    return to.run;
   }
 
   shareUrl(): string {

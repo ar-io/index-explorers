@@ -83,7 +83,7 @@ export const QUESTIONS: Question[] = [
     title: 'Where do the bytes go?',
     sub: 'Uploads by size',
     sql: "SELECT CASE WHEN data_size < 1024 THEN 'a. under 1 KB'\n            WHEN data_size < 102400 THEN 'b. under 100 KB'\n            WHEN data_size < 1048576 THEN 'c. under 1 MB'\n            WHEN data_size < 104857600 THEN 'd. under 100 MB'\n            ELSE 'e. 100 MB and up' END AS size_bucket,\n       count(*) AS uploads,\n       round(sum(data_size) / power(2,30), 2) AS gib\nFROM uploads\nGROUP BY 1\nORDER BY 1;",
-    caption: 'Most uploads are tiny records; most bytes are a few large files. {RANGE}.',
+    caption: 'Most uploads are tiny records. Most bytes are a few large files, {RANGE}.',
   },
 ];
 

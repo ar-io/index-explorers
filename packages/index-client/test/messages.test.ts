@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addNote,
+  engineErrorText,
   explainReadError,
   NoGatewayError,
   notesText,
@@ -124,5 +125,53 @@ describe('a spent engine', () => {
     );
     expect(why.oom).toBeUndefined();
     expect(why.integrity).toBe(true);
+  });
+});
+
+describe('engine errors about the question', () => {
+  // As DuckDB words them (native 1.x and the wasm build alike).
+  it('says the error in a sentence and keeps the pointer into the query apart', () => {
+    const e = engineErrorText(
+      'Parser Error: syntax error at or near "selct"\n\nLINE 1: selct 1\n        ^',
+    );
+    expect(e).toEqual({
+      msg: 'Syntax error at or near "selct".',
+      query: true,
+      context: 'LINE 1: selct 1\n        ^',
+    });
+  });
+
+  it('keeps the hint DuckDB gives, as part of the sentence', () => {
+    expect(
+      engineErrorText(
+        'Catalog Error: Table with name foo does not exist!\nDid you mean "files"?\n\nLINE 1: select * from foo\n                      ^',
+      ).msg,
+    ).toBe('Table with name foo does not exist. Did you mean "files"?');
+    expect(
+      engineErrorText(
+        'Binder Error: Referenced column "nope" not found in FROM clause!\nCandidate bindings: "range"\n\nLINE 1: select nope from range(3)\n               ^',
+      ).msg,
+    ).toBe('Referenced column "nope" not found in FROM clause. Candidate bindings: "range".');
+    expect(engineErrorText('Parser Error: syntax error at end of input')).toEqual({
+      msg: 'Syntax error at end of input.',
+      query: true,
+    });
+  });
+
+  it('leaves anything else whole, and explainReadError passes the question’s errors through', () => {
+    expect(engineErrorText('IO Error: Cannot open file "x"')).toEqual({
+      msg: 'IO Error: Cannot open file "x"',
+      query: false,
+    });
+    const why = explainReadError(
+      new Error(
+        "Conversion Error: Could not convert string 'a' to INT32\n\nLINE 1: select 'a'::int\n                  ^",
+      ),
+      null,
+      [],
+    );
+    expect(why.query).toBe(true);
+    expect(why.msg).toBe("Could not convert string 'a' to INT32.");
+    expect(why.context).toMatch(/^LINE 1/);
   });
 });

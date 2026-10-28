@@ -1,3 +1,5 @@
+import { fmtRange, num } from '@ar-io/index-client';
+
 /** The questions and presets of the L1 page: each checked against the real newest band. */
 export interface Question {
   title: string;
@@ -84,21 +86,38 @@ export const PRESETS: [string, string][] = [
 export const presetSql = (i: number, sampleWallet: string | null): string =>
   PRESETS[i]![1].replaceAll('{WALLET}', sampleWallet ?? 'paste-an-address-here');
 
-/** Turns a height or a range into SQL; 'id' for a 43-character id; null for nothing; undefined for nonsense. */
-export function lookupSql(raw: string): string | 'id' | null | undefined {
+export interface BlockSpan {
+  lo: number;
+  hi: number;
+  /** Typed as a range (`a-b`), not one height. */
+  range: boolean;
+}
+
+/** The blocks a height (`2015000`) or a range (`2015000-2015100`) names, low first; null for anything else. */
+export function blockSpan(raw: string): BlockSpan | null {
   const v = raw.trim();
-  if (!v) return null;
   const range = v.match(/^(\d[\d,_]*)\s*(?:-|–|\.\.|to)\s*(\d[\d,_]*)$/i);
   if (range) {
     const a = Number(range[1]!.replace(/[,_]/g, ''));
     const b = Number(range[2]!.replace(/[,_]/g, ''));
-    const [lo, hi] = a <= b ? [a, b] : [b, a];
-    return `SELECT height, mined_at, count(*) AS txs, sum(data_size) AS bytes\nFROM txs\nWHERE height BETWEEN ${lo} AND ${hi}\nGROUP BY height, mined_at\nORDER BY height;`;
+    return { lo: Math.min(a, b), hi: Math.max(a, b), range: true };
   }
   if (/^\d[\d,_]*$/.test(v)) {
     const h = Number(v.replace(/[,_]/g, ''));
-    return `SELECT tx_id, mined_at, owner, data_size, content_type\nFROM txs\nWHERE height = ${h}\nORDER BY data_size DESC;`;
+    return { lo: h, hi: h, range: false };
   }
+  return null;
+}
+
+/** Turns a height or a range into SQL; 'id' for a 43-character id; null for nothing; undefined for nonsense. */
+export function lookupSql(raw: string): string | 'id' | null | undefined {
+  const v = raw.trim();
+  if (!v) return null;
+  const span = blockSpan(v);
+  if (span?.range)
+    return `SELECT height, mined_at, count(*) AS txs, sum(data_size) AS bytes\nFROM txs\nWHERE height BETWEEN ${span.lo} AND ${span.hi}\nGROUP BY height, mined_at\nORDER BY height;`;
+  if (span)
+    return `SELECT tx_id, mined_at, owner, data_size, content_type\nFROM txs\nWHERE height = ${span.lo}\nORDER BY data_size DESC;`;
   if (/^[A-Za-z0-9_-]{43}$/.test(v)) return 'id';
   return undefined;
 }
@@ -120,3 +139,52 @@ export const walletSql = (v: string, why: string): string =>
   `       b64u(t.owner_address) AS owner, b64u(t.target) AS target, t.data_size, round(t.quantity / 1e12, 4) AS ar\n` +
   `FROM (SELECT id, height, owner_address, target, data_size, quantity FROM rawtx WHERE owner_address = unb64u('${v}')\n      UNION ALL\n      SELECT id, height, owner_address, target, data_size, quantity FROM rawtx WHERE target = unb64u('${v}')) t\n` +
   `LEFT JOIN blocks b USING (height)\nORDER BY t.height DESC\nLIMIT 100;`;
+
+/**
+ * Where Find should look for blocks, so that blocks outside the period never
+ * answer "0 rows" as if they were empty. Outside everything the index holds,
+ * that is said. Outside only the period: with range reads (`canWiden`) Find
+ * looks over everything, as it does for an id (the height filter reads only
+ * the row groups that hold it); without them, the period that holds the
+ * blocks is named.
+ */
+export function blocksScope(
+  span: BlockSpan,
+  blocks: string,
+  bands: readonly {
+    from: number;
+    to: number | null;
+    fromTime?: number | null;
+    toTime?: number | null;
+  }[],
+  [lo, hi]: [number, number],
+  { canWiden }: { canWiden: boolean },
+): { run: boolean; widen?: boolean; say?: string } {
+  const first = bands[0];
+  const last = bands[bands.length - 1];
+  if (!first || !last) return { run: false };
+  const tip = last.to ?? last.from;
+  const is = span.range ? 'are' : 'is';
+  if (span.lo > tip)
+    return {
+      run: false,
+      say: `${blocks} ${is} newer than this index, which reaches block ${num(tip)}. The publisher adds new blocks as it updates its newest band.`,
+    };
+  if (span.hi < first.from)
+    return {
+      run: false,
+      say: `${blocks} ${is} older than this index, which starts at block ${num(first.from)}.`,
+    };
+  if (span.hi >= lo && span.lo <= hi) return { run: true };
+  if (canWiden) return { run: true, widen: true };
+  const holds = bands.find((b) => span.lo <= (b.to ?? b.from) && span.hi >= b.from);
+  const dates = holds ? fmtRange(holds.fromTime ?? null, holds.toTime ?? null) : null;
+  return {
+    run: false,
+    say:
+      `${blocks} ${is} outside the period chosen (blocks ${num(lo)} to ${num(hi)}). ` +
+      (holds
+        ? `Under Period, pick “One period…” and the one ${dates ? `from ${dates}` : `with blocks ${num(holds.from)} to ${num(holds.to ?? holds.from)}`}.`
+        : 'Pick a longer period.'),
+  };
+}

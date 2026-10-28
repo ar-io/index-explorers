@@ -71,3 +71,9 @@ describe('what the questions read', () => {
         expect(sql).toMatch(/coalesce\(strftime\(.*'\(no date\)'\)/);
   });
 });
+
+describe('captions', () => {
+  it('fill {RANGE} ("from … to …") mid-sentence, never where a sentence starts', () => {
+    for (const q of QUESTIONS) expect(q.caption, q.title).not.toMatch(/(^|[.!?]\s*)\{RANGE\}/);
+  });
+});

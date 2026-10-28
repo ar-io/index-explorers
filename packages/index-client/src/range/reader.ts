@@ -267,12 +267,41 @@ export function rangeSpec(band: Band, file: BandFile, opts: RangeUrlOptions = {}
 export const rangeable = (reader: RangeReader | null, band: Band): boolean =>
   !!reader?.ok && !!band.torrent;
 
+const QUERY_ERROR = /^(?:Parser|Binder|Catalog|Conversion|Not implemented|Out of Range) Error: /;
+
+/**
+ * An engine error about the question itself (a typo, an unknown table), as a
+ * sentence: `Parser Error: syntax error at or near "selct"` reads as
+ * `Syntax error at or near "selct".` The lines DuckDB adds to point into the
+ * query (`LINE 1: selct 1` and its caret) are `context`, kept as they are, to
+ * be shown preformatted. `query` is false for anything else, left whole.
+ */
+export function engineErrorText(message: string): {
+  msg: string;
+  query: boolean;
+  context?: string;
+} {
+  const kind = QUERY_ERROR.exec(message);
+  if (!kind) return { msg: message, query: false };
+  const [lead = '', ...rest] = message.slice(kind[0].length).split(/\n\s*\n/);
+  let msg = lead
+    .replace(/!(?=\s*\n)/g, '.')
+    .replace(/\s*\n\s*/g, ' ')
+    .trim()
+    .replace(/!$/, '');
+  msg = msg.charAt(0).toUpperCase() + msg.slice(1);
+  if (!/[.?]$/.test(msg)) msg += '.';
+  const context = rest.join('\n\n').replace(/\s+$/, '');
+  return context ? { msg, query: true, context } : { msg, query: true };
+}
+
 /**
  * A worker refusal, in words, in place of DuckDB's "HTTP GET error ... (502)".
  * `switchTo` is another publisher of the same files, when the refusal is one
  * another gateway could avoid. `oom` says the engine itself is spent: the
  * caller restarts it before the next question. `detail` keeps the engine's
- * own words for a bug report, never for the status line.
+ * own words for a bug report, never for the status line. `query` says the
+ * question itself is wrong, with `context` pointing into it (engineErrorText).
  */
 export function explainReadError(
   e: unknown,
@@ -286,6 +315,8 @@ export function explainReadError(
   integrity?: boolean;
   oom?: boolean;
   detail?: string;
+  query?: boolean;
+  context?: string;
 } {
   const message = e instanceof Error ? e.message : String(e);
   const spent = {
@@ -301,7 +332,7 @@ export function explainReadError(
   // is the engine's own state after its memory ran out: the same failure,
   // reported another way.
   if (!f && /too small to be a Parquet file|No files found that match/i.test(message)) return spent;
-  if (!f) return { msg: message };
+  if (!f) return engineErrorText(message);
   if (f.code === 'cancelled')
     return { msg: 'Stopped. Nothing partial is shown; ask again any time.', stopped: true };
   const first = f.msg.charAt(0).toUpperCase() + f.msg.slice(1);

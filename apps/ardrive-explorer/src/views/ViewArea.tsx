@@ -1,6 +1,7 @@
 import { Badge, Icon, OwnerDot } from '@ar-io/explorer-ui';
 import { bytesText, fmtDate, fmtWhen, isId43, isUuid, num, shortId } from '@ar-io/index-client';
 import type { ComponentChildren } from 'preact';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 
 import { CONFIG } from '../config.js';
 import { useApp } from '../context.js';
@@ -9,6 +10,7 @@ import type { Column, TableContent } from '../store.js';
 import { saveFile, toCsv, toJson } from '../util/export.js';
 import { captionSegments } from '../data/questions.js';
 import { DriveBrowser } from './DriveBrowser.js';
+import { useMedia } from './useMedia.js';
 import type { WalletDrive } from '../data/wallet.js';
 
 /** A clickable id or address that opens its own view. */
@@ -16,15 +18,18 @@ export function RowLink({
   text,
   go,
   mono,
+  title,
   children,
 }: {
   text?: string;
   go: () => void;
   mono?: boolean;
+  /** The whole id, when the text shows it shortened. */
+  title?: string;
   children?: ComponentChildren;
 }) {
   return (
-    <button type="button" class={`rowlink${mono ? ' mono' : ''}`} onClick={go}>
+    <button type="button" class={`rowlink${mono ? ' mono' : ''}`} title={title} onClick={go}>
       {children}
       {text}
     </button>
@@ -183,6 +188,10 @@ function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
 
 function GenericTable({ table }: { table: TableContent }) {
   const { flows } = useApp();
+  // On a phone a 43-character id would fill the screen on its own: shortened,
+  // the other columns show. The link, its title and the exports keep it whole.
+  const narrow = useMedia('(max-width: 480px)');
+  const idText = (t: string) => (narrow ? shortId(t) : t);
   const isTime = table.isTime ?? new Set<string>();
   const cell = (
     c: Column,
@@ -198,7 +207,14 @@ function GenericTable({ table }: { table: TableContent }) {
     const text = String(v);
     if (c.key === 'owner' && isId43(text))
       return {
-        node: <RowLink text={text} mono go={() => void flows.openWallet(text, false)} />,
+        node: (
+          <RowLink
+            text={idText(text)}
+            title={text}
+            mono
+            go={() => void flows.openWallet(text, false)}
+          />
+        ),
         num: false,
       };
     if (c.key === 'drive_id' && isUuid(text))
@@ -207,7 +223,10 @@ function GenericTable({ table }: { table: TableContent }) {
         num: false,
       };
     if ((c.key === 'id' || c.key === 'name_id') && isId43(text))
-      return { node: <RowLink text={text} mono go={() => void flows.openId(text)} />, num: false };
+      return {
+        node: <RowLink text={idText(text)} title={text} mono go={() => void flows.openId(text)} />,
+        num: false,
+      };
     const wide = typeof v === 'object' && /^-?\d+(\.\d+)?$/.test(text);
     const isNum = typeof v === 'bigint' || typeof v === 'number' || wide;
     if (isNum || c.num) return { node: num(wide ? Number(text) : (v as number)), num: true };
@@ -236,7 +255,7 @@ function GenericTable({ table }: { table: TableContent }) {
         <tr>
           {table.cols.map((c) => (
             <th key={c.key} scope="col" class={numCols.has(c.key) || c.num ? 'num' : undefined}>
-              {c.label}
+              {/^[KMGT]iB$/.test(c.label) ? <span class="unit">{c.label}</span> : c.label}
             </th>
           ))}
         </tr>
@@ -291,6 +310,49 @@ function OpenFileLink() {
   );
 }
 
+/**
+ * The box a wide table scrolls sideways in. Its edges fade where there is
+ * more to scroll to, and a new view's table starts at its left edge: the box
+ * is reused between views, and so would its scroll position be.
+ */
+function TableWrap({
+  hidden,
+  view,
+  children,
+}: {
+  hidden: boolean;
+  view: string;
+  children: ComponentChildren;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState('');
+  const measure = () => {
+    const el = box.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdge(`${left ? ' more-left' : ''}${right ? ' more-right' : ''}`);
+  };
+  useLayoutEffect(() => {
+    if (box.current) box.current.scrollLeft = 0;
+  }, [view]);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    measure();
+    // Names arriving widen a column without a render here.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, [hidden, view]);
+  return (
+    <div class={`tablewrap${edge}`} ref={box} hidden={hidden} onScroll={measure}>
+      {children}
+    </div>
+  );
+}
+
 export function ViewArea() {
   const { store, session } = useApp();
   const c = store.content.value;
@@ -338,40 +400,42 @@ export function ViewArea() {
           {c.titleName ? <TitleName /> : c.title}
         </h3>
         <div class="result-actions" id="resultactions" hidden={!exp && !drive && c.title === ''}>
-          <button
-            type="button"
-            class="secondary"
-            id="csv"
-            disabled={!exp || !exp.rows.length}
-            onClick={() =>
-              exp &&
-              (saveFile(
-                `ardrive-${exp.slug}.csv`,
-                'text/csv;charset=utf-8',
-                toCsv(exp.cols, exp.rows, exp.isTime),
-              ),
-              store.say(`Saved ${num(exp.rows.length)} rows as CSV.`, 'ok'))
-            }
-          >
-            CSV
-          </button>
-          <button
-            type="button"
-            class="secondary"
-            id="json"
-            disabled={!exp || !exp.rows.length}
-            onClick={() =>
-              exp &&
-              (saveFile(
-                `ardrive-${exp.slug}.json`,
-                'application/json',
-                toJson(exp.cols, exp.rows, exp.isTime),
-              ),
-              store.say(`Saved ${num(exp.rows.length)} rows as JSON.`, 'ok'))
-            }
-          >
-            JSON
-          </button>
+          {exp && exp.rows.length ? (
+            <>
+              <button
+                type="button"
+                class="secondary"
+                id="csv"
+                onClick={() =>
+                  exp &&
+                  (saveFile(
+                    `ardrive-${exp.slug}.csv`,
+                    'text/csv;charset=utf-8',
+                    toCsv(exp.cols, exp.rows, exp.isTime),
+                  ),
+                  store.say(`Saved ${num(exp.rows.length)} rows as CSV.`, 'ok'))
+                }
+              >
+                CSV
+              </button>
+              <button
+                type="button"
+                class="secondary"
+                id="json"
+                onClick={() =>
+                  exp &&
+                  (saveFile(
+                    `ardrive-${exp.slug}.json`,
+                    'application/json',
+                    toJson(exp.cols, exp.rows, exp.isTime),
+                  ),
+                  store.say(`Saved ${num(exp.rows.length)} rows as JSON.`, 'ok'))
+                }
+              >
+                JSON
+              </button>
+            </>
+          ) : null}
           <button type="button" class="secondary" id="copylink" onClick={() => void copyLink()}>
             Copy link
           </button>
@@ -415,7 +479,10 @@ export function ViewArea() {
             )
           : null}
       </p>
-      <div class="tablewrap" hidden={!c.table || !c.table.rows.length}>
+      <TableWrap
+        hidden={!c.table || !c.table.rows.length}
+        view={`${view.kind} ${'key' in view ? view.key : ''} ${c.title} ${c.table?.preset ?? ''}`}
+      >
         {c.table && c.table.rows.length ? (
           c.table.preset === 'drives' ? (
             <DrivesTable rows={c.table.rows as unknown as DriveRow[]} />
@@ -425,7 +492,7 @@ export function ViewArea() {
             <GenericTable table={c.table} />
           )
         ) : null}
-      </div>
+      </TableWrap>
       {drive ? <DriveBrowser /> : null}
       <div class="more" id="more" hidden={!c.more.length && !c.titleName && !c.portalWallet}>
         {c.titleName ? <OpenFileLink /> : null}
