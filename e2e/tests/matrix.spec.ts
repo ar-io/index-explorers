@@ -530,12 +530,22 @@ test('on a phone, a question table shows it has more columns, and a wallet table
   expect(/more-right/.test(q.fades)).toBe(q.scrolls);
   // A wallet opened from Newest drives, after scrolling that table sideways.
   await m.locator('#browse').click();
-  await until(m, async () => (await m.locator('#results tbody tr').count()) > 0, 120_000, 'browse');
+  // The drives table itself, not the question's rows still on screen as it starts.
+  await until(
+    m,
+    async () =>
+      (await m.locator('#results thead th').first().textContent()) === 'Drive' &&
+      (await rows(m)) > 0,
+    120_000,
+    'browse',
+  );
   await m.evaluate(() => {
     const w = document.querySelector('.tablewrap') as HTMLElement;
     w.scrollLeft = w.scrollWidth;
   });
   expect((await box()).left).toBeGreaterThan(0);
+  // The fade follows the scroll event, a frame later.
+  await until(m, async () => /more-left/.test((await box()).fades), 5_000, 'left fade');
   expect((await box()).fades).toMatch(/more-left/);
   await m.locator('#results tbody tr').first().locator('td').nth(1).locator('button').click();
   await until(
