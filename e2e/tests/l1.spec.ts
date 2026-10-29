@@ -224,4 +224,52 @@ test.describe('arweave-l1-explorer', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(y);
     await page.close();
   });
+  test('a year has no thousands separator; an unknown table is answered with the tables there are, and a failure offers no export', async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}#gw=${encodeURIComponent(GW)}&scope=latest`);
+    await until(
+      page,
+      async () => (await page.locator('#proof').getAttribute('data-state')) === 'ok',
+      90_000,
+      'proof',
+    );
+    const status = () =>
+      page
+        .locator('#status')
+        .innerText()
+        .catch(() => '');
+    const run = async (sql: string) => {
+      await page.evaluate(() =>
+        (
+          window as unknown as { __explorer: { store: { say(t: string): void } } }
+        ).__explorer.store.say(''),
+      );
+      await page.fill('#sql', sql);
+      await page.click('#run');
+      await until(
+        page,
+        async () =>
+          /rows? in|Read |Nothing new|Answered/.test(await status()) ||
+          (await page.locator('#status .bad').count()) > 0,
+        120_000,
+        'answer',
+      );
+    };
+    if (!(await page.locator('#sql').isVisible())) await page.locator('#editor > summary').click();
+    await run('select year(mined_at) as yr, count(*) as n from txs group by 1 order by 1');
+    expect(await page.locator('#status .bad').count(), await status()).toBe(0);
+    const yr = await page.locator('#results tbody tr td').first().innerText();
+    expect(yr).toMatch(/^20\d\d$/);
+    expect(await page.locator('#csv').isVisible()).toBe(true);
+    // An unknown table: the tables this period has, not DuckDB's nearest guess.
+    await run('select * from transactions limit 1');
+    expect(await page.locator('#status > span').innerText()).toMatch(
+      /^Table with name transactions does not exist\. The tables here are txs, blocks, tags, rawtx/,
+    );
+    expect(await status()).not.toMatch(/Did you mean/);
+    // A failed query: no export of nothing, the link still there.
+    expect(await page.locator('#csv, #json').count()).toBe(0);
+    expect(await page.locator('#copylink').isVisible()).toBe(true);
+  });
 });

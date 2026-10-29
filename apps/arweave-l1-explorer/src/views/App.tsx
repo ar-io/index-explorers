@@ -162,40 +162,43 @@ function Results() {
         <button id="copylink" class="secondary" type="button" onClick={() => void copyLink()}>
           Copy link
         </button>
-        <button
-          id="csv"
-          class="secondary"
-          type="button"
-          disabled={!r || !r.rows.length}
-          onClick={() =>
-            r &&
-            (saveFile(
-              `arweave-l1-${r.lo}-${r.hi}.csv`,
-              'text/csv;charset=utf-8',
-              toCsv(r.cols, r.rows, r.isTime),
-            ),
-            store.say(`Saved ${num(r.rows.length)} rows as CSV.`, 'ok'))
-          }
-        >
-          CSV
-        </button>
-        <button
-          id="json"
-          class="secondary"
-          type="button"
-          disabled={!r || !r.rows.length}
-          onClick={() =>
-            r &&
-            (saveFile(
-              `arweave-l1-${r.lo}-${r.hi}.json`,
-              'application/json',
-              toJson(r.cols, r.rows, r.isTime),
-            ),
-            store.say(`Saved ${num(r.rows.length)} rows as JSON.`, 'ok'))
-          }
-        >
-          JSON
-        </button>
+        {/* Exports of an answer with rows only: a failed or empty one has nothing to save. */}
+        {r && r.rows.length ? (
+          <>
+            <button
+              id="csv"
+              class="secondary"
+              type="button"
+              onClick={() =>
+                r &&
+                (saveFile(
+                  `arweave-l1-${r.lo}-${r.hi}.csv`,
+                  'text/csv;charset=utf-8',
+                  toCsv(r.cols, r.rows, r.isTime),
+                ),
+                store.say(`Saved ${num(r.rows.length)} rows as CSV.`, 'ok'))
+              }
+            >
+              CSV
+            </button>
+            <button
+              id="json"
+              class="secondary"
+              type="button"
+              onClick={() =>
+                r &&
+                (saveFile(
+                  `arweave-l1-${r.lo}-${r.hi}.json`,
+                  'application/json',
+                  toJson(r.cols, r.rows, r.isTime),
+                ),
+                store.say(`Saved ${num(r.rows.length)} rows as JSON.`, 'ok'))
+              }
+            >
+              JSON
+            </button>
+          </>
+        ) : null}
         {r?.wallet && isId43(r.wallet) ? (
           <a
             class="action-link"

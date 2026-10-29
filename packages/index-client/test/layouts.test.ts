@@ -184,6 +184,33 @@ describe('parquet-l1 layouts', () => {
     ).toEqual([false, false, true, true, false, false]);
     expect(parquetL1.L1_SCHEMAS).toContain('l1-4');
   });
+
+  it('names the tables a period defines, the lookups only where it reads them', () => {
+    const band = (lookups: boolean): parquetL1.RegisteredL1Band => ({
+      id: 'b',
+      from: 0,
+      to: 9,
+      names: { tx: 'tx', bl: 'bl', tg: 'tg', ...(lookups ? { lt: 'lt', lw: 'lw', lg: 'lg' } : {}) },
+    });
+    expect(parquetL1.l1PeriodSql([band(false)]).tables).toEqual(['txs', 'blocks', 'tags', 'rawtx']);
+    expect(parquetL1.l1PeriodSql([band(true)]).tables).toEqual([
+      'txs',
+      'blocks',
+      'tags',
+      'rawtx',
+      'lookup_tx_id',
+      'lookup_wallet',
+      'lookup_tag',
+    ]);
+    // A calendar year is cut by date, so its lookups are not defined.
+    expect(parquetL1.l1PeriodSql([band(true)], { fromTime: 1 }).tables).not.toContain(
+      'lookup_tx_id',
+    );
+    // Every one of them is a view the period's SQL defines.
+    const sql = parquetL1.l1PeriodSql([band(true)]);
+    const made = [...sql.first, ...sql.second(0, 9)].join('\n');
+    for (const t of sql.tables) expect(made).toContain(`CREATE OR REPLACE VIEW ${t} AS`);
+  });
 });
 
 describe('parquet-l2 layout l2-2 key lookup and stats (the synthetic l2-2 band)', () => {
