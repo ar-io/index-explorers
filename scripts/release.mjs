@@ -41,7 +41,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** Each app and the E2E specs that open it: a release runs its own app's suites. */
 const SPECS = {
-  'ardrive-explorer': ['smoke', 'matrix', 'nav', 'perf', 'head', 'layout'],
+  'ardrive-explorer': ['smoke', 'matrix', 'nav', 'perf', 'head', 'layout', 'a11y'],
   'arweave-l1-explorer': ['l1', 'head', 'layout'],
   'network-index': ['network-index', 'head', 'layout'],
 };

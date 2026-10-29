@@ -19,14 +19,41 @@ const PATHS = {
   up: 'M12 5.5 5 12.5l1.4 1.4 4.6-4.6V19h2v-9.7l4.6 4.6 1.4-1.4-7-7Z',
   wallet:
     'M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v1h-2V7a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1h2v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7Zm9 3h8v4h-8a2 2 0 1 1 0-4Zm1 1.5a.5.5 0 1 0 0 1 .5.5 0 0 0 0-1Z',
+  chevron: 'm7.4 9.3 4.6 4.6 4.6-4.6 1.4 1.4-6 6-6-6 1.4-1.4Z',
+  check: 'm9.6 15.6-4.2-4.2L4 12.8l5.6 5.6L20 8l-1.4-1.4-9 9Z',
+  search:
+    'M10.5 4a6.5 6.5 0 0 1 5.2 10.4l4.4 4.4-1.4 1.4-4.4-4.4A6.5 6.5 0 1 1 10.5 4Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z',
+  sun: 'M11 2h2v3h-2V2Zm0 17h2v3h-2v-3ZM2 11h3v2H2v-2Zm17 0h3v2h-3v-2ZM4.9 6.3l1.4-1.4 2.1 2.1L7 8.4 4.9 6.3Zm10.7 10.7 1.4-1.4 2.1 2.1-1.4 1.4-2.1-2.1ZM4.9 17.7 7 15.6 8.4 17l-2.1 2.1-1.4-1.4ZM15.6 7l2.1-2.1 1.4 1.4L17 8.4 15.6 7ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z',
+  moon: 'M10 2.6a8 8 0 1 0 11.4 11.4A9 9 0 0 1 10 2.6Z',
+  more: 'M12 7.5a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5Zm0 6.25a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5ZM12 20a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5Z',
+  external:
+    'M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14V3ZM5 5h6v2H5v12h12v-6h2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z',
+  close:
+    'm6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4 6.4 5Z',
+  success:
+    'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm-1.2 13.6 6.1-6.1-1.4-1.4-4.7 4.7-2.3-2.3-1.4 1.4 3.7 3.7Z',
+  error: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm-1 5v7h2V7h-2Zm0 9v2h2v-2h-2Z',
+  warning: 'M12 2.5 22.5 21h-21L12 2.5Zm-1 7v5.5h2V9.5h-2Zm0 7.3v2h2v-2h-2Z',
+  info: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm-1 8v7h2v-7h-2Zm0-4v2h2V6h-2Z',
 } as const;
 
 export type IconName = keyof typeof PATHS;
 export const ICONS = PATHS;
 
-export function Icon({ name, big = false }: { name: IconName; big?: boolean }) {
+export function Icon({
+  name,
+  big = false,
+  class: extra,
+}: {
+  name: IconName;
+  big?: boolean;
+  class?: string;
+}) {
   return (
-    <span class={`ico ico-${name}${big ? ' big' : ''}`} aria-hidden="true">
+    <span
+      class={`ico ico-${name}${big ? ' big' : ''}${extra ? ' ' + extra : ''}`}
+      aria-hidden="true"
+    >
       <svg viewBox="0 0 24 24">
         <path d={PATHS[name] ?? PATHS.file} />
       </svg>
@@ -75,6 +102,18 @@ const KIND_LABEL: Record<IconName, string> = {
   lock: 'encrypted',
   up: '',
   wallet: 'wallet',
+  chevron: '',
+  check: '',
+  search: '',
+  sun: '',
+  moon: '',
+  more: '',
+  external: '',
+  close: '',
+  success: '',
+  error: '',
+  warning: '',
+  info: '',
 };
 
 /** A short type label for a list: the subtype of a content type, or the icon's kind. */

@@ -1,9 +1,7 @@
 import '@preact/signals';
 import { render } from 'preact';
 
-import '@ar-io/explorer-ui/fonts/plus-jakarta-sans.css';
-import '@ar-io/explorer-ui/tokens.css';
-import '@ar-io/explorer-ui/base.css';
+import '@ar-io/explorer-ui/ardrive-tokens.css';
 import './styles.css';
 
 import { AppContext, type Flows } from './context.js';

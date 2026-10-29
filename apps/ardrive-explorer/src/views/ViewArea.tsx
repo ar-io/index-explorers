@@ -1,4 +1,4 @@
-import { Badge, Icon, OwnerDot } from '@ar-io/explorer-ui';
+import { Badge, Icon } from '@ar-io/explorer-ui';
 import {
   bytesText,
   cellNum,
@@ -21,6 +21,9 @@ import { captionSegments } from '../data/questions.js';
 import { DriveBrowser } from './DriveBrowser.js';
 import { useMedia } from './useMedia.js';
 import type { WalletDrive } from '../data/wallet.js';
+
+/** A label in sentence case ("public" reads "Public"). */
+export const sentence = (t: string): string => t.charAt(0).toUpperCase() + t.slice(1);
 
 /** A clickable id or address that opens its own view. */
 export function RowLink({
@@ -121,16 +124,14 @@ function DrivesTable({ rows }: { rows: DriveRow[] }) {
                   go={() => void flows.openWallet(r.owner, false)}
                   mono
                   text={shortId(r.owner)}
-                >
-                  <OwnerDot addr={r.owner} />
-                </RowLink>
+                ></RowLink>
               </td>
               <td>{Number(r.created_at) > 0 ? fmtDate(r.created_at) : `block ${num(r.height)}`}</td>
               <td>
-                <Badge text={r.privacy} kind={r.privacy} />
+                <Badge text={sentence(r.privacy)} kind={r.privacy} />
               </td>
               <td>{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
-              <td class="num">{r.records === null ? '—' : num(r.records)}</td>
+              <td class="num">{r.records === null ? '' : num(r.records)}</td>
             </tr>
           );
         })}
@@ -180,7 +181,7 @@ function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
               </div>
             </td>
             <td>
-              <Badge text={d.privacy} kind={d.privacy} />
+              <Badge text={sentence(d.privacy)} kind={d.privacy} />
             </td>
             <td class="num">{num(d.records)}</td>
             <td>
@@ -413,7 +414,7 @@ export function ViewArea() {
             <>
               <button
                 type="button"
-                class="secondary"
+                class="compact"
                 id="csv"
                 onClick={() =>
                   exp &&
@@ -429,7 +430,7 @@ export function ViewArea() {
               </button>
               <button
                 type="button"
-                class="secondary"
+                class="compact"
                 id="json"
                 onClick={() =>
                   exp &&
@@ -445,7 +446,7 @@ export function ViewArea() {
               </button>
             </>
           ) : null}
-          <button type="button" class="secondary" id="copylink" onClick={() => void copyLink()}>
+          <button type="button" class="compact" id="copylink" onClick={() => void copyLink()}>
             Copy link
           </button>
         </div>
@@ -463,10 +464,11 @@ export function ViewArea() {
             </div>
           ))}
       </dl>
-      <div class="cost" id="cost" hidden={!c.cost}>
+      <div class="notice cost" id="cost" hidden={!c.cost}>
         {c.cost ? (
           <>
-            <span>
+            <Icon name="warning" />
+            <span class="notice-text">
               {Array.isArray(c.cost.text)
                 ? c.cost.text.map((t, i) =>
                     i === 1 ? <strong key={i}>{t}</strong> : <span key={i}>{t}</span>,
@@ -474,7 +476,7 @@ export function ViewArea() {
                 : c.cost.text}
             </span>
             {c.cost.action ? (
-              <button type="button" onClick={c.cost.action.go}>
+              <button type="button" class="primary compact" onClick={c.cost.action.go}>
                 {c.cost.action.label}
               </button>
             ) : null}
@@ -507,7 +509,7 @@ export function ViewArea() {
         {c.titleName ? <OpenFileLink /> : null}
         {c.more.map((m, i) =>
           m.kind === 'button' ? (
-            <button key={i} type="button" class="secondary" onClick={m.go}>
+            <button key={i} type="button" class="compact" onClick={m.go}>
               {m.label}
             </button>
           ) : m.kind === 'link' ? (

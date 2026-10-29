@@ -67,10 +67,10 @@ test('Back/Forward, crumbs and a link walk the exact folder', async ({ page, bro
     // Walk: open folders until two levels deep, trying each top folder in turn.
     const n = await folderRows(page).count();
     for (let i = 0; i < n && (await crumbCount(page)) < 3; i++) {
-      await folderRows(page).nth(i).click();
+      await folderRows(page).nth(i).dblclick();
       await page.waitForTimeout(400);
       if ((await folderRows(page).count()) > 0) {
-        await folderRows(page).first().click();
+        await folderRows(page).first().dblclick();
         await page.waitForTimeout(400);
       } else {
         await page.locator('#b-crumbs .crumb').first().click();

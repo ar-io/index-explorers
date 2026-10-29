@@ -212,8 +212,8 @@ export class Session {
       st.hero.value = {
         ...st.hero.value,
         // Drives and files wait for the engine; uploads and span are in the publication.
-        counting: st.hero.value.drives === '—',
-        items: records ? num(records) : '—',
+        counting: st.hero.value.drives === '',
+        items: records ? num(records) : '',
         span:
           first.fromTime && last.toTime
             ? `${yr(first.fromTime)}–${yr(last.toTime)}`
@@ -268,7 +268,7 @@ export class Session {
       const checks = st.pub.value.checks;
       for (const k of ['registry', 'signature', 'engine'] as const)
         if (checks[k] === 'run') st.setCheck(k, 'bad');
-      st.hero.value = { drives: '—', files: '—', items: '—', span: '—' };
+      st.hero.value = { drives: '', files: '', items: '', span: '' };
       const msg =
         e instanceof Error && e.name === 'AbortError'
           ? 'the gateway did not answer within 15 seconds'
