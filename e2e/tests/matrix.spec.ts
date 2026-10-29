@@ -809,3 +809,45 @@ test('a drive at 375, 800 and 1280 px: row lines run the full width and Size sho
     await m.close();
   }
 });
+
+test('a period picked while the engine starts, then a query: the answer, not an engine out of memory', async ({
+  browser,
+}) => {
+  const m = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
+  // The engine arrives slowly, as it does live the first time.
+  await m.route(/\/engine\//, async (r) => {
+    await new Promise((res) => setTimeout(res, 2500));
+    await r.continue();
+  });
+  await openPage(m);
+  await m.locator('#editor > summary').click();
+  const other = await m
+    .locator('#scope option')
+    .evaluateAll(
+      (os) =>
+        (os as HTMLOptionElement[]).find((o) => o.value === 'all' && !o.disabled)?.value ??
+        (os as HTMLOptionElement[]).find((o) => o.value !== 'month' && !o.disabled)?.value,
+    );
+  expect(other).toBeTruthy();
+  await m.selectOption('#scope', other!);
+  await m.locator('#presets button', { hasText: 'Files by day' }).click();
+  // The page's own first load is still starting the engine.
+  expect(
+    await m.evaluate(
+      () =>
+        (window as unknown as { __explorer: { store: { engineBooted: { value: boolean } } } })
+          .__explorer.store.engineBooted.value,
+    ),
+  ).toBe(false);
+  await m.click('#run');
+  await until(
+    m,
+    async () => /rows? in/.test(await status(m)) || (await m.locator('#status .bad').count()) > 0,
+    180_000,
+    'answer',
+  );
+  expect(await status(m)).not.toMatch(/memory/i);
+  expect(await status(m)).toMatch(/rows? in/);
+  expect(await rows(m)).toBeGreaterThan(0);
+  await m.close();
+});

@@ -317,8 +317,16 @@ export class Session {
 
   /* -------------------------------------------------------------- engine */
 
-  private async boot(): Promise<void> {
-    if (this.engine) return;
+  /** The engine starting, shared: a second caller waits for it rather than starting another. */
+  private booting: Promise<void> | null = null;
+
+  private boot(): Promise<void> {
+    if (this.engine) return Promise.resolve();
+    this.booting ??= this.startEngine().finally(() => (this.booting = null));
+    return this.booting;
+  }
+
+  private async startEngine(): Promise<void> {
     const st = this.store;
     st.setCheck('engine', 'run');
     try {
@@ -451,9 +459,14 @@ export class Session {
   async ready(): Promise<boolean> {
     // One load at a time: a second caller (a click while the page is still
     // loading) waits for the first rather than querying views not yet defined.
+    // A load for another period (picked while the page's first load still
+    // starts the engine) waits its turn: two at once would start two engines,
+    // each holding half the bands.
     const key = `${this.store.pub.value.gateway} ${this.store.periodId.value}`;
     if (this.readying?.key === key) return this.readying.run;
-    const run = this.load().finally(() => {
+    const before = this.readying?.run;
+    const next = () => this.load();
+    const run = (before ? before.then(next, next) : next()).finally(() => {
       if (this.readying?.run === run) this.readying = null;
     });
     this.readying = { key, run };
