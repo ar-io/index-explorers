@@ -816,15 +816,17 @@ test('a period picked while the engine starts, then a query: the answer, not an 
   });
   await openPage(m);
   await m.locator('#editor > summary').click();
+  await m.locator('#scope').click();
   const other = await m
-    .locator('#scope option')
+    .locator('#scope-menu [role=option]:not([aria-disabled="true"])')
     .evaluateAll(
       (os) =>
-        (os as HTMLOptionElement[]).find((o) => o.value === 'all' && !o.disabled)?.value ??
-        (os as HTMLOptionElement[]).find((o) => o.value !== 'month' && !o.disabled)?.value,
+        (os as HTMLElement[]).find((o) => o.dataset.value === 'all')?.dataset.value ??
+        (os as HTMLElement[]).find((o) => o.dataset.value !== 'month')?.dataset.value,
     );
+  await m.keyboard.press('Escape');
   expect(other).toBeTruthy();
-  await m.selectOption('#scope', other!);
+  await choose(m, '#scope', other!);
   await m.locator('#presets button', { hasText: 'Files by day' }).click();
   // The page's own first load is still starting the engine.
   expect(
@@ -866,7 +868,7 @@ test('after the gateway answered 503, nothing is read by itself; Try again or an
       'refused',
     );
     expect(await status(m)).toMatch(/temporarily unavailable/);
-    expect(await m.locator('#stats').innerText()).toMatch(/—/);
+    expect(await countsShown(m)).toBe(false);
     // The gateway comes back; the page asks nothing of it until the reader does.
     down = false;
     const seen = reads;
@@ -882,15 +884,9 @@ test('after the gateway answered 503, nothing is read by itself; Try again or an
       'verified',
     );
     expect(reads).toBe(seen + 1);
-    if (how === 'try again')
-      await until(
-        m,
-        async () => !/—/.test(await m.locator('#stats').innerText()),
-        60_000,
-        'counts',
-      );
+    if (how === 'try again') await until(m, () => countsShown(m), 60_000, 'counts');
     else await until(m, async () => (await rows(m)) > 0, 120_000, 'drives');
-    expect(await m.locator('#stats').innerText()).not.toMatch(/—/);
+    expect(await countsShown(m)).toBe(true);
     expect(await m.locator('#status .bad').count()).toBe(0);
     await m.close();
   }
