@@ -1,5 +1,5 @@
 import { ProgressBar, Proof, ArioLogo } from '@ar-io/explorer-ui';
-import { fmtRange, isId43, mb, num } from '@ar-io/index-client';
+import { cellNum, fmtRange, isId43, mb, num } from '@ar-io/index-client';
 import { createContext } from 'preact';
 import { useContext, useState } from 'preact/hooks';
 
@@ -71,7 +71,7 @@ function Results() {
     const wide = typeof v === 'object' && /^-?\d+(\.\d+)?$/.test(text);
     const isNum = typeof v === 'bigint' || typeof v === 'number' || wide;
     if (isNum) numCols.add(c);
-    return { text: isNum ? num(wide ? Number(text) : (v as number)) : text, num: isNum };
+    return { text: isNum ? cellNum(c, wide ? text : (v as number)) : text, num: isNum };
   };
   const body = rows.map((row, i) => (
     <tr key={i}>

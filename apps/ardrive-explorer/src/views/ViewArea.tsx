@@ -1,5 +1,14 @@
 import { Badge, Icon, OwnerDot } from '@ar-io/explorer-ui';
-import { bytesText, fmtDate, fmtWhen, isId43, isUuid, num, shortId } from '@ar-io/index-client';
+import {
+  bytesText,
+  cellNum,
+  fmtDate,
+  fmtWhen,
+  isId43,
+  isUuid,
+  num,
+  shortId,
+} from '@ar-io/index-client';
 import type { ComponentChildren } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 
@@ -229,7 +238,7 @@ function GenericTable({ table }: { table: TableContent }) {
       };
     const wide = typeof v === 'object' && /^-?\d+(\.\d+)?$/.test(text);
     const isNum = typeof v === 'bigint' || typeof v === 'number' || wide;
-    if (isNum || c.num) return { node: num(wide ? Number(text) : (v as number)), num: true };
+    if (isNum || c.num) return { node: cellNum(c.key, wide ? text : (v as number)), num: true };
     return { node: text, num: false };
   };
   const numCols = new Set<string>();
