@@ -174,6 +174,7 @@ export function createFindFlows(
       st.say('Type a drive id, a wallet address, a file or folder id, or a block height.', 'bad');
       return;
     }
+    if (!(await s.recover())) return;
     if (!st.pub.value.verified) {
       st.say('The publication is still being checked; this will work in a moment.', 'bad');
       return;

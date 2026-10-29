@@ -851,3 +851,52 @@ test('a period picked while the engine starts, then a query: the answer, not an 
   expect(await rows(m)).toBeGreaterThan(0);
   await m.close();
 });
+
+test('after the gateway answered 503, nothing is read by itself; Try again or an ask reads the publication again', async ({
+  browser,
+}) => {
+  for (const how of ['try again', 'newest drives'] as const) {
+    const m = await browser.newPage({ colorScheme: 'dark' });
+    let down = true;
+    let reads = 0;
+    await m.route(/\/ar-io\/indexes$/, (r) => {
+      reads += 1;
+      return down ? r.fulfill({ status: 503, body: 'Service Unavailable' }) : r.continue();
+    });
+    await m.goto(url(''));
+    await until(
+      m,
+      async () => (await m.locator('#proof').getAttribute('data-state')) === 'bad',
+      60_000,
+      'refused',
+    );
+    expect(await status(m)).toMatch(/temporarily unavailable/);
+    expect(await m.locator('#stats').innerText()).toMatch(/—/);
+    // The gateway comes back; the page asks nothing of it until the reader does.
+    down = false;
+    const seen = reads;
+    await m.waitForTimeout(3000);
+    expect(reads, 'reads by themselves').toBe(seen);
+    expect(await m.locator('#proof').getAttribute('data-state')).toBe('bad');
+    if (how === 'try again') await m.locator('#status button', { hasText: 'Try again' }).click();
+    else await m.click('#browse');
+    await until(
+      m,
+      async () => (await m.locator('#proof').getAttribute('data-state')) === 'ok',
+      60_000,
+      'verified',
+    );
+    expect(reads).toBe(seen + 1);
+    if (how === 'try again')
+      await until(
+        m,
+        async () => !/—/.test(await m.locator('#stats').innerText()),
+        60_000,
+        'counts',
+      );
+    else await until(m, async () => (await rows(m)) > 0, 120_000, 'drives');
+    expect(await m.locator('#stats').innerText()).not.toMatch(/—/);
+    expect(await m.locator('#status .bad').count()).toBe(0);
+    await m.close();
+  }
+});

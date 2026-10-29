@@ -90,6 +90,7 @@ export function createDriveFlows(s: Session) {
   }
 
   async function browse(reset: boolean): Promise<void> {
+    if (!(await s.recover())) return;
     const my = ++s.nav;
     st.tr(`browse reset=${reset}`);
     s.pushHistory({ kind: 'browse' }, !reset);

@@ -122,7 +122,11 @@ export class Session {
 
   /* --------------------------------------------------------- publication */
 
-  async readPublication(): Promise<void> {
+  /**
+   * Reads and verifies the publication, then (unless `open` is false) opens
+   * the view the reader was on, or the link's.
+   */
+  async readPublication(open = true): Promise<void> {
     const my = ++this.nav;
     let checking = false;
     const st = this.store;
@@ -252,7 +256,7 @@ export class Session {
       const want = this.pendingLink;
       this.pendingLink = null;
       // A link's view on the first load; after a change of gateway, the view the reader was on.
-      await this.openFromLink(want?.view ?? st.view.value);
+      if (open) await this.openFromLink(want?.view ?? st.view.value);
       if (this.periodNote) {
         const now = st.status.value;
         st.say(`${this.periodNote} ${now.text}`.trim(), now.cls === 'ok' ? '' : now.cls);
@@ -278,13 +282,34 @@ export class Session {
         (checking ? 'Not verified · ' : 'Could not read the publication · ') + msg,
       );
       st.pub.value = { ...st.pub.value, status: 'bad', verified: false, bands: [] };
-      st.asksEnabled.value = false;
+      // Nothing is read again by itself: Try again, or anything the reader
+      // asks (a question too, so they stay enabled), reads the publication again.
+      st.asksEnabled.value = true;
       // Refusing is for a publication that was read; one never read was not refused.
       st.say(
         checking ? 'Refusing this publication: ' + msg : msg.charAt(0).toUpperCase() + msg.slice(1),
         'bad',
+        { action: { label: 'Try again', go: () => void this.readPublication() } },
       );
     }
+  }
+
+  /** A read again of the publication, for whatever the reader asked of it. */
+  private recovering: Promise<void> | null = null;
+
+  /**
+   * After the publication could not be read, or was refused: reads it again,
+   * once, because the reader asked for something (a gateway answering 503
+   * for a while comes back). Never on a timer. True when the ask can go on;
+   * false when the publication still failed, and the status line says why.
+   */
+  async recover(): Promise<boolean> {
+    if (!this.recovering) {
+      if (this.store.pub.value.status !== 'bad') return true;
+      this.recovering = this.readPublication(false).finally(() => (this.recovering = null));
+    }
+    await this.recovering;
+    return this.store.pub.value.verified;
   }
 
   /** Forget everything loaded from the previous publication. Band ids repeat across publishers. */

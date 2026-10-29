@@ -63,6 +63,7 @@ export function createQueryFlow(s: Session) {
       st.say('Type a query first.', 'bad');
       return;
     }
+    if (!(await s.recover())) return;
     const my = ++s.nav;
     if (!(await s.ready()) || s.overtaken(my)) return;
     s.clearView();
