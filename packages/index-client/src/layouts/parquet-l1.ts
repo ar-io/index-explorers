@@ -114,7 +114,15 @@ export function l1PeriodSql(bands: readonly RegisteredL1Band[], opts: L1PeriodOp
     out.push(...l1LookupSql(bands, dated));
     return out;
   };
-  return { first, second, dated, hasBlocks: bl.length > 0, hasTags: tg.length > 0 };
+  // What a reader can name in a query, for an error about a table that is not there.
+  const tables = [
+    'txs',
+    ...(bl.length ? ['blocks'] : []),
+    ...(tg.length ? ['tags'] : []),
+    'rawtx',
+    ...(!dated && l1HasLookups(bands) ? ['lookup_tx_id', 'lookup_wallet', 'lookup_tag'] : []),
+  ];
+  return { first, second, dated, hasBlocks: bl.length > 0, hasTags: tg.length > 0, tables };
 }
 
 /** The three macros, over the lookups when the whole period has them, else the tables. */

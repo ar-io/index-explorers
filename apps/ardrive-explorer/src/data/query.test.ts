@@ -19,6 +19,12 @@ function fixture() {
     bands: [],
     lastReadOom: false,
     ready: async () => true,
+    recovers: 0,
+    recovered: true,
+    async recover() {
+      s.recovers += 1;
+      return s.recovered;
+    },
     overtaken: () => false,
     clearView: () => {},
     pushHistory: () => {},
@@ -33,7 +39,7 @@ function fixture() {
       return null;
     },
   };
-  return { store, flow: createQueryFlow(s as unknown as Session), reads: () => reads };
+  return { s, store, flow: createQueryFlow(s as unknown as Session), reads: () => reads };
 }
 
 describe('a typed query', () => {
@@ -42,6 +48,18 @@ describe('a typed query', () => {
     store.say('an earlier failure', 'bad');
     await flow.runQuery({ sql: '  ' });
     expect(store.status.value).toEqual({ text: 'Type a query first.', cls: 'bad' });
+  });
+
+  it('reads the publication again first, after it failed, and asks nothing when it still fails', async () => {
+    const { s, flow, reads } = fixture();
+    s.recovered = false;
+    await flow.runQuery({ sql: 'SELECT 1', confirmed: true });
+    expect(s.recovers).toBe(1);
+    expect(reads()).toBe(0);
+    s.recovered = true;
+    await flow.runQuery({ sql: 'SELECT 1', confirmed: true });
+    expect(s.recovers).toBe(2);
+    expect(reads()).toBe(1);
   });
 
   it('shows why it failed where the answer would be', async () => {

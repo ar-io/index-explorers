@@ -809,3 +809,94 @@ test('a drive at 375, 800 and 1280 px: row lines run the full width and Size sho
     await m.close();
   }
 });
+
+test('a period picked while the engine starts, then a query: the answer, not an engine out of memory', async ({
+  browser,
+}) => {
+  const m = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
+  // The engine arrives slowly, as it does live the first time.
+  await m.route(/\/engine\//, async (r) => {
+    await new Promise((res) => setTimeout(res, 2500));
+    await r.continue();
+  });
+  await openPage(m);
+  await m.locator('#editor > summary').click();
+  const other = await m
+    .locator('#scope option')
+    .evaluateAll(
+      (os) =>
+        (os as HTMLOptionElement[]).find((o) => o.value === 'all' && !o.disabled)?.value ??
+        (os as HTMLOptionElement[]).find((o) => o.value !== 'month' && !o.disabled)?.value,
+    );
+  expect(other).toBeTruthy();
+  await m.selectOption('#scope', other!);
+  await m.locator('#presets button', { hasText: 'Files by day' }).click();
+  // The page's own first load is still starting the engine.
+  expect(
+    await m.evaluate(
+      () =>
+        (window as unknown as { __explorer: { store: { engineBooted: { value: boolean } } } })
+          .__explorer.store.engineBooted.value,
+    ),
+  ).toBe(false);
+  await m.click('#run');
+  await until(
+    m,
+    async () => /rows? in/.test(await status(m)) || (await m.locator('#status .bad').count()) > 0,
+    180_000,
+    'answer',
+  );
+  expect(await status(m)).not.toMatch(/memory/i);
+  expect(await status(m)).toMatch(/rows? in/);
+  expect(await rows(m)).toBeGreaterThan(0);
+  await m.close();
+});
+
+test('after the gateway answered 503, nothing is read by itself; Try again or an ask reads the publication again', async ({
+  browser,
+}) => {
+  for (const how of ['try again', 'newest drives'] as const) {
+    const m = await browser.newPage({ colorScheme: 'dark' });
+    let down = true;
+    let reads = 0;
+    await m.route(/\/ar-io\/indexes$/, (r) => {
+      reads += 1;
+      return down ? r.fulfill({ status: 503, body: 'Service Unavailable' }) : r.continue();
+    });
+    await m.goto(url(''));
+    await until(
+      m,
+      async () => (await m.locator('#proof').getAttribute('data-state')) === 'bad',
+      60_000,
+      'refused',
+    );
+    expect(await status(m)).toMatch(/temporarily unavailable/);
+    expect(await m.locator('#stats').innerText()).toMatch(/—/);
+    // The gateway comes back; the page asks nothing of it until the reader does.
+    down = false;
+    const seen = reads;
+    await m.waitForTimeout(3000);
+    expect(reads, 'reads by themselves').toBe(seen);
+    expect(await m.locator('#proof').getAttribute('data-state')).toBe('bad');
+    if (how === 'try again') await m.locator('#status button', { hasText: 'Try again' }).click();
+    else await m.click('#browse');
+    await until(
+      m,
+      async () => (await m.locator('#proof').getAttribute('data-state')) === 'ok',
+      60_000,
+      'verified',
+    );
+    expect(reads).toBe(seen + 1);
+    if (how === 'try again')
+      await until(
+        m,
+        async () => !/—/.test(await m.locator('#stats').innerText()),
+        60_000,
+        'counts',
+      );
+    else await until(m, async () => (await rows(m)) > 0, 120_000, 'drives');
+    expect(await m.locator('#stats').innerText()).not.toMatch(/—/);
+    expect(await m.locator('#status .bad').count()).toBe(0);
+    await m.close();
+  }
+});

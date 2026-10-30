@@ -34,7 +34,11 @@ export function Explore() {
   };
   const onPeriod = (id: string) => {
     store.periodId.value = id;
-    if (!pub.verified) return;
+    // After a failed read, picking a period reads the publication again.
+    if (!pub.verified) {
+      if (pub.status === 'bad') void session.readPublication();
+      return;
+    }
     if (view.kind === 'browse') void flows.browse(true);
   };
   return (
@@ -153,7 +157,7 @@ export function Explore() {
         <span class="note" id="asknote" style="margin:0">
           {!pub.verified
             ? pub.status === 'bad'
-              ? 'Nothing can load: the publication did not verify.'
+              ? 'Nothing can load until the publication is read and verified.'
               : 'Checking the publication first…'
             : store.rangeOk.value.ok
               ? 'Each listing reads only what it needs; pieces already checked are reused.' +

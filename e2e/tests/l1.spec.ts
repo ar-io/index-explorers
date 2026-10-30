@@ -224,4 +224,114 @@ test.describe('arweave-l1-explorer', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(y);
     await page.close();
   });
+  test('a first Find shows its work on a laptop screen while the engine starts', async ({
+    browser,
+  }) => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    // The engine arrives slowly, as it does live the first time (half a minute).
+    await page.route(/\/engine\//, async (r) => {
+      await new Promise((res) => setTimeout(res, 2500));
+      await r.continue();
+    });
+    await page.goto(`${BASE}#gw=${encodeURIComponent(GW)}&scope=latest`);
+    await until(
+      page,
+      async () => (await page.locator('#proof').getAttribute('data-state')) === 'ok',
+      90_000,
+      'proof',
+    );
+    type L1 = {
+      __explorer: {
+        session: { bands: { to: number | null }[] };
+        store: { booted: { value: boolean }; working: { value: boolean } };
+      };
+    };
+    const tip = await page.evaluate(() => {
+      const s = (window as unknown as L1).__explorer.session;
+      return s.bands[s.bands.length - 1]!.to ?? 0;
+    });
+    const inView = (sel: string) =>
+      page.evaluate((q) => {
+        const r = document.querySelector(q)!.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight;
+      }, sel);
+    const booted = () =>
+      page.evaluate(() => (window as unknown as L1).__explorer.store.booted.value);
+    await page.fill('#find', String(tip));
+    // As a laptop shows the page: the answer's title on screen, the status line under it not.
+    await page.evaluate(() => {
+      const t = document.getElementById('answertitle')!.getBoundingClientRect();
+      window.scrollBy(0, t.bottom - window.innerHeight + 40);
+    });
+    expect(await inView('#answertitle'), 'the title starts on screen').toBe(true);
+    expect(await inView('#status'), 'the status line starts below the fold').toBe(false);
+    // Clicked in the page, as a reader does: Playwright's own click would scroll first.
+    await page.evaluate(() => document.getElementById('findgo')!.click());
+    await until(page, async () => !!(await page.locator('#status').innerText()), 10_000, 'work');
+    await page.waitForTimeout(900);
+    // Still starting the engine: the line that says so, and its bar, are on screen.
+    expect(await booted()).toBe(false);
+    expect(await page.locator('#status').innerText()).toMatch(/engine|DuckDB/);
+    expect(await inView('#status'), 'the working status line').toBe(true);
+    expect(await inView('#progress'), 'the progress bar').toBe(true);
+    await until(
+      page,
+      async () =>
+        !(await page.evaluate(() => (window as unknown as L1).__explorer.store.working.value)) &&
+        (await booted()),
+      120_000,
+      'answer',
+    );
+    expect(await page.locator('#answertitle').innerText()).toMatch(/^Block /);
+    await page.close();
+  });
+
+  test('a year has no thousands separator; an unknown table is answered with the tables there are, and a failure offers no export', async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}#gw=${encodeURIComponent(GW)}&scope=latest`);
+    await until(
+      page,
+      async () => (await page.locator('#proof').getAttribute('data-state')) === 'ok',
+      90_000,
+      'proof',
+    );
+    const status = () =>
+      page
+        .locator('#status')
+        .innerText()
+        .catch(() => '');
+    const run = async (sql: string) => {
+      await page.evaluate(() =>
+        (
+          window as unknown as { __explorer: { store: { say(t: string): void } } }
+        ).__explorer.store.say(''),
+      );
+      await page.fill('#sql', sql);
+      await page.click('#run');
+      await until(
+        page,
+        async () =>
+          /rows? in|Read |Nothing new|Answered/.test(await status()) ||
+          (await page.locator('#status .bad').count()) > 0,
+        120_000,
+        'answer',
+      );
+    };
+    if (!(await page.locator('#sql').isVisible())) await page.locator('#editor > summary').click();
+    await run('select year(mined_at) as yr, count(*) as n from txs group by 1 order by 1');
+    expect(await page.locator('#status .bad').count(), await status()).toBe(0);
+    const yr = await page.locator('#results tbody tr td').first().innerText();
+    expect(yr).toMatch(/^20\d\d$/);
+    expect(await page.locator('#csv').isVisible()).toBe(true);
+    // An unknown table: the tables this period has, not DuckDB's nearest guess.
+    await run('select * from transactions limit 1');
+    expect(await page.locator('#status > span').innerText()).toMatch(
+      /^Table with name transactions does not exist\. The tables here are txs, blocks, tags, rawtx/,
+    );
+    expect(await status()).not.toMatch(/Did you mean/);
+    // A failed query: no export of nothing, the link still there.
+    expect(await page.locator('#csv, #json').count()).toBe(0);
+    expect(await page.locator('#copylink').isVisible()).toBe(true);
+  });
 });

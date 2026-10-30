@@ -3,6 +3,7 @@
  * counted rather than a sentence per band file, and per gateway why none
  * offered the index (unreachable is not "publishes no index").
  */
+import { DuckDBInstance } from '@duckdb/node-api';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -156,6 +157,31 @@ describe('engine errors about the question', () => {
       msg: 'Syntax error at end of input.',
       query: true,
     });
+  });
+
+  it('answers an unknown table with the tables the page defines, in place of DuckDB’s guess', async () => {
+    // As DuckDB says it: the guess is the nearest name in the catalog, here `tags`.
+    const db = await (await DuckDBInstance.create(':memory:')).connect();
+    await db.run('CREATE VIEW txs AS SELECT 1 AS height');
+    await db.run('CREATE VIEW tags AS SELECT 1 AS height');
+    const said = await db.run('SELECT * FROM transactions').then(
+      () => '',
+      (e: unknown) => (e instanceof Error ? e.message : String(e)),
+    );
+    expect(said).toMatch(/^Catalog Error: Table with name transactions does not exist!/);
+    expect(engineErrorText(said).msg).toMatch(/Did you mean/);
+    const e = engineErrorText(said, ['txs', 'blocks', 'tags']);
+    expect(e.msg).toBe(
+      'Table with name transactions does not exist. The tables here are txs, blocks and tags.',
+    );
+    expect(e.query).toBe(true);
+    expect(e.context).toMatch(/^LINE 1: SELECT \* FROM transactions/);
+    const why = explainReadError(new Error(said), null, [], undefined, ['txs']);
+    expect(why.msg).toBe('Table with name transactions does not exist. The tables here are txs.');
+    // Any other catalog error keeps DuckDB's words.
+    expect(
+      engineErrorText('Catalog Error: Scalar Function with name nope does not exist!', ['txs']).msg,
+    ).toBe('Scalar Function with name nope does not exist.');
   });
 
   it('leaves anything else whole, and explainReadError passes the question’s errors through', () => {

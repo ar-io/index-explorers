@@ -275,15 +275,24 @@ const QUERY_ERROR = /^(?:Parser|Binder|Catalog|Conversion|Not implemented|Out of
  * `Syntax error at or near "selct".` The lines DuckDB adds to point into the
  * query (`LINE 1: selct 1` and its caret) are `context`, kept as they are, to
  * be shown preformatted. `query` is false for anything else, left whole.
+ * Given the `tables` a page defines, an unknown table is answered with them
+ * in place of DuckDB's guess, which can be any name in the catalog
+ * (`transactions` gets `Did you mean "tags"?` where the table is `txs`).
  */
-export function engineErrorText(message: string): {
+export function engineErrorText(
+  message: string,
+  tables?: readonly string[],
+): {
   msg: string;
   query: boolean;
   context?: string;
 } {
   const kind = QUERY_ERROR.exec(message);
   if (!kind) return { msg: message, query: false };
-  const [lead = '', ...rest] = message.slice(kind[0].length).split(/\n\s*\n/);
+  const [said = '', ...rest] = message.slice(kind[0].length).split(/\n\s*\n/);
+  const missing = /^(Table with name \S+ does not exist)!/.exec(said);
+  const lead =
+    missing && tables?.length ? `${missing[1]}. The tables here are ${listText(tables)}.` : said;
   let msg = lead
     .replace(/!(?=\s*\n)/g, '.')
     .replace(/\s*\n\s*/g, ' ')
@@ -295,19 +304,24 @@ export function engineErrorText(message: string): {
   return context ? { msg, query: true, context } : { msg, query: true };
 }
 
+const listText = (xs: readonly string[]): string =>
+  xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+
 /**
  * A worker refusal, in words, in place of DuckDB's "HTTP GET error ... (502)".
  * `switchTo` is another publisher of the same files, when the refusal is one
  * another gateway could avoid. `oom` says the engine itself is spent: the
  * caller restarts it before the next question. `detail` keeps the engine's
  * own words for a bug report, never for the status line. `query` says the
- * question itself is wrong, with `context` pointing into it (engineErrorText).
+ * question itself is wrong, with `context` pointing into it (engineErrorText,
+ * which `tables` is passed to).
  */
 export function explainReadError(
   e: unknown,
   watch: Watch | null,
   mirrors: string[],
   period?: string,
+  tables?: readonly string[],
 ): {
   msg: string;
   stopped?: boolean;
@@ -332,7 +346,7 @@ export function explainReadError(
   // is the engine's own state after its memory ran out: the same failure,
   // reported another way.
   if (!f && /too small to be a Parquet file|No files found that match/i.test(message)) return spent;
-  if (!f) return engineErrorText(message);
+  if (!f) return engineErrorText(message, tables);
   if (f.code === 'cancelled')
     return { msg: 'Stopped. Nothing partial is shown; ask again any time.', stopped: true };
   const first = f.msg.charAt(0).toUpperCase() + f.msg.slice(1);

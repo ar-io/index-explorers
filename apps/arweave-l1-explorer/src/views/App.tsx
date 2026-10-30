@@ -1,5 +1,5 @@
 import { ProgressBar, Proof, ArioLogo } from '@ar-io/explorer-ui';
-import { fmtRange, isId43, mb, num } from '@ar-io/index-client';
+import { cellNum, fmtRange, isId43, mb, num } from '@ar-io/index-client';
 import { createContext } from 'preact';
 import { useContext, useState } from 'preact/hooks';
 
@@ -71,7 +71,7 @@ function Results() {
     const wide = typeof v === 'object' && /^-?\d+(\.\d+)?$/.test(text);
     const isNum = typeof v === 'bigint' || typeof v === 'number' || wide;
     if (isNum) numCols.add(c);
-    return { text: isNum ? num(wide ? Number(text) : (v as number)) : text, num: isNum };
+    return { text: isNum ? cellNum(c, wide ? text : (v as number)) : text, num: isNum };
   };
   const body = rows.map((row, i) => (
     <tr key={i}>
@@ -162,40 +162,43 @@ function Results() {
         <button id="copylink" class="secondary" type="button" onClick={() => void copyLink()}>
           Copy link
         </button>
-        <button
-          id="csv"
-          class="secondary"
-          type="button"
-          disabled={!r || !r.rows.length}
-          onClick={() =>
-            r &&
-            (saveFile(
-              `arweave-l1-${r.lo}-${r.hi}.csv`,
-              'text/csv;charset=utf-8',
-              toCsv(r.cols, r.rows, r.isTime),
-            ),
-            store.say(`Saved ${num(r.rows.length)} rows as CSV.`, 'ok'))
-          }
-        >
-          CSV
-        </button>
-        <button
-          id="json"
-          class="secondary"
-          type="button"
-          disabled={!r || !r.rows.length}
-          onClick={() =>
-            r &&
-            (saveFile(
-              `arweave-l1-${r.lo}-${r.hi}.json`,
-              'application/json',
-              toJson(r.cols, r.rows, r.isTime),
-            ),
-            store.say(`Saved ${num(r.rows.length)} rows as JSON.`, 'ok'))
-          }
-        >
-          JSON
-        </button>
+        {/* Exports of an answer with rows only: a failed or empty one has nothing to save. */}
+        {r && r.rows.length ? (
+          <>
+            <button
+              id="csv"
+              class="secondary"
+              type="button"
+              onClick={() =>
+                r &&
+                (saveFile(
+                  `arweave-l1-${r.lo}-${r.hi}.csv`,
+                  'text/csv;charset=utf-8',
+                  toCsv(r.cols, r.rows, r.isTime),
+                ),
+                store.say(`Saved ${num(r.rows.length)} rows as CSV.`, 'ok'))
+              }
+            >
+              CSV
+            </button>
+            <button
+              id="json"
+              class="secondary"
+              type="button"
+              onClick={() =>
+                r &&
+                (saveFile(
+                  `arweave-l1-${r.lo}-${r.hi}.json`,
+                  'application/json',
+                  toJson(r.cols, r.rows, r.isTime),
+                ),
+                store.say(`Saved ${num(r.rows.length)} rows as JSON.`, 'ok'))
+              }
+            >
+              JSON
+            </button>
+          </>
+        ) : null}
         {r?.wallet && isId43(r.wallet) ? (
           <a
             class="action-link"

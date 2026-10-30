@@ -213,6 +213,8 @@ export class Session {
   gateway: string | null = null;
   proof: Proof | null = null;
   scopeHasLookups = false;
+  /** The tables the loaded period defines, named when a query reads one that is not there. */
+  tables: string[] = [];
   private busy = false;
   private pending: { scope: string | null; band: string | null } | null = null;
 
@@ -657,6 +659,7 @@ export class Session {
       }
       await engine.exec(period.second(lo, hi));
       this.scopeHasLookups = !period.dated && parquetL1.l1HasLookups(regs);
+      this.tables = period.tables;
       const [cnt] = rowsOf(await engine.query('SELECT count(*) AS n FROM rawtx'));
       // A wallet that really is in this scope, so the wallet presets never run empty.
       const newest = regs[regs.length - 1]!.names.tx;
@@ -878,7 +881,7 @@ export class Session {
         );
     } catch (e) {
       st.result.value = null;
-      const why = explainReadError(e, watch, this.mirrors);
+      const why = explainReadError(e, watch, this.mirrors, undefined, this.tables);
       if (why.integrity) st.setCheck('pieces', 'bad');
       if (why.oom) {
         if (!(await this.restartEngine())) {

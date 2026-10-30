@@ -2,6 +2,21 @@
 
 export const num = (n: number | bigint | string): string => Number(n).toLocaleString();
 
+/** A column named as a year: `yr`, `year`, or ending in `_yr` or `_year`, in any case. */
+const YEAR_COLUMN = /(?:^|_)(?:yr|year)$/i;
+
+/**
+ * A number in a results table: with thousands separators, as num() gives,
+ * except a whole number from 1 to 9999 in a column named as a year, which is
+ * written as it is (2026, not 2,026). Heights keep their separators.
+ */
+export function cellNum(column: string, n: number | bigint | string): string {
+  const v = Number(n);
+  return YEAR_COLUMN.test(column) && Number.isInteger(v) && v >= 1 && v <= 9999
+    ? String(v)
+    : num(v);
+}
+
 export const mb = (n: number): string =>
   n >= 1e9
     ? (n / 1e9).toFixed(1) + ' GB'
