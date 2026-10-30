@@ -1,4 +1,4 @@
-import { ProgressBar } from '@ar-io/explorer-ui';
+import { Icon, ProgressBar, Select } from '@ar-io/explorer-ui';
 import { fmtRange, mb, num, timeAt } from '@ar-io/index-client';
 import { useState } from 'preact/hooks';
 
@@ -41,120 +41,120 @@ export function Explore() {
     }
     if (view.kind === 'browse') void flows.browse(true);
   };
+  const filter = (go: () => void) => {
+    go();
+    if (view.kind === 'browse') void flows.browse(true);
+  };
   return (
     <section class="panel" id="explore">
-      <p class="panel-label">Explore</p>
       <h2 class="panel-title">Look up a drive, a wallet or a file, or browse what's new.</h2>
       <div class="askbar">
-        <div class="searchbox">
-          <label for="find" class="sr-only">
-            Look up a drive id, wallet address, file or folder id, or block height
-          </label>
-          <input
-            id="find"
-            placeholder={
-              narrowest
-                ? 'Id or block'
-                : narrow
-                  ? 'Id, address or block'
-                  : 'Drive id, wallet address, file or folder id, or a block height'
-            }
-            spellcheck={false}
-            autocomplete="off"
-            value={findText}
-            onInput={(e) => setFindText((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                find();
-              }
-            }}
-          />
-          <button id="findgo" type="button" onClick={find}>
+        <div class="field">
+          <label for="find" class="field-label">
             Find
-          </button>
-        </div>
-        <div class="periodbox">
-          <label for="scope" class="period-label">
-            Period
           </label>
-          <select
+          <div class="searchbox">
+            <Icon name="search" />
+            <input
+              id="find"
+              type="search"
+              aria-describedby="findhint"
+              placeholder={
+                narrowest
+                  ? 'Id or block'
+                  : narrow
+                    ? 'Id, address or block'
+                    : 'Drive id, wallet address, file or folder id, or a block height'
+              }
+              spellcheck={false}
+              autocomplete="off"
+              value={findText}
+              onInput={(e) => setFindText((e.target as HTMLInputElement).value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  find();
+                }
+              }}
+            />
+            <button id="findgo" type="button" class="primary compact" onClick={find}>
+              Find
+            </button>
+          </div>
+          <span class="sr-only" id="findhint">
+            A drive id, wallet address, file or folder id, or a block height
+          </span>
+        </div>
+        <div class="field">
+          <span class="field-label" id="scope-label">
+            Period
+          </span>
+          <Select
             id="scope"
+            label="Period"
             value={store.periodId.value}
-            onChange={(e) => onPeriod((e.target as HTMLSelectElement).value)}
-          >
-            {periods.length ? (
-              periods.map((per) => (
-                <option key={per.id} value={per.id} disabled={session.periodDisabled(per)}>
-                  {periodLabel(per.id, per.label)}
-                </option>
-              ))
-            ) : (
-              <option value="month">Reading…</option>
-            )}
-          </select>
-          <span class="period-dates" id="scopedates">
-            {p ? when || `Blocks ${num(p.lo)} to ${num(p.hi)}` : ' '}
+            choices={
+              periods.length
+                ? periods.map((per) => ({
+                    value: per.id,
+                    label: periodLabel(per.id, per.label),
+                    disabled: session.periodDisabled(per),
+                  }))
+                : [{ value: store.periodId.value, label: 'Reading…' }]
+            }
+            onChange={onPeriod}
+          />
+          <span class="field-help" id="scopedates">
+            {p ? when || `Blocks ${num(p.lo)} to ${num(p.hi)}` : '\u00a0'}
           </span>
         </div>
       </div>
       <div class="filters" id="filters">
         <button
           type="button"
-          class="secondary chipbtn"
+          class="secondary"
           id="browse"
           aria-pressed={view.kind === 'browse' ? 'true' : 'false'}
           onClick={() => void flows.browse(true)}
         >
           Newest drives
         </button>
-        <select
+        <Select
           id="privacy"
-          aria-label="Privacy"
+          label="Privacy"
+          variant="button"
           value={store.privacy.value}
-          onChange={(e) => {
-            store.privacy.value = (e.target as HTMLSelectElement).value as
-              | 'any'
-              | 'public'
-              | 'private';
-            if (view.kind === 'browse') void flows.browse(true);
-          }}
-        >
-          <option value="any">Public and private</option>
-          <option value="public">Public only</option>
-          <option value="private">Private only</option>
-        </select>
-        <select
+          choices={[
+            { value: 'any', label: 'Public and private' },
+            { value: 'public', label: 'Public only' },
+            { value: 'private', label: 'Private only' },
+          ]}
+          onChange={(v) => filter(() => (store.privacy.value = v as 'any' | 'public' | 'private'))}
+        />
+        <Select
           id="app"
-          aria-label="App"
+          label="App"
+          variant="button"
           value={store.app.value}
-          onChange={(e) => {
-            store.app.value = (e.target as HTMLSelectElement).value;
-            if (view.kind === 'browse') void flows.browse(true);
-          }}
-        >
-          <option value="any">Any app</option>
-          {APPS.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </select>
-        <select
+          choices={[
+            { value: 'any', label: 'Any app' },
+            ...APPS.map((a) => ({ value: a, label: a })),
+          ]}
+          onChange={(v) => filter(() => (store.app.value = v))}
+        />
+        <Select
           id="contents"
-          aria-label="Contents"
-          title="An empty drive holds nothing but its root folder: 2 records in the index's tag lookup."
+          label="Contents: an empty drive holds nothing but its root folder"
+          variant="button"
           value={store.hideEmpty.value ? 'some' : 'any'}
           disabled={!pub.hasLookups}
-          onChange={(e) => {
-            store.hideEmpty.value = (e.target as HTMLSelectElement).value === 'some';
-            if (view.kind === 'browse') void flows.browse(true);
-          }}
-        >
-          <option value="some">With contents</option>
-          <option value="any">Empty ones too</option>
-        </select>
-        <span class="note" id="asknote" style="margin:0">
+          choices={[
+            { value: 'some', label: 'With contents' },
+            { value: 'any', label: 'Empty ones too' },
+          ]}
+          onChange={(v) => filter(() => (store.hideEmpty.value = v === 'some'))}
+        />
+        <span class="note" id="asknote">
           {!pub.verified
             ? pub.status === 'bad'
               ? 'Nothing can load until the publication is read and verified.'
@@ -168,13 +168,28 @@ export function Explore() {
         </span>
       </div>
       <div id="status" aria-live="polite">
-        {status.text ? <span class={status.cls}>{status.text}</span> : null}
-        {status.detail ? <pre class="statusdetail">{status.detail}</pre> : null}
-        {status.action ? (
-          <button type="button" class="secondary statusbtn" onClick={status.action.go}>
-            {status.action.label}
-          </button>
-        ) : null}
+        {!status.text ? null : status.cls === 'bad' ? (
+          <div class="notice error">
+            <Icon name="error" />
+            <span class="notice-text status-text bad">{status.text}</span>
+            {status.detail ? <pre class="statusdetail">{status.detail}</pre> : null}
+            {status.action ? (
+              <button type="button" class="secondary compact statusbtn" onClick={status.action.go}>
+                {status.action.label}
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <p class={`status-line ${status.cls}`}>
+            {status.cls === 'ok' ? <Icon name="success" /> : null}
+            <span class={`status-text ${status.cls}`}>{status.text}</span>
+            {status.action ? (
+              <button type="button" class="secondary compact statusbtn" onClick={status.action.go}>
+                {status.action.label}
+              </button>
+            ) : null}
+          </p>
+        )}
       </div>
       <ProgressBar state={store.progress.value} onStop={() => void session.stop()} />
       <ViewArea />

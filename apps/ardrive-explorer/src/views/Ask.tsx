@@ -1,3 +1,4 @@
+import { Icon, Select } from '@ar-io/explorer-ui';
 import { fmtRange, mb, num, timeAt } from '@ar-io/index-client';
 
 import { CONFIG } from '../config.js';
@@ -38,22 +39,21 @@ export function SqlDrawer() {
     presetSql(PRESETS[i]!, store.sampleWallet.value, store.sampleDrive.value);
   return (
     <details
-      class="sqlcell"
+      class="drawer sqlcell"
       id="editor"
       open={store.editorOpen.value}
       onToggle={(e) => (store.editorOpen.value = (e.target as HTMLDetailsElement).open)}
     >
       <summary>
-        <span class="sqlcell-title">
+        <span class="drawer-title">
+          <Icon name="chevron" />
           <span class="when-closed">Show the SQL</span>
           <span class="when-open">Hide the SQL</span>
         </span>
-        <span class="sqlcell-sub">edit it, or write your own</span>
+        <span class="drawer-sub">Edit it, or write your own</span>
       </summary>
-      <div class="sqlcell-body">
-        <p class="note" style="margin:8px 0 0">
-          Start from an example:
-        </p>
+      <div class="drawer-body">
+        <p class="field-label">Start from an example</p>
         <div class="presets" id="presets">
           {PRESETS.map((pr, i) => (
             <button
@@ -76,21 +76,23 @@ export function SqlDrawer() {
             </button>
           ))}
         </div>
-        <label for="sql" class="note" style="display:block;margin:4px 0 2px">
-          SQL over <code>drives</code>, <code>folders</code>, <code>files</code>,{' '}
-          <code>entities</code>, <code>uploads</code> and <code>tags</code>
-        </label>
-        <p class="note" id="sqlnote" style="margin:0 0 6px">
-          <code>created_at</code> is the Unix-Time tag the app stamped. File data from ArDrive-CLI
-          and ArDrive-Core carries none, so it has no date; the file’s record does.
-        </p>
-        <textarea
-          id="sql"
-          aria-describedby="sqlnote"
-          spellcheck={false}
-          value={sql}
-          onInput={(e) => (store.sql.value = (e.target as HTMLTextAreaElement).value)}
-        />
+        <div class="field">
+          <label for="sql" class="field-label">
+            SQL over <code>drives</code>, <code>folders</code>, <code>files</code>,{' '}
+            <code>entities</code>, <code>uploads</code> and <code>tags</code>
+          </label>
+          <p class="field-help" id="sqlnote">
+            <code>created_at</code> is the Unix-Time tag the app stamped. File data from ArDrive-CLI
+            and ArDrive-Core carries none, so it has no date; the file’s record does.
+          </p>
+          <textarea
+            id="sql"
+            aria-describedby="sqlnote"
+            spellcheck={false}
+            value={sql}
+            onInput={(e) => (store.sql.value = (e.target as HTMLTextAreaElement).value)}
+          />
+        </div>
         <div class="toolbar">
           <p class="runscope">
             <span id="runscope">
@@ -114,6 +116,7 @@ export function SqlDrawer() {
           <button
             id="run"
             type="button"
+            class="primary"
             disabled={!store.asksEnabled.value}
             onClick={() => {
               store.asked.value = null;
@@ -132,7 +135,10 @@ export function SqlDrawer() {
           </button>
         </div>
         <details class="guide">
-          <summary>Tables, columns and SQL tips</summary>
+          <summary>
+            <Icon name="chevron" />
+            Tables, columns and SQL tips
+          </summary>
           <div class="guide-body">
             <div>
               <h3>What a row is</h3>
@@ -223,7 +229,7 @@ export function SqlDrawer() {
                   </tr>
                 </tbody>
               </table>
-              <h3 style="margin-top:14px">Tips</h3>
+              <h3 style="margin-top:24px">Tips</h3>
               <ul class="tips">
                 <li>
                   Every table is already limited to the period; add{' '}
@@ -261,7 +267,10 @@ export function DataSource() {
   return (
     <details class="drawer" id="datadrawer">
       <summary>
-        <span class="drawer-title">Data source</span>
+        <span class="drawer-title">
+          <Icon name="chevron" />
+          Data source
+        </span>
         <span class="drawer-sub" id="dataline">
           {p ? `${p.label}${when ? ', ' + when : ''} · ${pub.publisherName || 'auto'}` : ' '}
         </span>
@@ -269,23 +278,24 @@ export function DataSource() {
       <div class="drawer-body">
         <div class="row">
           <div class="field">
-            <label for="gwsel">Gateway</label>
-            <select
+            <span class="field-label">Gateway</span>
+            <Select
               id="gwsel"
+              label="Gateway"
               value={store.gatewayChoice.value}
-              onChange={(e) => {
-                store.gatewayChoice.value = (e.target as HTMLSelectElement).value;
-                if (store.gatewayChoice.value !== 'custom') void session.readPublication();
+              choices={[
+                { value: 'auto', label: 'Auto' },
+                ...CONFIG.publishers.map((g) => ({
+                  value: g,
+                  label: g.replace(/^https?:\/\//, ''),
+                })),
+                { value: 'custom', label: 'Other…' },
+              ]}
+              onChange={(v) => {
+                store.gatewayChoice.value = v;
+                if (v !== 'custom') void session.readPublication();
               }}
-            >
-              <option value="auto">Auto</option>
-              {CONFIG.publishers.map((g) => (
-                <option key={g} value={g}>
-                  {g.replace(/^https?:\/\//, '')}
-                </option>
-              ))}
-              <option value="custom">Other…</option>
-            </select>
+            />
           </div>
           <div class="field" id="gwcustomwrap" hidden={store.gatewayChoice.value !== 'custom'}>
             <label for="gw">Gateway URL</label>
@@ -305,7 +315,6 @@ export function DataSource() {
           <button
             id="connect"
             type="button"
-            class="secondary"
             disabled={pub.status === 'reading'}
             onClick={() => void session.readPublication()}
           >

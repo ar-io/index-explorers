@@ -16,10 +16,8 @@ export function App() {
       <main>
         <Explore />
         <section class="panel" id="ask">
-          <p class="panel-label">Ask the data</p>
-          <h2 class="panel-title">
-            Questions over the period chosen above. Answers are computed in this tab.
-          </h2>
+          <h2 class="panel-title">Questions over the period chosen above</h2>
+          <p class="panel-sub">Answers are computed in this tab.</p>
           <Questions />
           <SqlDrawer />
           <DataSource />
@@ -81,10 +79,11 @@ export function App() {
           <div class="foot-cli">
             <h4>Do the same on the command line</h4>
             <p>The bands are plain Parquet. With DuckDB installed:</p>
-            <pre>
+            {/* It scrolls sideways, so a keyboard can reach it too. */}
+            <pre tabIndex={0} aria-label="The DuckDB command">
               <code>{`duckdb -c "SELECT count(*) FROM read_parquet('${home}/ar-io/indexes/ardrive-l2/<band>/data_items.parquet')"`}</code>
             </pre>
-            <p class="note" style="margin-top:9px;font-size:13px">
+            <p class="note">
               Verify first: <code>ar-io-node index-l2-verify --bands-dir …</code> checks every band
               against its signed digests and a sample against the chain.
             </p>

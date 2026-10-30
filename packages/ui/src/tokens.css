@@ -1,11 +1,9 @@
 /*
- * Design tokens. ArDrive's brand kit (ardrive.io/brand-kit): Onyx #121212,
- * Alabaster #FAFAFA, Primary #D31721, Ruddy #FE0230, Success #18A957, Info
- * #3142C4. The kit's face, Wavehaus, may not be redistributed, so these
- * pages use Plus Jakarta Sans (fonts/plus-jakarta-sans.css). Dark by
- * default, as the app is; a light theme follows the system or
- * data-theme="light". The ar.io explorers set data-brand="ario" and import
- * ario.css, which carries ar.io's brand kit over these same tokens.
+ * The shared chassis's tokens, for the ar.io pages: the network index and the
+ * L1 explorer set data-brand="ario" and import ario.css, which carries ar.io's
+ * brand kit over these. The defaults here are ArDrive's brand colours, from
+ * before the ArDrive explorer moved to the ArDrive design system
+ * (ardrive-tokens.css); it no longer imports this file or base.css.
  */
 :root {
   --onyx: #121212;

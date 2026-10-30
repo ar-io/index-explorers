@@ -13,7 +13,9 @@
     "./fonts/plus-jakarta-sans.css": "./src/fonts/plus-jakarta-sans.css",
     "./base.css": "./src/base.css",
     "./ario.css": "./src/ario.css",
-    "./ardrive-wordmark.svg": "./src/ardrive-wordmark.svg"
+    "./ardrive-tokens.css": "./src/ardrive-tokens.css",
+    "./ardrive-wordmark.svg": "./src/ardrive-wordmark.svg",
+    "./brand/*": "./src/brand/*"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

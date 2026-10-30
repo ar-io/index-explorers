@@ -7,7 +7,9 @@
  * (and `favicon-dark.svg` where the brand has a light variant),
  * `favicon-32.png`, and `apple-touch-icon.png` (180x180).
  *
- *   WAVEHAUS_DIR=~/fonts/wavehaus node scripts/brand-assets.mjs
+ *   WAVEHAUS_DIR=~/fonts/wavehaus node scripts/brand-assets.mjs [app ...]
+ *
+ * With app names, only those apps' files are written.
  *
  * ArDrive's card is set in Wavehaus, which may not be redistributed, so it
  * is not in this repository: point WAVEHAUS_DIR at a folder holding
@@ -85,15 +87,15 @@ const ardriveCard = ({ eyebrow, title, em, sub, host }) => `<!doctype html><html
   .glow { position: absolute; inset: 0; background: radial-gradient(55% 65% at 88% 0%, rgba(254,2,48,.28) 0%, rgba(18,18,18,0) 70%); }
   .wrap { position: absolute; inset: 64px 72px 60px; display: flex; flex-direction: column; }
   .logo img { height: 46px; width: auto; display: block; }
-  .eyebrow { margin-top: 50px; font-size: 18px; font-weight: 400; letter-spacing: .12em; text-transform: uppercase; color: rgba(250,250,250,.7); }
+  .eyebrow { margin-top: 50px; font-size: 20px; font-weight: 400; color: rgba(250,250,250,.7); }
   h1 { margin-top: 16px; font-weight: 800; font-size: 78px; line-height: 1.02; letter-spacing: -.02em; }
   h1 em { display: block; font-style: normal; color: #d31721; }
   .sub { margin-top: 24px; font-weight: 400; font-size: 26px; line-height: 1.4; color: rgba(250,250,250,.7); max-width: 860px; }
   .foot { margin-top: auto; padding-top: 26px; border-top: 1px solid rgba(250,250,250,.12); display: flex; align-items: center; }
   .foot span { font-size: 18px; color: rgba(250,250,250,.6); }
-  .host { margin-left: auto; font-size: 22px; font-weight: 800; color: rgba(250,250,250,.85); }
+  .host { margin-left: auto; font-size: 22px; font-weight: 400; color: rgba(250,250,250,.85); }
 </style></head><body><div class="glow"></div><div class="wrap">
-  <div class="logo"><img src="${url(path.join(BRAND, 'ardrive-wordmark-light.png'))}" alt=""></div>
+  <div class="logo"><img src="${url(path.join(BRAND, 'ardrive-wordmark-on-dark.svg'))}" alt=""></div>
   <div class="eyebrow">${eyebrow}</div>
   <h1>${title}<em>${em}</em></h1>
   <p class="sub">${sub}</p>
@@ -154,17 +156,19 @@ const APPS = {
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'brand-'));
 const browser = await chromium.launch();
-async function shoot(html, out, width, height) {
+async function shoot(html, out, width, height, clear = false) {
   const file = path.join(tmp, `${path.basename(out)}.html`);
   writeFileSync(file, html);
   const page = await browser.newPage({ viewport: { width, height } });
   await page.goto(url(file));
   await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: out, omitBackground: false });
+  await page.screenshot({ path: out, omitBackground: clear });
   await page.close();
 }
 
+const only = process.argv.slice(2);
 for (const [app, a] of Object.entries(APPS)) {
+  if (only.length && !only.includes(app)) continue;
   const pub = path.join(ROOT, 'apps', app, 'public');
   mkdirSync(pub, { recursive: true });
   await shoot(a.card, path.join(pub, 'social.png'), 1200, 630);
@@ -176,10 +180,19 @@ for (const [app, a] of Object.entries(APPS)) {
     await shoot(plate(square, '#23232d'), path.join(pub, 'apple-touch-icon.png'), 180, 180);
     await shoot(plate(square, '#23232d'), path.join(pub, 'favicon-32.png'), 32, 32);
   } else {
-    copyFileSync(path.join(BRAND, 'ardrive-icon.svg'), path.join(pub, 'favicon.svg'));
+    // The kit's icon, its artwork unchanged: only the canvas is cropped to the
+    // mark (its 150 px square leaves wide margins), so in a tab it fills the
+    // square as ardrive.io's own favicon does, on any tab colour.
+    const icon = svg('ardrive-icon.svg').replace(
+      'width="150" height="150" viewBox="0 0 150 150"',
+      'width="32" height="32" viewBox="27 24 103 103"',
+    );
+    if (!icon.includes('viewBox="27 24 103 103"')) throw new Error('ardrive-icon.svg changed');
+    writeFileSync(path.join(pub, 'favicon.svg'), icon);
+    await shoot(plate(icon, 'transparent'), path.join(pub, 'favicon-32.png'), 32, 32, true);
+    // A home-screen icon needs a plate: the kit's icon on its dark plate.
     const onyx = `<img src="${url(path.join(BRAND, 'ardrive-icon-onyx.png'))}">`;
     await shoot(plate(onyx, '#121212'), path.join(pub, 'apple-touch-icon.png'), 180, 180);
-    await shoot(plate(onyx, '#121212'), path.join(pub, 'favicon-32.png'), 32, 32);
   }
   console.log(`${app}: social.png, favicons, apple-touch-icon.png`);
 }

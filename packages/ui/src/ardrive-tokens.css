@@ -1,0 +1,243 @@
+/*
+ * The ArDrive design system's tokens (ardrive.io/brand-kit/design-system.md,
+ * version 2026-10-28, kit 2026-10-29), as its section 2.4 gives them, plus the type scale,
+ * spacing, radii and the table and menu surfaces of sections 3 to 5.
+ *
+ * Dark is the default theme and light is first class: the page follows the
+ * system, and data-theme on <html> (the toggle in the masthead) overrides it.
+ *
+ * Wavehaus is a licensed face and is not served from here: every page that
+ * has not been given its files uses the system stack the system names.
+ * Roboto Mono (SIL Open Font License 1.1) is served beside the page, for IDs,
+ * addresses and code only.
+ */
+@font-face {
+  font-family: 'Roboto Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/roboto-mono-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --font-body:
+    Wavehaus, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Roboto Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* 3.2 scale, desktop; phone sizes under 834 px below */
+  --display: 45px;
+  --heading1: 36px;
+  --heading2: 28px;
+  --heading3: 25px;
+  --heading4: 22px;
+  --heading5: 20px;
+  --heading6: 18px;
+  --paragraph-xl: 18px;
+  --paragraph-l: 16px;
+  --paragraph: 14px;
+  --paragraph-small: 12px;
+  --caption: 11px;
+  --code: 13px;
+
+  /* 4. space and shape: nothing in between */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --radius-sm: 4px;
+  --radius-control: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* 5. button and field heights */
+  --button-compact: 36px;
+  --button-regular: 40px;
+  --button-large: 48px;
+  --field-height: 49px;
+}
+@media (max-width: 833px) {
+  :root {
+    --display: 30px;
+    --heading1: 28px;
+    --heading2: 26px;
+    --heading3: 23px;
+    --heading4: 21px;
+    --heading5: 19px;
+    --heading6: 16px;
+    --paragraph-xl: 16px;
+    --paragraph-l: 15px;
+    --paragraph: 13px;
+    --paragraph-small: 12px;
+    --caption: 10px;
+    --code: 12px;
+  }
+}
+
+/* 2.4, dark: the default */
+:root,
+:root[data-theme='dark'] {
+  --container-l0: #080808;
+  --container-l1: #0d0d0d;
+  --container-l2: #121212;
+  --container-l3: #171717;
+  --container-raised: #1f1f1f;
+  --container-red: #d31721;
+  --text-high: #e0e0e0;
+  --text-mid: #a6a6a6;
+  --text-low: #7d7d7d;
+  --text-xlow: #424241;
+  --text-link: #a6a6a6;
+  --text-on-primary: #ffffff;
+  --text-red: #d42c35;
+  --stroke-low: rgba(237, 237, 237, 0.08);
+  --stroke-mid: rgba(237, 237, 237, 0.12);
+  --stroke-high: rgba(237, 237, 237, 0.16);
+  --stroke-red: #c0151e;
+  --button-primary: #d31721;
+  --button-primary-hover: #c0151e;
+  --button-primary-press: #9a1118;
+  --button-secondary: rgba(237, 237, 237, 0.08);
+  --button-secondary-hover: rgba(237, 237, 237, 0.12);
+  --button-secondary-press: rgba(237, 237, 237, 0.16);
+  --button-outline-hover: #2e2e2e;
+  --button-disabled: #2e2e2e;
+  --input: #0d0d0d;
+  --input-disabled: #121212;
+  --icon-low: #5e5e5e;
+  --icon-mid: #a6a6a6;
+  --icon-high: #ffffff;
+  --info-fg: #8b98f9;
+  --info-container: #111833;
+  --info-stroke: #253293;
+  --success-fg: #18a957;
+  --success-container: #052211;
+  --success-stroke: #0a4423;
+  --error-fg: #df565d;
+  --error-container: #260406;
+  --error-stroke: #730d12;
+  --warning-fg: #e0e0e0;
+  --warning-container: #1f1f1f;
+  --warning-stroke: rgba(237, 237, 237, 0.16);
+  --scrim: rgba(0, 0, 0, 0.5);
+  --shadow: rgba(13, 13, 13, 0.9);
+  /* 5. Lists and tables */
+  --table: #121212;
+  --table-row: #191919;
+  --table-hover: #222222;
+  --table-selected: #2c2c2c;
+  --menu: #1f1f1f;
+  --menu-hover: #2c2c2c;
+  /* The brand's glow behind the masthead (Ruddy is for glows, never text) */
+  --glow: rgba(254, 2, 48, 0.2);
+  color-scheme: dark;
+}
+
+/* 2.4, light: the system's choice, or the toggle's */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --container-l0: #f8f6f7;
+    --container-l1: #edeaeb;
+    --container-l2: #e0dcde;
+    --container-l3: #e0dcde;
+    --container-raised: #ffffff;
+    --text-high: #3b3b3b;
+    --text-mid: #4f4f4f;
+    --text-low: #666666;
+    --text-xlow: #8a8a8a;
+    --text-link: #4f4f4f;
+    --text-on-primary: #f8f6f7;
+    --stroke-low: rgba(30, 0, 10, 0.12);
+    --stroke-mid: rgba(30, 0, 10, 0.16);
+    --stroke-high: #d1cbce;
+    --stroke-red: #df565d;
+    --button-primary-hover: #df565d;
+    --button-primary-press: #e78086;
+    --button-secondary: rgba(30, 0, 10, 0.08);
+    --button-secondary-hover: rgba(30, 0, 10, 0.12);
+    --button-secondary-press: rgba(30, 0, 10, 0.16);
+    --button-outline-hover: rgba(30, 0, 10, 0.12);
+    --button-disabled: #d1cbce;
+    --input: #edeaeb;
+    --input-disabled: #d1cbce;
+    --icon-low: #8a8a8a;
+    --icon-mid: #666666;
+    --icon-high: #4f4f4f;
+    --info-fg: #3142c4;
+    --info-container: #eceefe;
+    --info-stroke: #b1bafb;
+    --success-fg: #11763d;
+    --success-container: #f4fbf7;
+    --success-stroke: #d1eedd;
+    --error-fg: #c0151e;
+    --error-container: #fcf9fa;
+    --error-stroke: #f2b6b9;
+    --warning-fg: #3b3b3b;
+    --warning-container: #ffffff;
+    --warning-stroke: #d1cbce;
+    --shadow: rgba(48, 49, 51, 0.1);
+    --table: #fbf9fa;
+    --table-row: #f1eff0;
+    --table-hover: #e8e5e7;
+    --table-selected: #e0dcde;
+    --menu: #fbf9fa;
+    --menu-hover: #f1eff0;
+    --glow: rgba(254, 2, 48, 0.08);
+    color-scheme: light;
+  }
+}
+:root[data-theme='light'] {
+  --container-l0: #f8f6f7;
+  --container-l1: #edeaeb;
+  --container-l2: #e0dcde;
+  --container-l3: #e0dcde;
+  --container-raised: #ffffff;
+  --text-high: #3b3b3b;
+  --text-mid: #4f4f4f;
+  --text-low: #666666;
+  --text-xlow: #8a8a8a;
+  --text-link: #4f4f4f;
+  --text-on-primary: #f8f6f7;
+  --stroke-low: rgba(30, 0, 10, 0.12);
+  --stroke-mid: rgba(30, 0, 10, 0.16);
+  --stroke-high: #d1cbce;
+  --stroke-red: #df565d;
+  --button-primary-hover: #df565d;
+  --button-primary-press: #e78086;
+  --button-secondary: rgba(30, 0, 10, 0.08);
+  --button-secondary-hover: rgba(30, 0, 10, 0.12);
+  --button-secondary-press: rgba(30, 0, 10, 0.16);
+  --button-outline-hover: rgba(30, 0, 10, 0.12);
+  --button-disabled: #d1cbce;
+  --input: #edeaeb;
+  --input-disabled: #d1cbce;
+  --icon-low: #8a8a8a;
+  --icon-mid: #666666;
+  --icon-high: #4f4f4f;
+  --info-fg: #3142c4;
+  --info-container: #eceefe;
+  --info-stroke: #b1bafb;
+  --success-fg: #11763d;
+  --success-container: #f4fbf7;
+  --success-stroke: #d1eedd;
+  --error-fg: #c0151e;
+  --error-container: #fcf9fa;
+  --error-stroke: #f2b6b9;
+  --warning-fg: #3b3b3b;
+  --warning-container: #ffffff;
+  --warning-stroke: #d1cbce;
+  --shadow: rgba(48, 49, 51, 0.1);
+  --table: #fbf9fa;
+  --table-row: #f1eff0;
+  --table-hover: #e8e5e7;
+  --table-selected: #e0dcde;
+  --menu: #fbf9fa;
+  --menu-hover: #f1eff0;
+  --glow: rgba(254, 2, 48, 0.08);
+  color-scheme: light;
+}

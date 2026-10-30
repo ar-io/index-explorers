@@ -167,7 +167,7 @@ export const pageErrors = (page: Page): string[] =>
   (page as unknown as { __errors?: string[] }).__errors ?? [];
 
 /**
- * Clicks the n-th folder row and measures, inside the page, from the click to
+ * Opens the n-th folder row and measures, inside the page, from the double-click to
  * the first paint after the breadcrumbs changed: the folder move as a reader
  * feels it, without the test runner's round trips.
  */
@@ -178,7 +178,8 @@ export const openFolderMeasured = (page: Page, nth: number): Promise<number> =>
     ) as HTMLElement[];
     const before = document.querySelectorAll('#b-crumbs .crumb').length;
     const t = performance.now();
-    rows[idx]!.click();
+    // A click selects a row; a double-click opens it (the design system's lists).
+    rows[idx]!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     while (
       document.querySelectorAll('#b-crumbs .crumb').length === before &&
       performance.now() - t < 5000
@@ -187,3 +188,24 @@ export const openFolderMeasured = (page: Page, nth: number): Promise<number> =>
     await new Promise((r) => requestAnimationFrame(r));
     return performance.now() - t;
   }, nth);
+
+/** Picks a value in one of the page's menus (drawn by the page, as the design system says, not the browser's). */
+export async function choose(page: Page, sel: string, value: string): Promise<void> {
+  await page.locator(sel).click();
+  await page.locator(`${sel}-menu [data-value=${JSON.stringify(value)}]`).click();
+}
+
+/** The values a menu offers, read by opening it and closing it again. */
+export async function menuValues(page: Page, sel: string): Promise<string[]> {
+  await page.locator(sel).click();
+  const v = await page
+    .locator(`${sel}-menu [role=option]`)
+    .evaluateAll((os) => os.map((o) => (o as HTMLElement).dataset.value ?? ''));
+  await page.keyboard.press('Escape');
+  return v;
+}
+
+/** The hero's counts are read (they start empty, drawn as a placeholder bar). */
+export const countsShown = async (page: Page): Promise<boolean> =>
+  /\d/.test(await page.locator('#s-drives').innerText()) &&
+  /\d/.test(await page.locator('#s-files').innerText());

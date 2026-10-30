@@ -7,13 +7,16 @@ import { expect, test, type Page } from '@playwright/test';
 import fs from 'node:fs';
 
 import {
+  choose,
   clearStatus,
+  countsShown,
   driveListed,
   driveOpened,
   driveRows,
   GW,
   KNOWN,
   LIVE,
+  menuValues,
   openPage,
   pageErrors,
   rows,
@@ -50,13 +53,8 @@ test('publication verifies, the range reader controls the page, drives list with
   await page.locator('#more button', { hasText: 'Newest drives' }).click();
   await until(page, async () => (await rows(page)) > 0, 240_000, 'browse');
   expect(await rows(page)).toBeGreaterThan(0);
-  await until(
-    page,
-    async () => !/—/.test(await page.locator('#stats').innerText()),
-    30_000,
-    'hero',
-  );
-  expect(await page.locator('#stats').innerText()).not.toMatch(/—/);
+  await until(page, async () => countsShown(page), 30_000, 'hero');
+  expect(await countsShown(page)).toBe(true);
   if (!LIVE) {
     // One band's from its stats file, the other's from its tag lookup.
     const count = async (id: string) =>
@@ -87,7 +85,7 @@ test('records come from the lookup; empty drives stay hidden until asked for', a
     shown.join(' '),
   ).toBe(true);
   await clearStatus(page);
-  await page.selectOption('#contents', 'any');
+  await choose(page, '#contents', 'any');
   await until(
     page,
     async () => /Read|Nothing new|Answered/.test(await status(page)),
@@ -102,7 +100,7 @@ test('records come from the lookup; empty drives stay hidden until asked for', a
   // The live index's newest drives include empty ones (2026-10-23: test_nft).
   if (LIVE) expect(all.some((n) => n <= 2)).toBe(true);
   await clearStatus(page);
-  await page.selectOption('#contents', 'some');
+  await choose(page, '#contents', 'some');
   await until(
     page,
     async () => /Read|Nothing new|Answered/.test(await status(page)),
@@ -113,7 +111,7 @@ test('records come from the lookup; empty drives stay hidden until asked for', a
 
 test('filters: privacy, app and period reload the listing', async () => {
   await clearStatus(page);
-  await page.selectOption('#privacy', 'public');
+  await choose(page, '#privacy', 'public');
   await until(
     page,
     async () => /Read|Nothing new|Answered/.test(await status(page)),
@@ -124,7 +122,7 @@ test('filters: privacy, app and period reload the listing', async () => {
   expect(badges.length).toBeGreaterThan(0);
   expect(badges.every((b) => /public/i.test(b))).toBe(true);
   await clearStatus(page);
-  await page.selectOption('#privacy', 'private');
+  await choose(page, '#privacy', 'private');
   await until(
     page,
     async () => /Read|Nothing new|Answered/.test(await status(page)),
@@ -135,7 +133,7 @@ test('filters: privacy, app and period reload the listing', async () => {
   expect(pb.length).toBeGreaterThan(0);
   expect(pb.every((b) => /private/i.test(b))).toBe(true);
   await clearStatus(page);
-  await page.selectOption('#privacy', 'any');
+  await choose(page, '#privacy', 'any');
   await until(
     page,
     async () => /Read|Nothing new|Answered/.test(await status(page)),
@@ -143,7 +141,7 @@ test('filters: privacy, app and period reload the listing', async () => {
     'any filter',
   );
   await clearStatus(page);
-  await page.selectOption('#app', 'ArDrive-CLI');
+  await choose(page, '#app', 'ArDrive-CLI');
   await until(
     page,
     async () =>
@@ -159,9 +157,9 @@ test('filters: privacy, app and period reload the listing', async () => {
   );
   const apps = await page.locator('#results tbody td:nth-child(5)').allInnerTexts();
   expect(apps.every((a) => /CLI/.test(a))).toBe(true);
-  await page.selectOption('#app', 'any');
+  await choose(page, '#app', 'any');
   await clearStatus(page);
-  await page.selectOption('#scope', 'week');
+  await choose(page, '#scope', 'week');
   await until(
     page,
     async () => /Read|Nothing new|Answered/.test(await status(page)),
@@ -170,7 +168,7 @@ test('filters: privacy, app and period reload the listing', async () => {
   );
   expect(await page.locator('#viewsub').innerText()).toMatch(/Drives created/);
   expect(await page.locator('#runscope').textContent()).toMatch(/Last 7 days/);
-  await page.selectOption('#scope', 'month');
+  await choose(page, '#scope', 'month');
   await until(
     page,
     async () => /Read|Nothing new|Answered/.test(await status(page)),
@@ -240,7 +238,7 @@ test('every preset runs; a bad query is reported; a drive_id link opens the driv
   await page.click('#run');
   await waitAnswer(page, 60_000);
   // Reported as a failure, in DuckDB's own sentence with its hint, and pointing into the query.
-  expect(await page.locator('#status > span.bad').innerText()).toMatch(
+  expect(await page.locator('#status .status-text.bad').innerText()).toMatch(
     /^Table with name nowhere does not exist\. Did you mean /,
   );
   expect(await page.locator('#status .statusdetail').innerText()).toMatch(/^LINE 1: /);
@@ -266,7 +264,7 @@ test('a share link carries the drive and opens it in a new tab', async ({ browse
 });
 
 test('a private drive shows its shape only', async () => {
-  await page.selectOption('#privacy', 'private');
+  await choose(page, '#privacy', 'private');
   await page.locator('#browse').click();
   await until(page, async () => (await rows(page)) > 0, 120_000, 'private browse');
   await page.locator('#results tbody tr').first().locator('.rowlink').first().click();
@@ -282,7 +280,7 @@ test('a private drive shows its shape only', async () => {
   expect(head).toMatch(/Private drive/);
   expect(head).toMatch(/encrypted/);
   await page.locator('#view').screenshot({ path: 'e2e/out/private-drive.png' });
-  await page.selectOption('#privacy', 'any');
+  await choose(page, '#privacy', 'any');
 });
 
 test('the wallet view: totals, stretches, and every drive on request', async () => {
@@ -409,7 +407,7 @@ test('Find brings its answer into view on a laptop screen, and only when it is o
   const m = await browser.newPage({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark' });
   await openPage(m);
   // Once the page has loaded (its counts shown), so no loading message replaces the answer.
-  await until(m, async () => !/—/.test(await m.locator('#stats').innerText()), 60_000, 'counts');
+  await until(m, () => countsShown(m), 60_000, 'counts');
   const inView = (sel: string) =>
     m.evaluate((s) => {
       const r = document.querySelector(s)!.getBoundingClientRect();
@@ -445,7 +443,7 @@ test('Run query brings its work, its answer or its failure into view, and only w
   ]) {
     const m = await browser.newPage({ viewport, colorScheme: 'dark' });
     await openPage(m);
-    await until(m, async () => !/—/.test(await m.locator('#stats').innerText()), 60_000, 'counts');
+    await until(m, () => countsShown(m), 60_000, 'counts');
     const inView = (sel: string) =>
       m.evaluate((s) => {
         const r = document.querySelector(s)!.getBoundingClientRect();
@@ -474,7 +472,9 @@ test('Run query brings its work, its answer or its failure into view, and only w
     expect(await inView('#status'), 'the failure').toBe(true);
     // Said as a sentence, DuckDB's pointer into the query kept apart and as written;
     // the result area says it too, and offers no export of nothing.
-    expect(await m.locator('#status > span').innerText()).toBe('Syntax error at or near "selct".');
+    expect(await m.locator('#status .status-text').innerText()).toBe(
+      'Syntax error at or near "selct".',
+    );
     expect(await m.locator('#status .statusdetail').innerText()).toMatch(
       /^LINE 1: selct 1\n\s+\^$/,
     );
@@ -504,7 +504,7 @@ test('on a phone, a question table shows it has more columns, and a wallet table
 }) => {
   const m = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
   await openPage(m);
-  await until(m, async () => !/—/.test(await m.locator('#stats').innerText()), 60_000, 'counts');
+  await until(m, () => countsShown(m), 60_000, 'counts');
   await m.locator('#asks button', { hasText: 'Biggest files' }).click();
   await until(m, async () => (await rows(m)) > 0, 60_000, 'biggest files');
   // Ids shortened, whole in the link's title; units keep their case in the headers.
@@ -618,7 +618,7 @@ test('a wide drive says its cost first, Stop cancels, and browsing works after a
 });
 
 test('periods: all history asks first for a question; a calendar year browses', async () => {
-  await page.selectOption('#scope', 'all');
+  await choose(page, '#scope', 'all');
   await page.locator('#asks button').nth(3).click();
   if (LIVE) {
     await until(page, async () => await page.locator('#cost').isVisible(), 30_000, 'gate');
@@ -626,13 +626,9 @@ test('periods: all history asks first for a question; a calendar year browses', 
   } else {
     await waitAnswer(page);
   }
-  const yr = await page
-    .locator('#scope option')
-    .evaluateAll((os) =>
-      (os as HTMLOptionElement[]).map((o) => o.value).find((v) => /^y\d{4}$/.test(v)),
-    );
+  const yr = (await menuValues(page, '#scope')).find((v) => /^y\d{4}$/.test(v));
   if (yr) {
-    await page.selectOption('#scope', yr);
+    await choose(page, '#scope', yr);
     await clearStatus(page);
     await page.locator('#browse').click();
     await until(
@@ -649,7 +645,7 @@ test('periods: all history asks first for a question; a calendar year browses', 
       'year browse',
     );
   }
-  await page.selectOption('#scope', 'month');
+  await choose(page, '#scope', 'month');
 });
 
 test('a link opens over its own period, All history too; a lookup-only answer covers the whole index', async ({
@@ -661,7 +657,7 @@ test('a link opens over its own period, All history too; a lookup-only answer co
   const m = await browser.newPage({ colorScheme: 'dark' });
   await m.goto(link('all'));
   await until(m, async () => /rows? in /.test(await status(m)), 180_000, 'answer');
-  expect(await m.locator('#scope').inputValue()).toBe('all');
+  expect(await m.locator('#scope').getAttribute('data-value')).toBe('all');
   expect(await m.locator('#cost').isVisible()).toBe(false);
   expect(await status(m)).toMatch(/over the whole index/);
   expect(await rows(m)).toBeGreaterThan(0);
@@ -670,7 +666,7 @@ test('a link opens over its own period, All history too; a lookup-only answer co
   const n = await browser.newPage({ colorScheme: 'dark' });
   await n.goto(link('y1999', 'SELECT CAST(NULL AS TIMESTAMP) AS created_at, 1 AS n'));
   await until(n, async () => /rows? in /.test(await status(n)), 180_000, 'answer');
-  expect(await n.locator('#scope').inputValue()).toBe('month');
+  expect(await n.locator('#scope').getAttribute('data-value')).toBe('month');
   expect(await status(n)).toMatch(/^The link asked for a period this index does not cover/);
   expect(await status(n)).toMatch(/over Last 30 days/);
   // An upload with no date says so.
@@ -680,12 +676,10 @@ test('a link opens over its own period, All history too; a lookup-only answer co
 
 test('the data-source drawer: another gateway is refused with a reason, switching back re-verifies', async () => {
   await page.locator('#datadrawer > summary').click();
-  const options = await page
-    .locator('#gwsel option')
-    .evaluateAll((os) => (os as HTMLOptionElement[]).map((o) => o.value));
+  const options = await menuValues(page, '#gwsel');
   const other = options.find((o) => o !== 'auto' && o !== 'custom' && o !== GW);
   if (other) {
-    await page.selectOption('#gwsel', other);
+    await choose(page, '#gwsel', other);
     await until(
       page,
       async () =>
@@ -705,7 +699,7 @@ test('the data-source drawer: another gateway is refused with a reason, switchin
         (window as unknown as { __explorer: { session: { nav: number } } }).__explorer.session.nav,
     );
   const before = await nav();
-  await page.selectOption('#gwsel', 'custom');
+  await choose(page, '#gwsel', 'custom');
   await page.fill('#gw', GW);
   await page.click('#connect');
   await until(
@@ -791,10 +785,11 @@ test('a drive at 375, 800 and 1280 px: row lines run the full width and Size sho
     if (width === 375) {
       const fits = await m.evaluate(() => {
         const out: string[] = [];
-        const head = document.querySelector('header.framed')!.getBoundingClientRect();
-        const pill = document.querySelector('header.framed .bar .pill')!.getBoundingClientRect();
-        if (pill.right > head.right || pill.left < head.left)
-          out.push('the pill leaves the masthead');
+        const bar = document.querySelector('.topbar')!.getBoundingClientRect();
+        for (const el of document.querySelectorAll('.topbar .brand, .topbar #theme')) {
+          const r = el.getBoundingClientRect();
+          if (r.right > bar.right || r.left < bar.left) out.push('the top bar overflows');
+        }
         const input = document.getElementById('find') as HTMLInputElement;
         const cs = getComputedStyle(input);
         const ctx = document.createElement('canvas').getContext('2d')!;
@@ -821,15 +816,17 @@ test('a period picked while the engine starts, then a query: the answer, not an 
   });
   await openPage(m);
   await m.locator('#editor > summary').click();
+  await m.locator('#scope').click();
   const other = await m
-    .locator('#scope option')
+    .locator('#scope-menu [role=option]:not([aria-disabled="true"])')
     .evaluateAll(
       (os) =>
-        (os as HTMLOptionElement[]).find((o) => o.value === 'all' && !o.disabled)?.value ??
-        (os as HTMLOptionElement[]).find((o) => o.value !== 'month' && !o.disabled)?.value,
+        (os as HTMLElement[]).find((o) => o.dataset.value === 'all')?.dataset.value ??
+        (os as HTMLElement[]).find((o) => o.dataset.value !== 'month')?.dataset.value,
     );
+  await m.keyboard.press('Escape');
   expect(other).toBeTruthy();
-  await m.selectOption('#scope', other!);
+  await choose(m, '#scope', other!);
   await m.locator('#presets button', { hasText: 'Files by day' }).click();
   // The page's own first load is still starting the engine.
   expect(
@@ -871,7 +868,7 @@ test('after the gateway answered 503, nothing is read by itself; Try again or an
       'refused',
     );
     expect(await status(m)).toMatch(/temporarily unavailable/);
-    expect(await m.locator('#stats').innerText()).toMatch(/—/);
+    expect(await countsShown(m)).toBe(false);
     // The gateway comes back; the page asks nothing of it until the reader does.
     down = false;
     const seen = reads;
@@ -887,15 +884,9 @@ test('after the gateway answered 503, nothing is read by itself; Try again or an
       'verified',
     );
     expect(reads).toBe(seen + 1);
-    if (how === 'try again')
-      await until(
-        m,
-        async () => !/—/.test(await m.locator('#stats').innerText()),
-        60_000,
-        'counts',
-      );
+    if (how === 'try again') await until(m, () => countsShown(m), 60_000, 'counts');
     else await until(m, async () => (await rows(m)) > 0, 120_000, 'drives');
-    expect(await m.locator('#stats').innerText()).not.toMatch(/—/);
+    expect(await countsShown(m)).toBe(true);
     expect(await m.locator('#status .bad').count()).toBe(0);
     await m.close();
   }

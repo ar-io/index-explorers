@@ -165,7 +165,8 @@ export class Store {
     verified: false,
     hasLookups: false,
   });
-  readonly hero: Signal<Hero> = signal({ drives: '—', files: '—', items: '—', span: '—' });
+  /** Empty until read: the page draws a placeholder bar. */
+  readonly hero: Signal<Hero> = signal({ drives: '', files: '', items: '', span: '' });
   /** 'auto' or a gateway origin, as the Data drawer's select has it; `custom` holds a typed URL. */
   readonly gatewayChoice = signal<string>('auto');
   readonly customGateway = signal<string>('');
