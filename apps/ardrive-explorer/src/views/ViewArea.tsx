@@ -108,7 +108,7 @@ function DrivesTable({ rows }: { rows: DriveRow[] }) {
               <td>
                 <div class="namewrap">
                   <RowLink go={open}>
-                    <Icon name={r.privacy === 'private' ? 'lock' : 'drive'} />
+                    <Icon name={r.privacy === 'private' ? 'privateDrive' : 'drive'} />
                     <Name
                       id={r.id}
                       size={r.record_size}

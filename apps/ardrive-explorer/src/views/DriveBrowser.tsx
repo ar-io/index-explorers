@@ -86,7 +86,7 @@ function Details({ d, x }: { d: DriveModel; x: DriveItem }) {
     <aside class="b-details" id="b-details">
       <div class="d-head">
         <Icon
-          name={isPrivate ? 'lock' : x.kind === 'folder' ? 'folder' : iconFor(x.type, x.name)}
+          name={x.kind === 'folder' ? 'folder' : isPrivate ? 'file' : iconFor(x.type, x.name)}
         />
         <h4>
           {isPrivate
@@ -282,7 +282,7 @@ function Row({
     >
       <td class="b-namecol">
         <div class="b-namecell">
-          <Icon name={folder ? 'folder' : isPrivate ? 'lock' : iconFor(x.type, x.name)} />
+          <Icon name={folder ? 'folder' : isPrivate ? 'file' : iconFor(x.type, x.name)} />
           {isPrivate ? (
             <span class="name">{folder ? 'Encrypted folder' : 'Encrypted file'}</span>
           ) : x.name ? (
@@ -437,7 +437,7 @@ export function DriveBrowser() {
     <section class="browser" id="browser">
       <div class="b-head">
         <div class="b-title">
-          <Icon name="drive" big />
+          <Icon name={isPrivate ? 'privateDrive' : 'drive'} big />
           <div>
             <h3
               class={`b-drive-name${!isPrivate && d.driveRec && !d.name ? ' pending' : ''}`}
@@ -507,6 +507,9 @@ export function DriveBrowser() {
                     }
                   >
                     {label}
+                    {ui.sort.key === k ? (
+                      <Icon name={ui.sort.dir > 0 ? 'sortUp' : 'sortDown'} class="b-sortdir" />
+                    ) : null}
                   </th>
                 ))}
                 <th class="b-act">

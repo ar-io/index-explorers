@@ -44,6 +44,7 @@ p {
 }
 a {
   color: var(--text-link);
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -130,9 +131,14 @@ code {
 .ico.big {
   width: 32px;
   height: 32px;
+  color: var(--icon-high);
 }
-.ico-drive {
-  color: var(--button-primary);
+/* A list's item icons, as ArDrive web's file list draws them: 18 px, icon-high. */
+:is(.b-namecell, .namewrap .rowlink, .d-head) > .ico,
+.namewrap .rowlink .ico {
+  width: 18px;
+  height: 18px;
+  color: var(--icon-high);
 }
 
 /* ---------------------------------------------------------- buttons */
@@ -148,7 +154,7 @@ button,
   border: 0;
   border-radius: var(--radius-control);
   background: var(--button-secondary);
-  color: var(--text-high);
+  color: var(--text-link);
   font: inherit;
   font-size: var(--paragraph-l);
   font-weight: 600;
@@ -161,7 +167,7 @@ button,
 button:hover:not(:disabled),
 .btn:hover {
   background: var(--button-secondary-hover);
-  color: var(--text-high);
+  color: var(--text-link);
 }
 button:active:not(:disabled),
 .btn:active {
@@ -189,6 +195,7 @@ button.outline,
 button.outline:hover:not(:disabled),
 .btn.outline:hover {
   background: var(--button-outline-hover);
+  box-shadow: inset 0 0 0 1px var(--stroke-high);
 }
 button.compact,
 .btn.compact {
@@ -196,7 +203,7 @@ button.compact,
 }
 button:disabled {
   background: var(--button-disabled);
-  color: var(--text-xlow);
+  color: var(--text-low);
   cursor: default;
 }
 /* A two-state button (a question card, an example query) says it is chosen. */
@@ -282,14 +289,16 @@ textarea {
   border: 1px solid var(--stroke-mid);
   border-radius: var(--radius-control);
   background: var(--input);
-  color: var(--text-high);
+  color: var(--text-mid);
   font: inherit;
   font-size: var(--paragraph);
+  font-weight: 600;
 }
 /* text-low, not the system's text-xlow: a placeholder here says what to type, and xlow is under 3:1. */
 input::placeholder,
 textarea::placeholder {
   color: var(--text-low);
+  font-weight: 600;
   opacity: 1;
 }
 input:hover,
@@ -335,8 +344,9 @@ input[type='search']::-webkit-search-cancel-button {
   padding: 0 var(--space-md) 0 20px;
   border: 1px solid var(--stroke-mid);
   background: var(--input);
+  color: var(--text-mid);
   font-size: var(--paragraph);
-  font-weight: 400;
+  font-weight: 600;
 }
 .select-field .select-control:hover:not(:disabled) {
   background: var(--input);
@@ -1063,6 +1073,7 @@ input[type='search']::-webkit-search-cancel-button {
 /* The design system's table: its surface, rows a step up, hover and selection. */
 .tablewrap {
   margin-top: var(--space-md);
+  padding: 0 var(--space-md) var(--space-xs);
   overflow-x: auto;
   border: 1px solid var(--stroke-low);
   border-radius: var(--radius-md);
@@ -1084,14 +1095,17 @@ input[type='search']::-webkit-search-cancel-button {
     transparent
   );
 }
+/* ArDrive web's data table: each row a card (radius 8) 5 px below the last,
+   on the table's surface; headings 14 px Bold in text-high; cells SemiBold. */
 table {
   min-width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 5px;
   font-size: var(--paragraph);
 }
 th,
 td {
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) 15px;
   text-align: left;
   white-space: nowrap;
   vertical-align: middle;
@@ -1099,14 +1113,23 @@ td {
 th {
   height: 40px;
   padding-block: 0;
-  font-size: var(--paragraph-small);
-  font-weight: 600;
-  color: var(--text-low);
+  font-weight: 700;
+  color: var(--text-high);
   background: var(--table);
 }
-tbody tr {
+td {
   background: var(--table-row);
-  border-top: 1px solid var(--table);
+  font-weight: 600;
+  color: var(--text-high);
+}
+td:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+td:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+td:only-child {
+  border-radius: var(--radius-md);
 }
 td.num,
 th.num {
@@ -1148,7 +1171,7 @@ td .name.mismatch {
 #results tbody tr:has(.namewrap) {
   cursor: pointer;
 }
-#results tbody tr:has(.namewrap):hover {
+#results tbody tr:has(.namewrap):hover > td {
   background: var(--table-hover);
 }
 
@@ -1157,13 +1180,13 @@ td .name.mismatch {
 .b-ver {
   display: inline-flex;
   align-items: center;
-  height: 20px;
-  padding: 0 var(--space-xs);
+  padding: 2px var(--space-xs);
   border-radius: var(--radius-sm);
-  background: var(--button-secondary);
+  background: var(--container-l3);
   color: var(--text-mid);
-  font-size: var(--paragraph-small);
+  font-size: var(--caption);
   font-weight: 600;
+  line-height: 1.5;
   white-space: nowrap;
 }
 .badge.public {
@@ -1306,6 +1329,7 @@ td .name.mismatch {
 .b-listwrap {
   min-width: 0;
   max-height: 70vh;
+  padding: 0 var(--space-md);
   overflow: auto;
 }
 .b-list {
@@ -1321,14 +1345,11 @@ td .name.mismatch {
 .b-list th:hover {
   color: var(--text-high);
 }
-.b-list th[data-dir='asc']::after {
-  content: ' \2191';
-}
-.b-list th[data-dir='desc']::after {
-  content: ' \2193';
-}
-.b-list th[data-dir='asc'],
-.b-list th[data-dir='desc'] {
+.b-sortdir {
+  width: 16px;
+  height: 16px;
+  margin-left: var(--space-xxs);
+  vertical-align: -3px;
   color: var(--text-high);
 }
 .b-list th.b-act {
@@ -1361,18 +1382,19 @@ td .name.mismatch {
 .b-row {
   cursor: default;
 }
-.b-row:hover {
+.b-row:hover > td {
   background: var(--table-hover);
 }
-.b-row.selected {
+.b-row.selected > td {
   background: var(--table-selected);
 }
 .b-row:focus-visible {
   outline: 2px solid var(--text-high);
   outline-offset: -2px;
 }
-.b-row.b-hidden .name {
-  color: var(--text-low);
+/* A hidden item fades whole, its icon too, as the app draws it. */
+.b-row.b-hidden > td {
+  opacity: 0.45;
 }
 .b-up {
   cursor: pointer;
@@ -1405,7 +1427,7 @@ td .name.mismatch {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--text-high);
 }
 .b-namecell .name.pending {
@@ -1416,10 +1438,11 @@ td .name.mismatch {
   text-decoration: line-through;
 }
 .b-dim {
-  color: var(--text-mid);
+  color: var(--text-high);
 }
 .b-more td {
   height: 40px;
+  background: none;
   text-align: center;
   font-size: var(--paragraph-small);
   color: var(--text-low);
@@ -1691,7 +1714,14 @@ details.guide[open] > summary .ico {
   border: 0;
   border-bottom: 1px solid var(--stroke-low);
 }
+/* A reference list, not a data table: no row cards. */
+.schema {
+  border-collapse: collapse;
+}
 .schema td {
+  background: none;
+  border-radius: 0;
+  font-weight: 400;
   padding: var(--space-xs) var(--space-sm) var(--space-xs) 0;
   white-space: normal;
   vertical-align: top;
