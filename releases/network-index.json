@@ -1,14 +1,14 @@
 {
   "app": "network-index",
-  "version": "1.2.1",
-  "verifiedAt": "2026-10-27T22:53:08.634Z",
+  "version": "1.2.2",
+  "verifiedAt": "2026-10-30T09:35:39.633Z",
   "verifiedBy": "vilenarios",
-  "commit": "3e43d77290de7edfd53444dfea0acb8add91f784",
-  "machine": "linux arm64, node v23.9.0",
+  "commit": "32bcd915520b3c57a92122435195988d006a03b9",
+  "machine": "linux arm64, node v24.22.1",
   "steps": [
     {
       "name": "install",
-      "seconds": 2.7
+      "seconds": 2.6
     },
     {
       "name": "engine files",
@@ -16,38 +16,38 @@
     },
     {
       "name": "engine pins against two gateways",
-      "seconds": 5.7
+      "seconds": 6.8
     },
     {
       "name": "format and types",
-      "seconds": 49.7
+      "seconds": 21.5
     },
     {
       "name": "unit and integration tests",
-      "seconds": 88.6
+      "seconds": 13
     },
     {
       "name": "E2E builds",
-      "seconds": 38
+      "seconds": 8.3
     },
     {
       "name": "E2E on the fixture gateway",
-      "seconds": 44.9
+      "seconds": 36.4
     },
     {
       "name": "production builds",
-      "seconds": 34.4
+      "seconds": 8.1
     },
     {
       "name": "live E2E against turbo-gateway.com",
-      "seconds": 65.7
+      "seconds": 65.6
     }
   ],
   "sources": {
     "apps/network-index": "1719322f5dfe11aa59bc7d73fb805b5bc0d7dd57",
-    "packages": "fa662460fa6c5cddeb0144b912e09d8604b20d35",
-    "package.json": "7bf49d4fbace0a30a2fa6fbc06d635c786ca8af8",
-    "pnpm-lock.yaml": "05839ad7aef93766050ab64107a23be7c9be0241",
+    "packages": "e0eacca187b183a3d51a266b7d57181ca0648f77",
+    "package.json": "1309ddee275768b51c2f2aaaa2f07fafd2b1b8c4",
+    "pnpm-lock.yaml": "5ea80c91080490d9895d73d4ff6079fb069c66c8",
     "pnpm-workspace.yaml": "8c81b3b1946d0b6aba407e9918ef96892ab1901e",
     "tsconfig.base.json": "e22368cf71f8612b721dfa23f6afa8e83d73453c",
     "engine.lock.json": "4acde2319817b97429ddb1b7603b3806829b7923"
@@ -61,14 +61,14 @@
     "assets/besley-normal-latin-IX-hlgPH.woff2": "45a619033dd926aa09d426017d7c0e347f206b40132eeb4b007201a342cdcb46",
     "assets/duckdb-B2AE9Fkb.js": "6f663b308aacb914cd086a9aed42d10ec6007a6bb162d4bd0a271b776b88044e",
     "assets/duckdb-B2AE9Fkb.js.map": "d53a683be4a3d5726ab48a2f431c11f65a5ca04cb52adecf32319b44788f7583",
-    "assets/index-BbqBSf2Y.js": "6e12eff9f150b3294890016a0825d56ce7daf3c2e1a476dea022889088a2ceba",
-    "assets/index-BbqBSf2Y.js.map": "b8efc2c7149ec25799a7227c4a27ef206e59228b3c6fac36fe231a46703ed90a",
-    "assets/index-Da3QoQVa.css": "e48d319aa8e7f4410ac65fef7b18fb2ecb093f9be7ba010f2febc7ae221c9871",
+    "assets/index-BuVRNY3B.js": "0092093fa122bfa2c0aef6ea7d73d6ca4214067934f47f8324cc99aa81058567",
+    "assets/index-BuVRNY3B.js.map": "5c9725d25743a79312f5750b8ce20d63c84b72a724f501f244943981135dce19",
+    "assets/index-Coj1ePWS.css": "b7b0306ba8ca5b3af8d6242c56cc0b3d10e4e2bc28f52dc177a44dab68980df7",
     "assets/plus-jakarta-sans-normal-latin-eXO_dkmS.woff2": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
     "favicon-32.png": "97366221702d7aab4d26fbb958654edbfa9a58c2f171bf1f8c8a6f3ded255d19",
     "favicon-dark.svg": "325fd96b1df10a02e063f81afc5c111f7a87539ffe6356290c666f72739c7862",
     "favicon.svg": "267d63fed31ab5db02b32014ac600a57fa2cd5a352d6afb69d891d67cc5f3cbc",
-    "index.html": "b4575ac852638b8780b571c61dd874c16bb074309383ea0cb820aec06f2ded6c",
+    "index.html": "8753f8a54b3de3e44cafa18f4855f3a63700082589d06969a55cd5d2a0c0087d",
     "social.png": "2d8a3c663c9636b14c3528f081b31c6808084b95844a1bc8311db27aefeabdb0",
     "sw.js": "6f46a487991a97a518513466858ef3a9e3b6f10c7127a0f270975423f1c02ced"
   }

@@ -817,12 +817,16 @@ test('a period picked while the engine starts, then a query: the answer, not an 
   await openPage(m);
   await m.locator('#editor > summary').click();
   await m.locator('#scope').click();
+  // All history on fixtures; live it asks before its read (the periods test checks that), so
+  // the last 7 days: the same race, with a small read.
+  const want = LIVE ? 'week' : 'all';
   const other = await m
     .locator('#scope-menu [role=option]:not([aria-disabled="true"])')
     .evaluateAll(
-      (os) =>
-        (os as HTMLElement[]).find((o) => o.dataset.value === 'all')?.dataset.value ??
+      (os, w) =>
+        (os as HTMLElement[]).find((o) => o.dataset.value === w)?.dataset.value ??
         (os as HTMLElement[]).find((o) => o.dataset.value !== 'month')?.dataset.value,
+      want,
     );
   await m.keyboard.press('Escape');
   expect(other).toBeTruthy();
