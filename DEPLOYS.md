@@ -2,6 +2,32 @@
 
 Every upload, newest first. The manifest id is what the ArNS name points at. Each entry lists the SHA-256 of every uploaded file, so a rebuild of the same commit can be compared with what is live.
 
+## 2026-11-01 · arweave-l1-explorer 1.2.5
+
+- manifest: `d7bg2yrH0V-2KT926iA5A98RQDedU4wYnIliGOBXKpE`
+- name: https://arweave-l1-search.ar.io
+- before: `SIdAjPvil0hGwBtOXw_KWJWtogxk3nRKWgwHmrSCvo4` (point the record back at it to roll back)
+- commit: ed0e4c2
+- files:
+  - `apple-touch-icon.png` 3dc979bb165838222859ee052672f185cf7eb9c620ba66a4084aaeabf204df02
+  - `assets/ario-full-white-CluK9Jx-.svg` a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490
+  - `assets/arrow-C6ch5XQ7.js` be8bc38f3801bd076186c30711cd432a3dcd9b7763d980467fd1ca79dfdc4e07
+  - `assets/arrow-C6ch5XQ7.js.map` 77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d
+  - `assets/besley-italic-latin-CVKtkS9L.woff2` 028647731182464ccd117da3f56747d8c80f914a06c854624917b8fbd2d02f0c
+  - `assets/besley-normal-latin-IX-hlgPH.woff2` 45a619033dd926aa09d426017d7c0e347f206b40132eeb4b007201a342cdcb46
+  - `assets/duckdb-DEFjrUmw.js` bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2
+  - `assets/duckdb-DEFjrUmw.js.map` d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c
+  - `assets/index-CXDGpZ3d.css` 607458545ffe2a392db5bb4f2f9092d00269805b20fd4ffcb45ddf3ef56a1164
+  - `assets/index-D2vn_CJG.js` b3f2ea046c564b46818944fa5df774b0c8e568c4d5807c9d5c1d96c55a7b91bf
+  - `assets/index-D2vn_CJG.js.map` b10b85ddeb30bcb6e393396bee403d39f8c4fd947a8e16904e15455e98d6763a
+  - `assets/plus-jakarta-sans-normal-latin-eXO_dkmS.woff2` 153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79
+  - `favicon-32.png` 97366221702d7aab4d26fbb958654edbfa9a58c2f171bf1f8c8a6f3ded255d19
+  - `favicon-dark.svg` 325fd96b1df10a02e063f81afc5c111f7a87539ffe6356290c666f72739c7862
+  - `favicon.svg` 267d63fed31ab5db02b32014ac600a57fa2cd5a352d6afb69d891d67cc5f3cbc
+  - `index.html` d35b207aa88bb3f41c1c26ff1833b6ae98166b8f3b43247843ddf5e23385df58
+  - `social.png` d4c4846cc8efafc0207e8ef1c994c66b7fd3d8d37e152827c09f9aed6c366333
+  - `sw.js` 6f46a487991a97a518513466858ef3a9e3b6f10c7127a0f270975423f1c02ced
+
 ## 2026-11-01 · network-index 1.2.2
 
 - manifest: `XjVEiIAULElo5P70sljb8haTBcOY-FA8wlxm9QrvKik`
