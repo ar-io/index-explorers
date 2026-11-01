@@ -2,6 +2,31 @@
 
 Every upload, newest first. The manifest id is what the ArNS name points at. Each entry lists the SHA-256 of every uploaded file, so a rebuild of the same commit can be compared with what is live.
 
+## 2026-11-01 · ardrive-explorer 1.4.0
+
+- manifest: `synurYiPKXFY6YvklwE3Bhi0aU_fqLfTj4f6QfPF_Yw`
+- name: https://explore_ardrive.ar.io
+- before: `slvq7qNsEJmV54JxY73s0l3KVnmR8yw04hceYu3ECiM` (point the record back at it to roll back)
+- commit: ed0e4c2
+- files:
+  - `apple-touch-icon.png` 9635d0e28944c245030dde304c6350553f18498cde33eaa0d6c180b1395524fa
+  - `assets/ardrive-wordmark-on-dark-DqujnLL9.svg` 9df6ca32fc3a31570614a1fc59bbb0021a846be5df9b82faf8b3c6ad058f1ba0
+  - `assets/ardrive-wordmark-on-light-BU0l-y2Y.svg` 9cffcb4058e902d0649f122aa3f8fcb1c6425feb8be20c75baf6d3920cf1d686
+  - `assets/ario-full-white-CluK9Jx-.svg` a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490
+  - `assets/arrow-C6ch5XQ7.js` be8bc38f3801bd076186c30711cd432a3dcd9b7763d980467fd1ca79dfdc4e07
+  - `assets/arrow-C6ch5XQ7.js.map` 77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d
+  - `assets/duckdb-DEFjrUmw.js` bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2
+  - `assets/duckdb-DEFjrUmw.js.map` d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c
+  - `assets/index-C5bJ1-7F.css` c82a78477430acd2063dd173f3779ac3f132370148240955e5d9a1c2fe261888
+  - `assets/index-DwNqKtfX.js` 8882a2fec95f6cffe1b466e60dd0a582ecf8744dacc92dcbf3f897c259969430
+  - `assets/index-DwNqKtfX.js.map` f67b04ec82260ea1b5f397576500f522545756f5128e101c7e926d5576c45346
+  - `assets/roboto-mono-latin-GekRknry.woff2` e03013e0baa5690a803c188da2214d920c3245b25ad78421ecc8ae86cd842ae9
+  - `favicon-32.png` 833ddc1b59e1abb7ab0a42dfa017fa14281d13e32f0c716c7d8cb0d20f3d7bab
+  - `favicon.svg` a0a1b5bd4e707b45f3e7478243fb6d5a9089919f1956da8675038592f8188269
+  - `index.html` 23eabc2fbdce3bfef2da1cc913a0fadb7eccad4e928ffd5f775870e571e5fc6a
+  - `social.png` 538840842176ec25c1b9cb6eb05eacfedcf4170fa959f3dc46a65d58a4763bc3
+  - `sw.js` 6f46a487991a97a518513466858ef3a9e3b6f10c7127a0f270975423f1c02ced
+
 ## 2026-11-01 · arweave-l1-explorer 1.2.5
 
 - manifest: `d7bg2yrH0V-2KT926iA5A98RQDedU4wYnIliGOBXKpE`
