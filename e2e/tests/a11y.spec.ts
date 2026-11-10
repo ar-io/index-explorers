@@ -60,6 +60,8 @@ for (const colorScheme of ['dark', 'light'] as const)
         .click();
       await page.locator('#b-details').waitFor();
       found.push(...(await violations(page, 'a drive and a file')));
+      // On a phone the details are a bottom sheet, modal: closed before the nav is used.
+      if (await page.locator('.sheet').count()) await page.keyboard.press('Escape');
       await goTo(page, 'questions');
       found.push(...(await violations(page, 'the questions')));
       await page.locator('#asks button', { hasText: 'Biggest files' }).click();

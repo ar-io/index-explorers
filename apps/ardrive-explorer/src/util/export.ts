@@ -47,7 +47,12 @@ export function toJson(
 }
 
 export function saveFile(name: string, mime: string, text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  saveBlob(name, new Blob([text], { type: mime }));
+}
+
+/** Hands the reader a file to keep, under the name given. */
+export function saveBlob(name: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = name;

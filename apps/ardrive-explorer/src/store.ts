@@ -8,6 +8,7 @@ import type { Band, Period, Receipt } from '@ar-io/index-client';
 import type { CheckState, ProofChecks, ProgressState } from '@ar-io/explorer-ui';
 import type { ComponentChildren } from 'preact';
 
+import type { ChartData } from '@ar-io/explorer-ui';
 import type { DriveModel, SortKey } from './model/arfs.js';
 import type { ViewState } from './router.js';
 
@@ -72,6 +73,8 @@ export interface TableContent {
   preset?: 'drives' | 'walletDrives';
   /** Columns Arrow hands back as epoch milliseconds. */
   isTime?: Set<string>;
+  /** A question's or preset's table: headers, sizes and types in words. A typed query keeps its raw values. */
+  labelled?: boolean;
 }
 
 /** A name fetched for the view's title (a record's), labelled as not covered by the signature. */
@@ -105,12 +108,22 @@ export interface ViewContent {
   facts: Fact[];
   cost: CostCard | null;
   caption: string | null;
+  /** An answer drawn before its table. */
+  chart: ChartData | null;
   table: TableContent | null;
   more: MoreItem[];
   namesNote: boolean;
   exportable: ExportData | null;
   /** A link to the Network Portal for the wallet the view is about. */
   portalWallet: string | null;
+  /** An upload's tags, as name and value. */
+  tags: [string, string][] | null;
+  /** A public file record's file: drawn as its own block above the record's facts. */
+  file: { recordId: string; fileId: string | null; driveId: string | null } | null;
+  /** Nothing to show (nothing found): drawn as the design system's empty state. */
+  empty: boolean;
+  /** Reading: rows-to-be drawn as placeholders until the answer lands. */
+  loading: boolean;
 }
 
 export const emptyContent = (): ViewContent => ({
@@ -121,11 +134,16 @@ export const emptyContent = (): ViewContent => ({
   facts: [],
   cost: null,
   caption: null,
+  chart: null,
   table: null,
   more: [],
   namesNote: false,
   exportable: null,
   portalWallet: null,
+  tags: null,
+  file: null,
+  empty: false,
+  loading: false,
 });
 
 export interface DriveUi {

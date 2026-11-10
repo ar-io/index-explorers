@@ -20,6 +20,15 @@ html,
 body {
   margin: 0;
 }
+/* Whatever is brought into view lands under the sticky app bar, not behind it. */
+html {
+  scroll-padding-top: calc(72px + var(--space-md));
+}
+@media (max-width: 833px) {
+  html {
+    scroll-padding-top: calc(124px + var(--space-sm));
+  }
+}
 body {
   background: var(--container-l0);
   color: var(--text-high);
@@ -1173,10 +1182,12 @@ input[type='search']::-webkit-search-cancel-button {
 }
 .view-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-sm) var(--space-md);
+}
+.view-head .select-icon {
+  flex: none;
 }
 .view-title {
   min-width: 0;
@@ -1436,8 +1447,7 @@ td .name.mismatch {
   background: var(--table-hover);
 }
 
-/* Chips: privacy, ArFS version, a file's versions. */
-.badge,
+/* A file's versions, as a chip. */
 .b-ver {
   display: inline-flex;
   align-items: center;
@@ -1450,15 +1460,191 @@ td .name.mismatch {
   line-height: 1.5;
   white-space: nowrap;
 }
-.badge.public {
-  background: var(--success-container);
-  box-shadow: inset 0 0 0 1px var(--success-stroke);
-  color: var(--success-fg);
+/* Privacy in words, as ArDrive web shows it: being public is not a success. */
+.privacy {
+  color: var(--text-mid);
+  white-space: nowrap;
 }
-.badge.private {
-  background: var(--info-container);
-  box-shadow: inset 0 0 0 1px var(--info-stroke);
-  color: var(--info-fg);
+
+/* A row's menu button, at its end. */
+th.row-act,
+td.row-act {
+  width: 1%;
+  padding: 0 var(--space-xs) 0 0;
+}
+
+/* On a phone, a list of drives is a list: each drive on two lines, its name,
+   then owner, date, privacy, app and records in one quiet line, never a
+   table that scrolls sideways. The headers stay for a screen reader. */
+@media (max-width: 640px) {
+  table.as-list,
+  table.as-list tbody {
+    display: block;
+    min-width: 0;
+  }
+  table.as-list thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  table.as-list tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-xxs) var(--space-xs);
+    margin-bottom: 5px;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    background: var(--table-row);
+  }
+  table.as-list tr:hover {
+    background: var(--table-hover);
+  }
+  table.as-list td,
+  #results.as-list tbody tr:has(.namewrap):hover > td {
+    display: block;
+    height: auto;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    white-space: nowrap;
+  }
+  table.as-list td:first-child {
+    flex-basis: 100%;
+    min-width: 0;
+    margin-bottom: var(--space-xxs);
+  }
+  table.as-list td:first-child .sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.as-list td:not(:first-child) {
+    font-size: var(--paragraph-small);
+    font-weight: 400;
+    color: var(--text-mid);
+    text-align: left;
+  }
+  table.as-list td:empty,
+  table.as-list td.app {
+    display: none;
+  }
+  table.as-list td:not(:first-child) + td:not(:empty)::before {
+    content: '\00b7';
+    margin-right: var(--space-xs);
+    color: var(--text-low);
+  }
+  table.as-list td.num::after {
+    content: ' records';
+  }
+  /* The menu button stays at the item's top right, out of its quiet line. */
+  table.as-list tr {
+    position: relative;
+    padding-right: 48px;
+  }
+  table.as-list td.row-act {
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
+    width: auto;
+    padding: 0;
+  }
+  table.as-list td.row-act::before {
+    content: none !important;
+  }
+}
+
+/* A view in blocks (a file record: File, then Record), each with a small title. */
+.block {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border: 1px solid var(--stroke-low);
+  border-radius: var(--radius-md);
+}
+.block-title {
+  margin-top: var(--space-lg);
+  font-size: var(--heading6);
+  color: var(--text-high);
+}
+.block > .block-title {
+  margin: 0 0 var(--space-md);
+}
+.block .facts {
+  margin-top: var(--space-md);
+}
+.block-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-lg);
+  margin-top: var(--space-md);
+  font-size: var(--paragraph);
+}
+.block-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+}
+.block-links .ico {
+  width: 14px;
+  height: 14px;
+}
+/* An upload's tags: a key and value list, not a run-on line. */
+table.kv {
+  min-width: 0;
+  width: 100%;
+  margin-top: var(--space-md);
+  border-spacing: 0;
+  table-layout: fixed;
+}
+table.kv th,
+table.kv td {
+  height: auto;
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--stroke-low);
+  border-radius: 0;
+  background: none;
+  font-size: var(--paragraph);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+table.kv th {
+  width: 32%;
+  font-weight: 600;
+  color: var(--text-low);
+  vertical-align: top;
+}
+table.kv td {
+  font-family: var(--font-mono);
+  font-size: var(--code);
+  font-weight: 400;
+}
+/* Rows while a listing reads: the table's own shape, quietly pulsing. */
+.skeleton {
+  display: grid;
+  gap: 5px;
+  margin-top: var(--space-md);
+}
+.skeleton i {
+  display: block;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--table-row);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.skeleton i:nth-child(2n) {
+  animation-delay: 0.2s;
+}
+.d-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--paragraph-small);
+  color: var(--text-low);
+}
+/* Nothing found: the path stays above the empty state, not inside it. */
+.empty-state .crumbs {
+  align-self: stretch;
+  justify-content: center;
 }
 
 /* ---------------------------------------------------- drive browser */
@@ -1512,13 +1698,23 @@ td .name.mismatch {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xs) var(--space-sm);
-  font-size: var(--paragraph-small);
+  gap: var(--space-xxs) var(--space-xs);
+  font-size: var(--paragraph);
   color: var(--text-low);
+}
+.b-stats > * + *::before {
+  display: inline-block;
+  content: '\00b7';
+  margin-right: var(--space-xs);
+  color: var(--text-low);
+}
+.b-stats .privacy,
+.b-stats .b-meta {
+  color: var(--text-mid);
 }
 .b-owner.rowlink {
   font-family: var(--font-mono);
-  font-size: var(--paragraph-small);
+  font-size: var(--code);
   font-weight: 400;
 }
 .b-tools {
@@ -1599,14 +1795,16 @@ td .name.mismatch {
 .b-body:has(.b-details) {
   grid-template-columns: minmax(0, 1fr) 340px;
 }
+/* In a bottom sheet (under 960 px), the details are the sheet's content. */
 @media (max-width: 960px) {
   .b-body:has(.b-details) {
     grid-template-columns: minmax(0, 1fr);
   }
-  .b-details {
-    border-left: 0 !important;
-    border-top: 1px solid var(--stroke-low);
-  }
+}
+.sheet .b-details {
+  padding: 0;
+  border: 0;
+  background: none;
 }
 .b-listwrap {
   min-width: 0;
@@ -1748,7 +1946,7 @@ td .name.mismatch {
 .d-head .ico {
   margin-top: 2px;
 }
-.d-head h4 {
+.d-head h3 {
   flex: 1;
   min-width: 0;
   padding-top: 1px;
@@ -1793,7 +1991,7 @@ td .name.mismatch {
   white-space: normal;
   word-break: break-all;
 }
-.b-details h5 {
+.b-details h4 {
   margin: var(--space-lg) 0 var(--space-xs);
   font-size: var(--paragraph);
   font-weight: 600;
@@ -1814,6 +2012,12 @@ td .name.mismatch {
 }
 .d-note.bad {
   color: var(--error-fg);
+}
+
+.d-actions .btn .ico,
+.d-actions button .ico {
+  width: 16px;
+  height: 16px;
 }
 
 /* ---------------------------------------------------------- questions */
@@ -1849,10 +2053,40 @@ td .name.mismatch {
   font-weight: 400;
   color: var(--text-mid);
 }
-.asks button[aria-pressed='true'] {
-  border-color: var(--button-primary);
-  box-shadow: inset 0 0 0 1px var(--button-primary);
+/* The question asked: raised, its edge a step up, and a tick. Red is for actions and errors. */
+.asks button {
+  position: relative;
 }
+.asks button[aria-pressed='true'] {
+  background: var(--container-raised);
+  border-color: var(--stroke-high);
+}
+.asks button .asked {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  width: 16px;
+  height: 16px;
+  color: var(--icon-high);
+}
+.asks button[aria-pressed='true'] > span {
+  padding-right: var(--space-lg);
+}
+/* Under an answer, the other questions take less room. */
+.asks.compact {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+.asks.compact button {
+  min-height: 0;
+  padding: var(--space-sm);
+  font-size: var(--paragraph);
+}
+.asks.compact button small {
+  font-size: var(--paragraph-small);
+}
+
 .asks button:disabled {
   background: var(--container-l2);
   color: var(--text-xlow);

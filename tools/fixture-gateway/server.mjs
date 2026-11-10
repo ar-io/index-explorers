@@ -8,6 +8,8 @@
  *   /ar-io/indexes/blob/<sha256>              the same by content
  *   /ar-io/indexes/torrents/<ih1>.torrent     torrents
  *   /raw/<id>                                 records (raw/<id>.json)
+ *   /<data id>                                a file's data, made up from its record's type
+ *                                             (a small PNG, or text), with Range (206)
  *   /graphql                                  block timestamps (blocks.json)
  *   /engine/<path>                            the pinned DuckDB-WASM files, from node_modules and fixtures/cache
  *   /<anything else>                          a static site directory (the app's dist), for the page itself
@@ -20,7 +22,7 @@
  */
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { createGunzip } from 'node:zlib';
+import { createGunzip, deflateSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,6 +74,87 @@ const rawRecords = () => {
   return rawMap;
 };
 const loadPublication = () => JSON.parse(readFileSync(publicationPath, 'utf8'));
+
+/** dataTxId -> its file record's type and name, from the records' JSON. */
+let dataMap = null;
+const dataRecords = () => {
+  if (dataMap === null) {
+    dataMap = new Map();
+    for (const body of Object.values(rawRecords())) {
+      try {
+        const r = typeof body === 'string' ? JSON.parse(body) : body;
+        if (r && typeof r.dataTxId === 'string')
+          dataMap.set(r.dataTxId, { type: r.dataContentType || '', name: r.name || '' });
+      } catch {
+        // Not JSON: an encrypted record, which names no data.
+      }
+    }
+  }
+  return dataMap;
+};
+
+const crcTable = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+const crc32 = (buf) => {
+  let c = 0xffffffff;
+  for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+/** A 64 by 48 PNG in one colour from the id, so each image previews as something. */
+function pngFor(id) {
+  const w = 64;
+  const h = 48;
+  const [r, g, b] = [...Buffer.from(id.slice(0, 4), 'base64url')].slice(0, 3);
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) raw.set([r, g, b], y * (w * 3 + 1) + 1 + x * 3);
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(td));
+    return Buffer.concat([len, td, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr.set([8, 2, 0, 0, 0], 8);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+/** A file's data, made up from its record's type: a PNG for an image, text for text. */
+function serveData(req, res, id) {
+  const rec = dataRecords().get(id);
+  if (!rec) return false;
+  let body;
+  let type = rec.type;
+  if (/^image\//.test(type)) {
+    body = pngFor(id);
+    type = 'image/png';
+  } else if (/^text\/|json|xml|javascript/.test(type))
+    body = Buffer.from(
+      Array.from({ length: 2000 }, (_, i) => `${rec.name} line ${i + 1}: fixture text.`).join('\n'),
+    );
+  else return (send(res, 404, 'the fixtures hold no data of this type'), true);
+  const m = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range ?? '');
+  const start = m ? Number(m[1]) : 0;
+  const end = m && m[2] ? Math.min(Number(m[2]), body.length - 1) : body.length - 1;
+  send(res, m ? 206 : 200, body.subarray(start, end + 1), {
+    'content-type': type,
+    'accept-ranges': 'bytes',
+    ...(m ? { 'content-range': `bytes ${start}-${end}/${body.length}` } : {}),
+  });
+  return true;
+}
 /** sha256 -> absolute file path, from the publication's own listing. */
 function blobIndex() {
   const pub = loadPublication();
@@ -185,6 +268,7 @@ function handle(req, res, { registryOnly = false } = {}) {
     if (!existsSync(file)) return send(res, 404, 'not found');
     return send(res, 200, readFileSync(file), { 'content-type': 'application/json' });
   }
+  if ((m = /^\/([A-Za-z0-9_-]{43})$/.exec(p)) && serveData(req, res, m[1])) return;
   if (p === '/graphql' && req.method === 'POST') {
     let body = '';
     req.on('data', (c) => (body += c));

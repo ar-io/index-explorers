@@ -25,6 +25,7 @@ export function Questions({ compact = false }: { compact?: boolean }) {
         >
           <span>{q.title}</span>
           <small>{q.sub}</small>
+          {asked === i ? <Icon name="check" class="asked" /> : null}
         </button>
       ))}
     </div>

@@ -4,6 +4,8 @@
  * count half over everything the index holds (kilobytes from `lookup_tag`),
  * used when the period is too large to scan.
  */
+import type { ChartSpec } from './chart.js';
+
 export interface Question {
   title: string;
   sub: string;
@@ -13,11 +15,17 @@ export interface Question {
   /** The all-history form, from the lookups; {TOTAL} is the publication's record count. */
   wideSql?: string;
   wideCaption?: string;
+  /** How its answer is drawn above the table, one spec per form of its SQL. */
+  chart?: ChartSpec[];
 }
 
 export const QUESTIONS: Question[] = [
   {
     title: 'What do people keep on ArDrive?',
+    chart: [
+      { form: 'bars', label: ['type'], series: ['gib'] },
+      { form: 'bars', label: ['type'], series: ['uploads'] },
+    ],
     sub: 'File types, by count and size',
     sql: "SELECT coalesce(content_type, '(no type)') AS type,\n       count(*) AS files,\n       round(sum(data_size) / power(2,30), 2) AS gib\nFROM uploads\nWHERE NOT is_record\nGROUP BY 1\nORDER BY gib DESC\nLIMIT 15;",
     caption:
@@ -29,6 +37,10 @@ export const QUESTIONS: Question[] = [
   },
   {
     title: 'How many drives were created?',
+    chart: [
+      { form: 'columns', label: ['month'], series: ['public_drives', 'private_drives'] },
+      { form: 'bars', label: ['kind'], series: ['records'] },
+    ],
     sub: 'Public and private, by month',
     sql: "SELECT coalesce(strftime(date_trunc('month', created_at), '%Y-%m'), '(no date)') AS month,\n       count(*) FILTER (WHERE privacy = 'public') AS public_drives,\n       count(*) FILTER (WHERE privacy = 'private') AS private_drives,\n       count(DISTINCT owner) AS owners\nFROM drives\nGROUP BY date_trunc('month', created_at)\nORDER BY date_trunc('month', created_at);",
     caption: 'Drives whose record was written {RANGE}, by the month the app stamped on it.',
@@ -39,6 +51,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     title: 'Who stores the most?',
+    chart: [{ form: 'bars', label: ['owner'], series: ['gib'] }],
     sub: 'Wallets ranked by bytes',
     sql: 'SELECT u.owner AS owner,\n       count(*) AS uploads,\n       round(sum(u.data_size) / power(2,30), 2) AS gib,\n       count(DISTINCT e.drive_id) FILTER (WHERE e.drive_id IS NOT NULL) AS drives_touched\nFROM uploads u\nLEFT JOIN entities e USING (id, height)\nGROUP BY u.owner\nORDER BY gib DESC\nLIMIT 15;',
     caption:
@@ -46,6 +59,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     title: 'Biggest files',
+    chart: [{ form: 'bars', label: ['id'], series: ['mib'] }],
     sub: 'The largest uploads',
     sql: 'SELECT id, owner, round(data_size / power(2,20), 1) AS mib, content_type, created_at\nFROM uploads\nWHERE NOT is_record\nORDER BY data_size DESC\nLIMIT 15;',
     caption:
@@ -53,6 +67,10 @@ export const QUESTIONS: Question[] = [
   },
   {
     title: 'Public or private?',
+    chart: [
+      { form: 'bars', label: ['how'], series: ['gib'] },
+      { form: 'bars', label: ['how'], series: ['uploads'] },
+    ],
     sub: 'How much is encrypted',
     sql: "SELECT CASE WHEN cipher IS NULL THEN 'public' ELSE 'private' END AS how,\n       count(*) AS uploads,\n       round(sum(data_size) / power(2,30), 2) AS gib,\n       count(DISTINCT owner) AS wallets\nFROM uploads\nWHERE NOT is_record\nGROUP BY 1\nORDER BY gib DESC;",
     caption:
@@ -64,6 +82,10 @@ export const QUESTIONS: Question[] = [
   },
   {
     title: 'Which apps and versions?',
+    chart: [
+      { form: 'bars', label: ['app', 'app_version'], series: ['uploads'] },
+      { form: 'bars', label: ['app'], series: ['uploads'] },
+    ],
     sub: 'What wrote the uploads',
     sql: 'SELECT app, app_version, count(*) AS uploads, round(sum(data_size) / power(2,30), 2) AS gib\nFROM uploads\nGROUP BY 1, 2\nORDER BY uploads DESC\nLIMIT 15;',
     caption: 'Every upload names the app that made it (App-Name and App-Version tags), {RANGE}.',
@@ -74,6 +96,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     title: 'New wallets',
+    chart: [{ form: 'columns', label: ['month'], series: ['new_wallets'] }],
     sub: 'First-time uploaders, by month',
     sql: "WITH firsts AS (\n  SELECT owner, min(created_at) AS first_seen FROM uploads GROUP BY owner\n)\nSELECT coalesce(strftime(date_trunc('month', first_seen), '%Y-%m'), '(no date)') AS month, count(*) AS new_wallets\nFROM firsts\nGROUP BY date_trunc('month', first_seen)\nORDER BY date_trunc('month', first_seen);",
     caption:
@@ -81,6 +104,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     title: 'Where do the bytes go?',
+    chart: [{ form: 'bars', label: ['size_bucket'], series: ['gib'] }],
     sub: 'Uploads by size',
     sql: "SELECT CASE WHEN data_size < 1024 THEN 'a. under 1 KB'\n            WHEN data_size < 102400 THEN 'b. under 100 KB'\n            WHEN data_size < 1048576 THEN 'c. under 1 MB'\n            WHEN data_size < 104857600 THEN 'd. under 100 MB'\n            ELSE 'e. 100 MB and up' END AS size_bucket,\n       count(*) AS uploads,\n       round(sum(data_size) / power(2,30), 2) AS gib\nFROM uploads\nGROUP BY 1\nORDER BY 1;",
     caption: 'Most uploads are tiny records. Most bytes are a few large files, {RANGE}.',

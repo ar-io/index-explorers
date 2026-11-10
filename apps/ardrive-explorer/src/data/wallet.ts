@@ -14,6 +14,7 @@ import {
   shortId,
   sq,
 } from '@ar-io/index-client';
+import { sizeText } from '@ar-io/explorer-ui';
 
 import { CONFIG } from '../config.js';
 import { type EntityRecord, toRecord } from '../model/arfs.js';
@@ -51,6 +52,7 @@ export function createWalletFlow(
       crumbs,
       title: `Wallet ${shortId(addr)}`,
       sub: 'Totals from the index’s wallet lookup…',
+      loading: true,
     };
     const r = await s.measured('Reading the wallet', async () => {
       const bands = s.registeredBands();
@@ -134,7 +136,7 @@ export function createWalletFlow(
     const list = [...driveIds.values()].sort((a, b) => b.last.height - a.last.height);
     const facts: Fact[] = [
       { dt: 'Uploads', dd: num(t.uploads as number) },
-      { dt: 'Data uploaded', dd: `${Number(t.gib_uploaded).toFixed(2)} GiB` },
+      { dt: 'Data uploaded', dd: sizeText(Math.round(Number(t.gib_uploaded) * 2 ** 30)) },
       { dt: 'First block', dd: num(t.first_block as number) },
       { dt: 'Last block', dd: num(t.last_block as number) },
       { dt: 'Active stretches', dd: num(clusters.length) },

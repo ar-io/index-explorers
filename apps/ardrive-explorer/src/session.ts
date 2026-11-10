@@ -44,7 +44,7 @@ import { CONFIG } from './config.js';
 import { applyMeta, type DriveItem, type DriveModel, setDriveMeta } from './model/arfs.js';
 import { NamePool, type NameResult } from './model/names.js';
 import type { RunOptions } from './data/query.js';
-import { askedFor } from './data/questions.js';
+import { askedFor, QUESTIONS } from './data/questions.js';
 import { encodeFragment, parseFragment, type ViewState } from './router.js';
 import { emptyContent, type Store } from './store.js';
 
@@ -214,10 +214,13 @@ export class Session {
         // Drives and files wait for the engine; uploads and span are in the publication.
         counting: st.hero.value.drives === '',
         items: records ? num(records) : '',
+        // One year once, not "2026–2026"; "to", since Wavehaus has no en dash.
         span:
           first.fromTime && last.toTime
-            ? `${yr(first.fromTime)}–${yr(last.toTime)}`
-            : `${num(first.from)}–${num(tip)}`,
+            ? yr(first.fromTime) === yr(last.toTime)
+              ? `${yr(last.toTime)}`
+              : `${yr(first.fromTime)} to ${yr(last.toTime)}`
+            : `${num(first.from)} to ${num(tip)}`,
       };
       st.pub.value = {
         ...st.pub.value,
@@ -910,6 +913,9 @@ export class Session {
         confirmed: !!a?.wide,
         labels: !!a,
         sql,
+        ...(a?.question != null && QUESTIONS[a.question]?.chart
+          ? { chart: QUESTIONS[a.question]!.chart! }
+          : {}),
       });
     } else if (v.kind === 'browse') await f.browse(true);
     else if (v.kind === 'questions' || v.kind === 'editor' || v.kind === 'source')

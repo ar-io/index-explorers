@@ -5,6 +5,8 @@
  * for them, mapped as the app maps them. Search and the light theme's sun are
  * Material Icons (Apache-2.0), as the app's own are.
  */
+import { fileType } from './ardrive/format.js';
+
 const FONT = '0 0 1000 1000';
 const MATERIAL = '0 0 24 24';
 const PATHS = {
@@ -210,32 +212,10 @@ export function iconFor(
   return 'file';
 }
 
-const KIND_LABEL: Partial<Record<IconName, string>> = {
-  image: 'image',
-  video: 'video',
-  audio: 'audio',
-  archive: 'archive',
-  code: 'code',
-  doc: 'document',
-  file: 'file',
-  manifest: 'manifest',
-  folder: 'folder',
-  drive: 'drive',
-  lock: 'encrypted',
-  wallet: 'wallet',
-};
-
-/** A short type label for a list: the subtype of a content type, or the icon's kind. */
+/** A file's type for a list, in words ("JPEG image", "PDF"); details keep the MIME type too. */
 export function typeLabel(
   type: string | null | undefined,
   name: string | null | undefined,
 ): string {
-  if (type && type !== 'application/octet-stream')
-    return type
-      .split('/')
-      .pop()!
-      .replace(/^x-/, '')
-      .replace(/^vnd\./, '')
-      .slice(0, 24);
-  return KIND_LABEL[iconFor(type, name)] ?? '';
+  return fileType(type, name);
 }

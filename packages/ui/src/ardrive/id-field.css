@@ -1,0 +1,22 @@
+/* IdField, over the ArDrive tokens (ardrive-tokens.css). */
+.idfield {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+.idfield > .mono,
+.idfield > .rowlink {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--code);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.idfield .idcopy {
+  flex: none;
+  margin-left: var(--space-xs);
+  font-size: var(--paragraph-small);
+}

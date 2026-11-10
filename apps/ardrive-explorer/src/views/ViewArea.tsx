@@ -1,14 +1,19 @@
-import { ActionMenu, Badge, Icon, type Action } from '@ar-io/explorer-ui';
 import {
-  bytesText,
-  cellNum,
-  fmtDate,
-  fmtWhen,
-  isId43,
-  isUuid,
-  num,
-  shortId,
-} from '@ar-io/index-client';
+  ActionMenu,
+  AnchoredMenu,
+  ardriveUrl,
+  Chart,
+  dateText,
+  dateTimeText,
+  FilePreview,
+  fileType,
+  Icon,
+  IdField,
+  previewKind,
+  sizeText,
+  type Action,
+} from '@ar-io/explorer-ui';
+import { bytesText, cellNum, isId43, isUuid, num, shortId } from '@ar-io/index-client';
 import type { ComponentChildren } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 
@@ -74,127 +79,228 @@ export function Name({
   );
 }
 
+/**
+ * A drive's menu on its row in a list, the same as its menu in its own
+ * header, less what needs it open: Open | Copy link | Open in ArDrive. One
+ * menu for the whole list, opened beside the row's button.
+ */
+function useDriveRowMenu() {
+  const { store, session, flows } = useApp();
+  const [menu, setMenu] = useState<{
+    id: string;
+    privacy: string;
+    label: string;
+    anchor: HTMLElement;
+  } | null>(null);
+  const button = (id: string, privacy: string, label: string) => (
+    <td class="row-act">
+      <button
+        type="button"
+        class="iconbtn compact"
+        aria-label={`Actions for ${label}`}
+        aria-haspopup="menu"
+        aria-controls="drive-rowmenu"
+        aria-expanded={menu?.id === id ? 'true' : 'false'}
+        onClick={(e) => {
+          e.stopPropagation();
+          const anchor = e.currentTarget;
+          setMenu(menu?.id === id ? null : { id, privacy, label, anchor });
+        }}
+      >
+        <Icon name="more" />
+      </button>
+    </td>
+  );
+  const node = menu ? (
+    <AnchoredMenu
+      id="drive-rowmenu"
+      label={`Actions for ${menu.label}`}
+      anchor={menu.anchor}
+      onClose={() => setMenu(null)}
+      actions={(() => {
+        const share = session.shareUrl({ kind: 'drive', key: menu.id, folder: null });
+        const app = ardriveUrl(
+          { driveId: menu.id, privacy: menu.privacy === 'private' ? 'private' : 'public' },
+          CONFIG.appUrl,
+        );
+        return [
+          { label: 'Open', icon: 'drive', run: () => void flows.openDrive(menu.id, false, null) },
+          {
+            label: 'Copy link',
+            icon: 'copy',
+            group: true,
+            run: () =>
+              void navigator.clipboard.writeText(share).then(
+                () => store.say('Link copied.', 'ok', { flash: true }),
+                () => store.say('The browser would not give clipboard access.', 'bad'),
+              ),
+          },
+          ...(app
+            ? [
+                {
+                  label: 'Open in ArDrive',
+                  icon: 'external' as const,
+                  run: () => window.open(app, '_blank', 'noopener'),
+                },
+              ]
+            : []),
+        ] satisfies Action[];
+      })()}
+    />
+  ) : null;
+  return { button, node };
+}
+
 function DrivesTable({ rows }: { rows: DriveRow[] }) {
   const { flows } = useApp();
+  const menu = useDriveRowMenu();
   return (
-    <table id="results">
-      <thead>
-        <tr>
-          <th scope="col">Drive</th>
-          <th scope="col">Owner</th>
-          <th scope="col">Created</th>
-          <th scope="col">Privacy</th>
-          <th scope="col">App</th>
-          <th
-            scope="col"
-            class="num"
-            title="Records over the drive's whole history, from the signed tag lookup. A drive with nothing in it has 2: itself and its root folder."
-          >
-            Records
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => {
-          const open = () => void flows.openDrive(r.drive_id!, false, null);
-          return (
-            <tr
-              key={r.id}
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest('button, a')) return;
-                open();
-              }}
+    <>
+      <table id="results" class="as-list">
+        <thead>
+          <tr>
+            <th scope="col">Drive</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Created</th>
+            <th scope="col">Privacy</th>
+            <th scope="col">App</th>
+            <th
+              scope="col"
+              class="num"
+              title="Records over the drive's whole history, from the signed tag lookup. A drive with nothing in it has 2: itself and its root folder."
             >
-              <td>
-                <div class="namewrap">
-                  <RowLink go={open}>
-                    <Icon name={r.privacy === 'private' ? 'privateDrive' : 'drive'} />
-                    <Name
-                      id={r.id}
-                      size={r.record_size}
-                      fallback={r.privacy === 'private' ? 'Private drive' : 'Unnamed drive'}
-                      isPrivate={r.privacy === 'private'}
-                    />
-                  </RowLink>
-                  <span class="sub">{r.drive_id}</span>
-                </div>
-              </td>
-              <td>
-                <RowLink
-                  go={() => void flows.openWallet(r.owner, false)}
-                  mono
-                  text={shortId(r.owner)}
-                ></RowLink>
-              </td>
-              <td>{Number(r.created_at) > 0 ? fmtDate(r.created_at) : `block ${num(r.height)}`}</td>
-              <td>
-                <Badge text={sentence(r.privacy)} kind={r.privacy} />
-              </td>
-              <td>{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
-              <td class="num">{r.records === null ? '' : num(r.records)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+              Records
+            </th>
+            <th scope="col" class="row-act">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const open = () => void flows.openDrive(r.drive_id!, false, null);
+            return (
+              <tr
+                key={r.id}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button, a')) return;
+                  open();
+                }}
+              >
+                <td>
+                  <div class="namewrap">
+                    <RowLink go={open}>
+                      <Icon name={r.privacy === 'private' ? 'privateDrive' : 'drive'} />
+                      <Name
+                        id={r.id}
+                        size={r.record_size}
+                        fallback={r.privacy === 'private' ? 'Private drive' : 'Unnamed drive'}
+                        isPrivate={r.privacy === 'private'}
+                      />
+                    </RowLink>
+                    <span class="sub">{r.drive_id}</span>
+                  </div>
+                </td>
+                <td>
+                  <RowLink
+                    go={() => void flows.openWallet(r.owner, false)}
+                    mono
+                    text={shortId(r.owner)}
+                  ></RowLink>
+                </td>
+                <td>
+                  {Number(r.created_at) > 0 ? dateText(r.created_at) : `block ${num(r.height)}`}
+                </td>
+                <td>
+                  <span class="privacy">{sentence(r.privacy)}</span>
+                </td>
+                <td class="app">{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
+                <td class="num">{r.records === null ? '' : num(r.records)}</td>
+                {menu.button(
+                  r.drive_id!,
+                  r.privacy,
+                  r.privacy === 'private' ? 'a private drive' : `drive ${r.drive_id!.slice(0, 8)}`,
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {menu.node}
+    </>
   );
 }
 
 function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
   const { flows } = useApp();
+  const menu = useDriveRowMenu();
   return (
-    <table id="results">
-      <thead>
-        <tr>
-          <th scope="col">Drive</th>
-          <th scope="col">Privacy</th>
-          <th scope="col" class="num">
-            Records here
-          </th>
-          <th scope="col">Last written</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((d) => (
-          <tr
-            key={d.drive_id}
-            onClick={(e) =>
-              (e.target as HTMLElement).closest('button, a')
-                ? null
-                : void flows.openDrive(d.drive_id, false, null)
-            }
-          >
-            <td>
-              <div class="namewrap">
-                <RowLink go={() => void flows.openDrive(d.drive_id, false, null)}>
-                  {d.privacy === 'private' || !d.drive ? (
-                    <span class="name pending">
-                      {d.privacy === 'private'
-                        ? 'private drive'
-                        : 'drive (record not in this stretch)'}
-                    </span>
-                  ) : (
-                    <Name id={d.drive.id} size={d.drive.record_size} fallback="unnamed drive" />
-                  )}
-                </RowLink>
-                <span class="sub">{d.drive_id}</span>
-              </div>
-            </td>
-            <td>
-              <Badge text={sentence(d.privacy)} kind={d.privacy} />
-            </td>
-            <td class="num">{num(d.records)}</td>
-            <td>
-              {Number(d.last.created_at) > 0
-                ? fmtWhen(d.last.created_at)
-                : `block ${num(d.last.height)}`}
-            </td>
+    <>
+      <table id="results" class="as-list">
+        <thead>
+          <tr>
+            <th scope="col">Drive</th>
+            <th scope="col">Privacy</th>
+            <th scope="col" class="num">
+              Records here
+            </th>
+            <th scope="col">Last written</th>
+            <th scope="col" class="row-act">
+              <span class="sr-only">Actions</span>
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((d) => (
+            <tr
+              key={d.drive_id}
+              onClick={(e) =>
+                (e.target as HTMLElement).closest('button, a')
+                  ? null
+                  : void flows.openDrive(d.drive_id, false, null)
+              }
+            >
+              <td>
+                <div class="namewrap">
+                  <RowLink go={() => void flows.openDrive(d.drive_id, false, null)}>
+                    {d.privacy === 'private' || !d.drive ? (
+                      <span class="name pending">
+                        {d.privacy === 'private'
+                          ? 'private drive'
+                          : 'drive (record not in this stretch)'}
+                      </span>
+                    ) : (
+                      <Name id={d.drive.id} size={d.drive.record_size} fallback="unnamed drive" />
+                    )}
+                  </RowLink>
+                  <span class="sub">{d.drive_id}</span>
+                </div>
+              </td>
+              <td>
+                <span class="privacy">{sentence(d.privacy)}</span>
+              </td>
+              <td class="num">{num(d.records)}</td>
+              <td>
+                {Number(d.last.created_at) > 0
+                  ? dateText(d.last.created_at)
+                  : `block ${num(d.last.height)}`}
+              </td>
+              {menu.button(
+                d.drive_id,
+                d.privacy,
+                d.privacy === 'private' ? 'a private drive' : `drive ${d.drive_id.slice(0, 8)}`,
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {menu.node}
+    </>
   );
 }
+
+/** GiB and MiB columns hold rounded sizes, in bytes per unit. */
+const UNIT: Record<string, number> = { gib: 2 ** 30, mib: 2 ** 20 };
 
 function GenericTable({ table }: { table: TableContent }) {
   const { flows } = useApp();
@@ -213,7 +319,12 @@ function GenericTable({ table }: { table: TableContent }) {
     if (isTime.has(c.key) && !(Number(v) > 0))
       return { node: <span class="nodate">(no date)</span>, num: false };
     if (v === null || v === undefined) return { node: '', num: false };
-    if (isTime.has(c.key)) return { node: fmtWhen(v), num: false };
+    if (isTime.has(c.key)) return { node: dateTimeText(v), num: false };
+    // A question's sizes read as bytes do elsewhere (7.34 GB), and its types in words.
+    if (table.labelled && UNIT[c.key] && Number.isFinite(Number(v)))
+      return { node: sizeText(Math.round(Number(v) * UNIT[c.key]!)), num: true };
+    if (table.labelled && (c.key === 'type' || c.key === 'content_type') && /\//.test(String(v)))
+      return { node: <span title={String(v)}>{fileType(String(v))}</span>, num: false };
     const text = String(v);
     if (c.key === 'owner' && isId43(text))
       return {
@@ -265,7 +376,7 @@ function GenericTable({ table }: { table: TableContent }) {
         <tr>
           {table.cols.map((c) => (
             <th key={c.key} scope="col" class={numCols.has(c.key) || c.num ? 'num' : undefined}>
-              {/^[KMGT]iB$/.test(c.label) ? <span class="unit">{c.label}</span> : c.label}
+              {table.labelled && UNIT[c.key] ? 'Size' : c.label}
             </th>
           ))}
         </tr>
@@ -299,24 +410,85 @@ function TitleName() {
   );
 }
 
-/** For a file record, once its JSON is in hand: a link to the file itself. */
-function OpenFileLink() {
+/**
+ * A public file record's file, once its JSON is in hand: what the record
+ * describes, as its own block above the record's facts. The name, type and
+ * data id come from the record, which is outside the signature.
+ */
+function FileCard() {
   const { store, session } = useApp();
   void store.namesTick.value;
-  const t = store.content.value.titleName;
-  if (!t) return null;
-  const r = session.names.cache.get(t.id);
+  const c = store.content.value;
+  if (!c.file) return null;
+  const r = session.names.cache.get(c.file.recordId);
   const meta = r?.ok ? r.meta : null;
   const dataTxId =
     meta && typeof meta.dataTxId === 'string' && isId43(meta.dataTxId) ? meta.dataTxId : null;
-  if (!dataTxId) return null;
+  if (!meta || !dataTxId) return null;
+  const url = `${session.gateway}/${dataTxId}`;
+  const type = typeof meta.dataContentType === 'string' ? meta.dataContentType : null;
+  const name = r?.name ?? '';
+  const size = typeof meta.size === 'number' ? meta.size : null;
+  const kind = previewKind(type, name);
+  const app =
+    c.file.fileId && c.file.driveId
+      ? ardriveUrl(
+          { driveId: c.file.driveId, privacy: 'public', fileId: c.file.fileId },
+          CONFIG.appUrl,
+        )
+      : null;
   return (
-    <a href={`${session.gateway}/${dataTxId}`} target="_blank" rel="noopener">
-      Open the file
-      {meta!.size != null
-        ? ` (${bytesText(meta!.size)}${typeof meta!.dataContentType === 'string' ? ', ' + meta!.dataContentType : ''})`
-        : ''}
-    </a>
+    <section class="block" id="filecard" aria-labelledby="filecard-title">
+      <h3 class="block-title" id="filecard-title">
+        File
+      </h3>
+      {kind ? (
+        <FilePreview key={url} url={url} kind={kind} name={name || 'the file'} size={size} />
+      ) : null}
+      <dl class="facts">
+        <div class="fact">
+          <dt>Name</dt>
+          <dd>{name || '(none)'}</dd>
+        </div>
+        <div class="fact">
+          <dt>Size</dt>
+          <dd>{sizeText(size)}</dd>
+        </div>
+        <div class="fact">
+          <dt>Type</dt>
+          <dd>{type ? `${fileType(type, name)} (${type})` : fileType(null, name)}</dd>
+        </div>
+        <div class="fact">
+          <dt>Data</dt>
+          <dd>
+            <IdField id={dataTxId} label="the data id" />
+          </dd>
+        </div>
+      </dl>
+      <p class="block-links">
+        <a href={url} target="_blank" rel="noopener">
+          Open the file
+          <Icon name="external" />
+        </a>
+        {app ? (
+          <a href={app} target="_blank" rel="noopener">
+            Open in ArDrive
+            <Icon name="external" />
+          </a>
+        ) : null}
+      </p>
+    </section>
+  );
+}
+
+/** Placeholder rows while a listing reads: the table's shape, not a line of text. */
+function Skeleton() {
+  return (
+    <div class="skeleton" aria-hidden="true">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <i key={i} />
+      ))}
+    </div>
   );
 }
 
@@ -436,7 +608,7 @@ export function ViewArea({
   /** Says what the view read, and how it was checked, under it (the status line does not). */
   receipt?: boolean;
 }) {
-  const { store } = useApp();
+  const { store, flows } = useApp();
   const c = store.content.value;
   const status = store.status.value;
   const drive = store.drive.value;
@@ -444,7 +616,15 @@ export function ViewArea({
   const actions = useViewActions();
   // An open drive draws its own header, path and menu.
   const ownHead = !drive;
-  const empty = view.kind === 'home';
+  const empty = view.kind === 'home' || c.empty;
+  // Placeholder rows while this view reads, until its rows, its cost card or its failure.
+  const loadingRows =
+    c.loading &&
+    !(c.table && c.table.rows.length) &&
+    !c.cost &&
+    !drive &&
+    status.cls !== 'bad' &&
+    (store.progress.value.visible || status.cls === '');
   return (
     <article class={`view${empty ? ' empty-state' : ''}`} id="view" aria-labelledby="viewtitle">
       {ownHead && c.crumbs.length > 1 ? (
@@ -463,7 +643,7 @@ export function ViewArea({
           ))}
         </nav>
       ) : null}
-      {empty ? <Icon name="search" big /> : null}
+      {empty ? <Icon name={view.kind === 'home' ? 'search' : 'info'} big /> : null}
       {ownHead ? (
         <div class="view-head">
           <h2 class="view-title" id="viewtitle">
@@ -478,13 +658,29 @@ export function ViewArea({
         {c.sub}
       </p>
       {toolbar}
+      <FileCard />
+      {c.file && c.facts.length ? <h3 class="block-title">Record</h3> : null}
       <dl class="facts" id="viewfacts" hidden={!c.facts.length}>
         {c.facts
           .filter((f) => f.dd !== null && f.dd !== undefined && f.dd !== '')
           .map((f) => (
             <div class="fact" key={f.dt}>
               <dt>{f.dt}</dt>
-              <dd class={f.mono ? 'mono' : undefined}>{f.dd}</dd>
+              <dd>
+                {f.mono && typeof f.dd === 'string' ? (
+                  <IdField
+                    id={f.dd}
+                    label={f.dt.toLowerCase()}
+                    {...(isId43(f.dd) && f.dt === 'Owner'
+                      ? { onOpen: () => void flows.openWallet(f.dd as string, false) }
+                      : isUuid(f.dd) && f.dt === 'Drive'
+                        ? { onOpen: () => void flows.openDrive(f.dd as string, false, null) }
+                        : {})}
+                  />
+                ) : (
+                  f.dd
+                )}
+              </dd>
             </div>
           ))}
       </dl>
@@ -514,6 +710,20 @@ export function ViewArea({
             )
           : null}
       </p>
+      {c.tags && c.tags.length ? (
+        <table class="kv" id="tags" aria-label="Tags">
+          <tbody>
+            {c.tags.map(([k, v], i) => (
+              <tr key={i}>
+                <th scope="row">{k}</th>
+                <td>{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+      {loadingRows ? <Skeleton /> : null}
+      {c.chart ? <Chart c={c.chart} id="chart" /> : null}
       <TableWrap
         hidden={!c.table || !c.table.rows.length}
         view={`${view.kind} ${'key' in view ? view.key : ''} ${c.title} ${c.table?.preset ?? ''}`}
@@ -529,8 +739,7 @@ export function ViewArea({
         ) : null}
       </TableWrap>
       {drive ? <DriveBrowser /> : null}
-      <div class="more" id="more" hidden={!c.more.length && !c.titleName && !c.portalWallet}>
-        {c.titleName ? <OpenFileLink /> : null}
+      <div class="more" id="more" hidden={!c.more.length && !c.portalWallet}>
         {c.more.map((m, i) =>
           m.kind === 'button' ? (
             <button
@@ -559,7 +768,7 @@ export function ViewArea({
           </a>
         ) : null}
       </div>
-      {receipt && status.cls === 'ok' && !status.flash && status.text ? (
+      {receipt && status.cls === 'ok' && !status.flash && status.text && !loadingRows ? (
         <p class="receipt" id="receipt">
           <Icon name="success" />
           <span>{status.text}</span>

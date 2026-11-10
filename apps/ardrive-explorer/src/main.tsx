@@ -2,6 +2,10 @@ import '@preact/signals';
 import { render } from 'preact';
 
 import '@ar-io/explorer-ui/ardrive-tokens.css';
+import '@ar-io/explorer-ui/ardrive/file-preview.css';
+import '@ar-io/explorer-ui/ardrive/sheet.css';
+import '@ar-io/explorer-ui/ardrive/id-field.css';
+import '@ar-io/explorer-ui/ardrive/chart.css';
 import './styles.css';
 
 import { AppContext, type Flows } from './context.js';

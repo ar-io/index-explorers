@@ -121,7 +121,7 @@ test('filters: privacy, app and period reload the listing', async () => {
     120_000,
     'public filter',
   );
-  const badges = await page.locator('#results tbody .badge').allInnerTexts();
+  const badges = await page.locator('#results tbody .privacy').allInnerTexts();
   expect(badges.length).toBeGreaterThan(0);
   expect(badges.every((b) => /public/i.test(b))).toBe(true);
   await clearStatus(page);
@@ -132,7 +132,7 @@ test('filters: privacy, app and period reload the listing', async () => {
     120_000,
     'private filter',
   );
-  const pb = await page.locator('#results tbody .badge').allInnerTexts();
+  const pb = await page.locator('#results tbody .privacy').allInnerTexts();
   expect(pb.length).toBeGreaterThan(0);
   expect(pb.every((b) => /private/i.test(b))).toBe(true);
   await clearStatus(page);
@@ -219,6 +219,9 @@ test('every question answers, with a caption', async () => {
     expect(await rows(page), `${label}: ${st}`).toBeGreaterThan(0);
     expect(st, label).not.toMatch(/error|could not/i);
     expect(await page.locator('#status .bad').count(), `${label}: ${st}`).toBe(0);
+    // The chosen card is marked, and an answer of several rows is drawn before its table.
+    expect(await page.locator('#asks button').nth(i).getAttribute('aria-pressed')).toBe('true');
+    if (i === 0) expect(await page.locator('#chart .meters li').count()).toBeGreaterThan(1);
   }
   expect(await page.locator('#caption').isVisible()).toBe(true);
   await page.locator('#view').screenshot({ path: 'e2e/out/q-last.png' });
@@ -395,13 +398,13 @@ test('find: a file record, file data, a wallet, a drive id; rejects nonsense; an
     if (name === 'file record') {
       await until(
         page,
-        async () => (await page.locator('#more a', { hasText: 'Open the file' }).count()) > 0,
+        async () => (await page.locator('#filecard a', { hasText: 'Open the file' }).count()) > 0,
         20_000,
         'open the file link',
       );
-      expect(await page.locator('#more a', { hasText: 'Open the file' }).count()).toBeGreaterThan(
-        0,
-      );
+      expect(
+        await page.locator('#filecard a', { hasText: 'Open the file' }).count(),
+      ).toBeGreaterThan(0);
     }
   }
   for (const [input, re] of [
@@ -525,7 +528,7 @@ test('Run query brings its work, its answer or its failure into view, and only w
   }
 });
 
-test('on a phone, a question table shows it has more columns, and a wallet table starts at its left edge', async ({
+test('on a phone, a question table shows it has more columns, and a wallet opened from it starts at its left edge', async ({
   browser,
 }) => {
   const m = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
@@ -534,11 +537,14 @@ test('on a phone, a question table shows it has more columns, and a wallet table
   await goTo(m, 'questions');
   await m.locator('#asks button', { hasText: 'Biggest files' }).click();
   await until(m, async () => (await rows(m)) > 0, 60_000, 'biggest files');
-  // Ids shortened, whole in the link's title; units keep their case in the headers.
+  // Ids shortened, whole in the link's title; sizes as bytes, under a header in words.
   const id = m.locator('#results tbody td').first().locator('button');
   expect(await id.innerText()).toMatch(/^.{6}….{4}$/);
   expect(await id.getAttribute('title')).toMatch(/^[A-Za-z0-9_-]{43}$/);
-  expect(await m.locator('#results thead th').allInnerTexts()).toContain('MiB');
+  expect(await m.locator('#results thead th').allInnerTexts()).toContain('Size');
+  expect(await m.locator('#results tbody td.num').first().innerText()).toMatch(
+    /^[\d.]+ (B|KB|MB|GB)$/,
+  );
   const box = () =>
     m.evaluate(() => {
       const w = document.querySelector('.tablewrap') as HTMLElement;
@@ -555,17 +561,7 @@ test('on a phone, a question table shows it has more columns, and a wallet table
   const q = await box();
   expect(q.seen, 'columns in view').toBeGreaterThan(1);
   expect(/more-right/.test(q.fades)).toBe(q.scrolls);
-  // A wallet opened from Newest drives, after scrolling that table sideways.
-  await goTo(m, 'drives');
-  // The drives table itself, not the question's rows still on screen as it starts.
-  await until(
-    m,
-    async () =>
-      (await m.locator('#results thead th').first().textContent()) === 'Drive' &&
-      (await rows(m)) > 0,
-    120_000,
-    'browse',
-  );
+  // A wallet opened from that answer, after scrolling its table sideways.
   await m.evaluate(() => {
     const w = document.querySelector('.tablewrap') as HTMLElement;
     w.scrollLeft = w.scrollWidth;
@@ -767,6 +763,13 @@ test('light theme renders; phone width has no horizontal scroll', async ({ brows
   const overflow = await m.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );
+  // The drives list is a list on a phone: nothing in it scrolls sideways.
+  expect(
+    await m.evaluate(() => {
+      const w = document.querySelector('.tablewrap') as HTMLElement;
+      return w.scrollWidth - w.clientWidth;
+    }),
+  ).toBeLessThanOrEqual(1);
   expect(
     overflow,
     `scrollWidth ${await m.evaluate(() => document.documentElement.scrollWidth)}`,
