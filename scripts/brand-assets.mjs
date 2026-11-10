@@ -11,10 +11,11 @@
  *
  * With app names, only those apps' files are written.
  *
- * ArDrive's card is set in Wavehaus, which may not be redistributed, so it
- * is not in this repository: point WAVEHAUS_DIR at a folder holding
- * Wavehaus-158ExtraBold.woff2 and Wavehaus-66Book.woff2 from ArDrive's brand
- * kit. Without it the card falls back to Plus Jakarta Sans, and says so.
+ * ArDrive's card headline is set in Wavehaus ExtraBold, a website cut the
+ * pages do not serve, so it is not in this repository: point WAVEHAUS_DIR at
+ * a folder holding Wavehaus-158ExtraBold.woff2 and Wavehaus-66Book.woff2 from
+ * ArDrive's brand kit. Without it the card falls back to Plus Jakarta Sans,
+ * and says so.
  *
  * The outputs are committed: a build never runs a browser. Change a card's
  * words here, run this, and commit what it wrote. Claims on a card are the
