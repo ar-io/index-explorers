@@ -18,6 +18,7 @@ import {
 } from '@ar-io/index-client';
 
 import { CONFIG } from '../config.js';
+import { buildChart, type ChartSpec } from './chart.js';
 import { captionSegments, columnLabel, QUESTIONS } from './questions.js';
 import type { Session } from '../session.js';
 import { emptyContent } from '../store.js';
@@ -31,6 +32,8 @@ export interface RunOptions {
   labels?: boolean;
   /** What the view says when nothing comes back. */
   empty?: string;
+  /** A question's charts: the first whose columns come back is drawn. */
+  chart?: ChartSpec[];
 }
 
 export function createQueryFlow(s: Session) {
@@ -139,6 +142,7 @@ export function createQueryFlow(s: Session) {
         caption,
         // An empty answer says so in the view, not only in the status line.
         sub: rows.length ? '' : (opts.empty ?? 'No rows.'),
+        chart: buildChart(opts.chart, cols, rows),
         table: {
           cols: cols.map((c) => ({ key: c, label: opts.labels ? columnLabel(c) : c })),
           rows: rows.slice(0, 200),
@@ -187,6 +191,7 @@ export function createQueryFlow(s: Session) {
       confirmed: wide,
       sql,
       labels: true,
+      ...(q.chart ? { chart: q.chart } : {}),
     });
   }
 

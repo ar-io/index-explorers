@@ -18,6 +18,7 @@ import type { DriveRow } from '../model/arfs.js';
 import type { Column, TableContent } from '../store.js';
 import { saveFile, toCsv, toJson } from '../util/export.js';
 import { captionSegments } from '../data/questions.js';
+import { Chart } from './Chart.js';
 import { DriveBrowser } from './DriveBrowser.js';
 import { useMedia } from './useMedia.js';
 import type { WalletDrive } from '../data/wallet.js';
@@ -514,6 +515,7 @@ export function ViewArea({
             )
           : null}
       </p>
+      {c.chart ? <Chart c={c.chart} /> : null}
       <TableWrap
         hidden={!c.table || !c.table.rows.length}
         view={`${view.kind} ${'key' in view ? view.key : ''} ${c.title} ${c.table?.preset ?? ''}`}

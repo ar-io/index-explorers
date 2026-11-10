@@ -219,6 +219,9 @@ test('every question answers, with a caption', async () => {
     expect(await rows(page), `${label}: ${st}`).toBeGreaterThan(0);
     expect(st, label).not.toMatch(/error|could not/i);
     expect(await page.locator('#status .bad').count(), `${label}: ${st}`).toBe(0);
+    // The chosen card is marked, and an answer of several rows is drawn before its table.
+    expect(await page.locator('#asks button').nth(i).getAttribute('aria-pressed')).toBe('true');
+    if (i === 0) expect(await page.locator('#chart .meters li').count()).toBeGreaterThan(1);
   }
   expect(await page.locator('#caption').isVisible()).toBe(true);
   await page.locator('#view').screenshot({ path: 'e2e/out/q-last.png' });

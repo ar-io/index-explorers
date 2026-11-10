@@ -44,7 +44,7 @@ import { CONFIG } from './config.js';
 import { applyMeta, type DriveItem, type DriveModel, setDriveMeta } from './model/arfs.js';
 import { NamePool, type NameResult } from './model/names.js';
 import type { RunOptions } from './data/query.js';
-import { askedFor } from './data/questions.js';
+import { askedFor, QUESTIONS } from './data/questions.js';
 import { encodeFragment, parseFragment, type ViewState } from './router.js';
 import { emptyContent, type Store } from './store.js';
 
@@ -910,6 +910,9 @@ export class Session {
         confirmed: !!a?.wide,
         labels: !!a,
         sql,
+        ...(a?.question != null && QUESTIONS[a.question]?.chart
+          ? { chart: QUESTIONS[a.question]!.chart! }
+          : {}),
       });
     } else if (v.kind === 'browse') await f.browse(true);
     else if (v.kind === 'questions' || v.kind === 'editor' || v.kind === 'source')
