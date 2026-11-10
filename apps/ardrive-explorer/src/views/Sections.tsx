@@ -28,8 +28,8 @@ function BrowseToolbar() {
         variant="button"
         value={store.privacy.value}
         choices={[
-          { value: 'any', label: 'Public and private' },
           { value: 'public', label: 'Public only' },
+          { value: 'any', label: 'Public and private' },
           { value: 'private', label: 'Private only' },
         ]}
         onChange={(v) => filter(() => (store.privacy.value = v as 'any' | 'public' | 'private'))}

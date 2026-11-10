@@ -196,7 +196,8 @@ export class Store {
   readonly customGateway = signal<string>('');
   readonly periods = signal<Period[]>([]);
   readonly periodId = signal<string>('month');
-  readonly privacy = signal<'any' | 'public' | 'private'>('any');
+  /** Public by default: a private drive's name is encrypted, so its row has nothing to show. */
+  readonly privacy = signal<'any' | 'public' | 'private'>('public');
   readonly app = signal<string>('any');
   /** The drives list leaves out drives with nothing but their root folder. */
   readonly hideEmpty = signal(true);

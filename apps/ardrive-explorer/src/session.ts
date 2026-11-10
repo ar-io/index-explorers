@@ -23,6 +23,7 @@ import {
   arfs,
   parquetL2,
   pickGateway,
+  readAhead,
   type Proof,
   type RangeReader,
   rangeable,
@@ -541,8 +542,11 @@ export class Session {
         this.loadedPeriod = p.id;
         st.tr('periodViews done');
       }
-      if (!this.heroDone) {
+      // The counts are the home page's: a reader who has already gone on (to the
+      // newest drives, say) is not kept waiting for them; home reads them on return.
+      if (!this.heroDone && st.view.value.kind === 'home') {
         this.heroDone = true;
+        st.hero.value = { ...st.hero.value, counting: st.hero.value.drives === '' };
         await this.measured('Reading the index’s counts', () => this.heroCounts());
       }
       return true;
@@ -583,6 +587,13 @@ export class Session {
     );
     const fromStats = stats.filter((n): n is string => n !== null);
     const fromLookup = regs.filter((_, i) => stats[i] === null).map((r) => r.names.lg!);
+    // A few kilobytes a band, but the engine opens them one after another: a
+    // round trip each, forty of them before the first list. All at once instead.
+    if (fromStats.length) {
+      this.store.tr('stats ahead');
+      await readAhead(this.engine, [{ files: fromStats, keep: [], columns: null }]);
+      this.store.tr('stats ahead done');
+    }
     const parts = [
       ...(fromStats.length ? [parquetL2.statCountsSql(fromStats, name)] : []),
       ...(fromLookup.length ? [parquetL2.tagCountsSql(name, fromLookup)] : []),

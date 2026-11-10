@@ -23,6 +23,7 @@ export interface ReadAhead {
    * A row group without statistics is kept. A bound with `any` instead
    * keeps a row group whose `[min, max]` holds any one of those values, and
    * one with `within` a row group that meets any one of those `[lo, hi]`.
+   * No bounds keeps every row group: a whole small file, read at once.
    */
   keep: readonly (
     | { column: string; lo: string; hi: string }
@@ -78,7 +79,7 @@ export function readAheadSql(ra: ReadAhead): string {
       FROM ${files}),
     keep AS (
       SELECT file_name, row_group_id FROM m GROUP BY ALL
-      HAVING bool_and(CASE ${bounds} ELSE true END))
+      HAVING ${bounds ? `bool_and(CASE ${bounds} ELSE true END)` : 'true'})
     SELECT * FROM (
       SELECT m.file_name, m.start::BIGINT AS start, m.len::BIGINT AS len
       FROM m SEMI JOIN keep USING (file_name, row_group_id)
