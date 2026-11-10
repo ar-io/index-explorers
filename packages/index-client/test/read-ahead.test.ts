@@ -67,6 +67,13 @@ describe('read ahead over the recorded band', () => {
   });
   afterAll(() => c.closeSync());
 
+  it('no bounds keeps every row group of every file', async () => {
+    const lg = band.names.lg!;
+    const all = await q(c, `SELECT DISTINCT row_group_id FROM parquet_metadata('${lg}')`);
+    const got = await coveredGroups(c, lg, readAheadSql({ files: [lg], keep: [], columns: null }));
+    expect(got.length).toBe(all.length);
+  });
+
   it('a set of values names the row groups holding any of them, and only those', async () => {
     const lg = band.names.lg!;
     const ids = (
