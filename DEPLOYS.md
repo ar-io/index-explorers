@@ -2,6 +2,35 @@
 
 Every upload, newest first. The manifest id is what the ArNS name points at. Each entry lists the SHA-256 of every uploaded file, so a rebuild of the same commit can be compared with what is live.
 
+## 2026-11-10 · ardrive-explorer 1.5.0
+
+- manifest: `pR8Q1Xu7HqZ4iCpeIQpRQbwxP1zceMK3AWPWr_USb8w`
+- name: https://explore_ardrive.ar.io
+- before: `synurYiPKXFY6YvklwE3Bhi0aU_fqLfTj4f6QfPF_Yw` (point the record back at it to roll back)
+- commit: 46fbcdc
+- files:
+  - `apple-touch-icon.png` 9635d0e28944c245030dde304c6350553f18498cde33eaa0d6c180b1395524fa
+  - `assets/ardrive-wordmark-on-dark-DqujnLL9.svg` 9df6ca32fc3a31570614a1fc59bbb0021a846be5df9b82faf8b3c6ad058f1ba0
+  - `assets/ardrive-wordmark-on-light-BU0l-y2Y.svg` 9cffcb4058e902d0649f122aa3f8fcb1c6425feb8be20c75baf6d3920cf1d686
+  - `assets/ario-full-white-CluK9Jx-.svg` a091a6c349ff39348e56c21db33bceb5ae3ac6be21ed093be4dcbf3e39be3490
+  - `assets/arrow-C6ch5XQ7.js` be8bc38f3801bd076186c30711cd432a3dcd9b7763d980467fd1ca79dfdc4e07
+  - `assets/arrow-C6ch5XQ7.js.map` 77dad6f3bf94ab9bc509b483ef2a295b7dc1946d4415b8ed0add2fc36f00305d
+  - `assets/duckdb-DEFjrUmw.js` bc4eb1da21fc7900919b875b67f16e65c313fcd8fbb3398ccf8fd3aaaba088b2
+  - `assets/duckdb-DEFjrUmw.js.map` d64e370a5a8956c045a4777168055b682f512a49ee68abc36f169c7c788e094c
+  - `assets/index-ChrWAOK_.js` 8b0b92907758eef003227a24520e465d6ce33f1de851f6ff6a8493ca69296f6f
+  - `assets/index-ChrWAOK_.js.map` 9d8d4246fe8b67f71fb843c362de2a45b6838873f35418c68027efdd50da97b5
+  - `assets/index-Cpqr53Lh.css` b7bcc5dfa73234c14dc567a27159f65af140971d2f90a24ccfaff1ef70d639f5
+  - `assets/roboto-mono-latin-GekRknry.woff2` e03013e0baa5690a803c188da2214d920c3245b25ad78421ecc8ae86cd842ae9
+  - `assets/wavehaus-bold-Dy4vrLiQ.woff2` ddeade2e0a99e4e5b1dac16fa5dc2403d60b4269057be8db7644ad47f1c50be5
+  - `assets/wavehaus-book-JZYtraXz.woff2` 61592719d4f313306ebe0580405f097a8607af377074cf9f932f7a109f657562
+  - `assets/wavehaus-light-SaQzZfdQ.woff2` 20f33e5c4ad46cecec0cdd18621e49886e28141cbdadd444308fdb137afc7a4e
+  - `assets/wavehaus-semibold-DLrv01gp.woff2` 2871fe169b544165a092101210cb32aa6d2b61937194ceddb2ed6d989497d140
+  - `favicon-32.png` 833ddc1b59e1abb7ab0a42dfa017fa14281d13e32f0c716c7d8cb0d20f3d7bab
+  - `favicon.svg` a0a1b5bd4e707b45f3e7478243fb6d5a9089919f1956da8675038592f8188269
+  - `index.html` 2f06033fa0da5b6b438dc622b4a1a13428093dc265f5ec7c32c8f05ecf0b9928
+  - `social.png` 538840842176ec25c1b9cb6eb05eacfedcf4170fa959f3dc46a65d58a4763bc3
+  - `sw.js` 6f46a487991a97a518513466858ef3a9e3b6f10c7127a0f270975423f1c02ced
+
 ## 2026-11-01 · ardrive-explorer 1.4.0
 
 - manifest: `synurYiPKXFY6YvklwE3Bhi0aU_fqLfTj4f6QfPF_Yw`
