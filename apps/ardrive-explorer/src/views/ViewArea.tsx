@@ -1,4 +1,4 @@
-import { ActionMenu, Badge, Icon, type Action } from '@ar-io/explorer-ui';
+import { ActionMenu, Icon, type Action } from '@ar-io/explorer-ui';
 import {
   bytesText,
   cellNum,
@@ -129,7 +129,7 @@ function DrivesTable({ rows }: { rows: DriveRow[] }) {
               </td>
               <td>{Number(r.created_at) > 0 ? fmtDate(r.created_at) : `block ${num(r.height)}`}</td>
               <td>
-                <Badge text={sentence(r.privacy)} kind={r.privacy} />
+                <span class="privacy">{sentence(r.privacy)}</span>
               </td>
               <td>{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
               <td class="num">{r.records === null ? '' : num(r.records)}</td>
@@ -182,7 +182,7 @@ function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
               </div>
             </td>
             <td>
-              <Badge text={sentence(d.privacy)} kind={d.privacy} />
+              <span class="privacy">{sentence(d.privacy)}</span>
             </td>
             <td class="num">{num(d.records)}</td>
             <td>

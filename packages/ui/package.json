@@ -15,7 +15,8 @@
     "./ario.css": "./src/ario.css",
     "./ardrive-tokens.css": "./src/ardrive-tokens.css",
     "./ardrive-wordmark.svg": "./src/ardrive-wordmark.svg",
-    "./brand/*": "./src/brand/*"
+    "./brand/*": "./src/brand/*",
+    "./ardrive/*.css": "./src/ardrive/*.css"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

@@ -121,7 +121,7 @@ test('filters: privacy, app and period reload the listing', async () => {
     120_000,
     'public filter',
   );
-  const badges = await page.locator('#results tbody .badge').allInnerTexts();
+  const badges = await page.locator('#results tbody .privacy').allInnerTexts();
   expect(badges.length).toBeGreaterThan(0);
   expect(badges.every((b) => /public/i.test(b))).toBe(true);
   await clearStatus(page);
@@ -132,7 +132,7 @@ test('filters: privacy, app and period reload the listing', async () => {
     120_000,
     'private filter',
   );
-  const pb = await page.locator('#results tbody .badge').allInnerTexts();
+  const pb = await page.locator('#results tbody .privacy').allInnerTexts();
   expect(pb.length).toBeGreaterThan(0);
   expect(pb.every((b) => /private/i.test(b))).toBe(true);
   await clearStatus(page);

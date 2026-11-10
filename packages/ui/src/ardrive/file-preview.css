@@ -1,0 +1,49 @@
+/* FilePreview, over the ArDrive tokens (ardrive-tokens.css). */
+/* The preview at the top of a file's details: never wider than the panel, never taller than a screenful. */
+.pv {
+  margin: 0 0 var(--space-md);
+}
+.pv img,
+.pv video {
+  display: block;
+  max-width: 100%;
+  max-height: 50vh;
+  margin: 0 auto;
+  border-radius: var(--radius-md);
+  background: var(--container-l2);
+}
+.pv audio {
+  display: block;
+  width: 100%;
+}
+.pv-text {
+  max-height: 320px;
+  margin: 0;
+  padding: var(--space-sm);
+  overflow: auto;
+  border: 1px solid var(--stroke-low);
+  border-radius: var(--radius-md);
+  background: var(--container-l2);
+  font-family: var(--font-mono);
+  font-size: var(--paragraph-small);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pv-wait {
+  height: 120px;
+  border-radius: var(--radius-md);
+  background: var(--button-secondary);
+  animation: pv-pulse 1.4s ease-in-out infinite;
+}
+.pv figcaption,
+.pv-note {
+  margin-top: var(--space-xs);
+  font-size: var(--paragraph-small);
+  color: var(--text-low);
+}
+@keyframes pv-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}

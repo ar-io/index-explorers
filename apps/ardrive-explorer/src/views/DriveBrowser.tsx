@@ -6,10 +6,12 @@
 import {
   ActionMenu,
   AnchoredMenu,
-  Badge,
+  ardriveUrl,
+  FilePreview,
   Icon,
   iconFor,
   typeLabel,
+  previewKind,
   useWindowed,
   type Action,
 } from '@ar-io/explorer-ui';
@@ -18,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { CONFIG } from '../config.js';
 import { useApp } from '../context.js';
+import { saveBlob } from '../util/export.js';
 import { sentence, useViewActions } from './ViewArea.js';
 import {
   currentFolder,
@@ -73,42 +76,181 @@ function Crumbs({ d }: { d: DriveModel }) {
   );
 }
 
+/** Downloaded in the page, under its name, up to this size; past it the gateway's tab saves it. */
+const DOWNLOAD_IN_PAGE = 200e6;
+
+/** The same place in the ArDrive app (null for a private drive, whose key this page never has). */
+export function inArDrive(d: DriveModel, x: DriveItem | null): string | null {
+  return ardriveUrl(
+    {
+      driveId: d.driveId,
+      privacy: d.privacy,
+      folderId: x?.kind === 'folder' ? x.entityId : null,
+      fileId: x && x.kind !== 'folder' ? x.entityId : null,
+    },
+    CONFIG.appUrl,
+  );
+}
+
+/** Copies a link, and says so on the status line. */
+function useCopy() {
+  const { store } = useApp();
+  return (url: string) =>
+    void navigator.clipboard.writeText(url).then(
+      () => store.say('Link copied.', 'ok', { flash: true }),
+      () => store.say('The browser would not give clipboard access.', 'bad'),
+    );
+}
+
+/** Saves a public file under its name; a large one opens on the gateway instead. */
+function useDownload() {
+  const { store } = useApp();
+  return async (url: string, name: string, size: number | null) => {
+    if (size !== null && size > DOWNLOAD_IN_PAGE) {
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+    store.say(`Downloading ${name}…`, '', { flash: true });
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`the gateway answered ${r.status}`);
+      saveBlob(name, await r.blob());
+      store.say(`Saved ${name}.`, 'ok', { flash: true });
+    } catch (e) {
+      store.say(
+        `Could not download ${name}: ${e instanceof Error ? e.message : String(e)}.`,
+        'bad',
+      );
+    }
+  };
+}
+
+function Facts({ children }: { children: preact.ComponentChildren }) {
+  return <dl class="d-facts">{children}</dl>;
+}
+const fact = (k: string, v: string | null | undefined | preact.JSX.Element, mono = false) =>
+  v === null || v === undefined || v === '' ? null : (
+    <>
+      <dt>{k}</dt>
+      <dd class={mono ? 'mono' : undefined}>{v}</dd>
+    </>
+  );
+
+function Head({
+  icon,
+  title,
+  onClose,
+}: {
+  icon: preact.JSX.Element;
+  title: string;
+  onClose: () => void;
+}) {
+  return (
+    <div class="d-head">
+      {icon}
+      <h3>{title}</h3>
+      <button
+        type="button"
+        class="iconbtn compact d-close"
+        aria-label="Close details"
+        onClick={onClose}
+      >
+        <Icon name="close" />
+      </button>
+    </div>
+  );
+}
+
+/** The drive's own details: what the header leaves out. */
+function DriveDetails({ d }: { d: DriveModel }) {
+  const { store, flows } = useApp();
+  const r = d.driveRec;
+  const app = inArDrive(d, null);
+  const close = () => (store.driveUi.value = { ...store.driveUi.value, selected: null });
+  return (
+    <aside class="b-details" id="b-details" aria-label="Drive details">
+      <Head
+        icon={<Icon name={d.privacy === 'private' ? 'privateDrive' : 'drive'} />}
+        title={d.privacy === 'private' ? 'Private drive' : d.name || 'Drive'}
+        onClose={close}
+      />
+      {app ? (
+        <div class="d-actions">
+          <a class="btn secondary compact" href={app} target="_blank" rel="noopener">
+            Open in ArDrive
+            <Icon name="external" />
+          </a>
+        </div>
+      ) : null}
+      <Facts>
+        {fact('Privacy', sentence(d.privacy))}
+        {fact('Drive-Id', d.driveId, true)}
+        {r?.arfs ? fact('ArFS', r.arfs) : null}
+        {r && Number(r.created_at) > 0 ? fact('Created', fmtWhen(r.created_at)) : null}
+        {r
+          ? fact(
+              'Owner',
+              <button
+                type="button"
+                class="rowlink mono"
+                onClick={() => void flows.openWallet(r.owner, false)}
+              >
+                {r.owner}
+              </button>,
+            )
+          : null}
+        {r ? fact('App', `${r.app || ''} ${r.app_version || ''}`.trim()) : null}
+        {r
+          ? fact(
+              'Record',
+              <button type="button" class="rowlink mono" onClick={() => void flows.openId(r.id)}>
+                {r.id}
+              </button>,
+            )
+          : null}
+        {d.rootFolderId ? fact('Root folder', d.rootFolderId, true) : null}
+      </Facts>
+    </aside>
+  );
+}
+
 function Details({ d, x }: { d: DriveModel; x: DriveItem }) {
   const { store, flows, session } = useApp();
   void store.namesTick.value;
+  const copy = useCopy();
+  const download = useDownload();
   const m = x.meta ?? {};
   const dataTxId = typeof m.dataTxId === 'string' && isId43(m.dataTxId) ? m.dataTxId : null;
   const isPrivate = d.privacy === 'private';
-  const copyRef = useRef<HTMLButtonElement>(null);
-  const fact = (k: string, v: string | null | undefined | preact.JSX.Element, mono = false) =>
-    v === null || v === undefined || v === '' ? null : (
-      <>
-        <dt>{k}</dt>
-        <dd class={mono ? 'mono' : undefined}>{v}</dd>
-      </>
-    );
+  const url = fileUrl(d, x, session.gateway);
+  const kind = url ? previewKind(x.type, x.name) : null;
+  const app = inArDrive(d, x);
+  const title = isPrivate
+    ? x.kind === 'folder'
+      ? 'Encrypted folder'
+      : 'Encrypted file'
+    : x.name || (x.failed ? 'name unavailable' : 'fetching name…');
+  const close = () => (store.driveUi.value = { ...store.driveUi.value, selected: null });
   return (
-    <aside class="b-details" id="b-details">
-      <div class="d-head">
-        <Icon
-          name={x.kind === 'folder' ? 'folder' : isPrivate ? 'file' : iconFor(x.type, x.name)}
+    <aside class="b-details" id="b-details" aria-label="Details">
+      <Head
+        icon={
+          <Icon
+            name={x.kind === 'folder' ? 'folder' : isPrivate ? 'file' : iconFor(x.type, x.name)}
+          />
+        }
+        title={title}
+        onClose={close}
+      />
+      {url && kind ? (
+        <FilePreview
+          key={url}
+          url={url}
+          kind={kind}
+          name={x.name || 'this file'}
+          size={x.size ?? null}
         />
-        <h4>
-          {isPrivate
-            ? x.kind === 'folder'
-              ? 'Encrypted folder'
-              : 'Encrypted file'
-            : x.name || (x.failed ? 'name unavailable' : 'fetching name…')}
-        </h4>
-        <button
-          type="button"
-          class="iconbtn compact d-close"
-          aria-label="Close details"
-          onClick={() => (store.driveUi.value = { ...store.driveUi.value, selected: null })}
-        >
-          <Icon name="close" />
-        </button>
-      </div>
+      ) : null}
       <div class="d-actions">
         {x.kind === 'folder' && !isPrivate ? (
           <button
@@ -119,42 +261,39 @@ function Details({ d, x }: { d: DriveModel; x: DriveItem }) {
             Open
           </button>
         ) : null}
-        {dataTxId && !isPrivate ? (
-          <>
-            <a
-              class="btn primary compact"
-              href={`${session.gateway}/${dataTxId}`}
-              target="_blank"
-              rel="noopener"
-            >
-              Open
-              <Icon name="external" />
-            </a>
-            <button
-              type="button"
-              class="compact"
-              ref={copyRef}
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(`${session.gateway}/${dataTxId}`);
-                  if (copyRef.current) {
-                    copyRef.current.textContent = 'Copied';
-                    setTimeout(
-                      () => copyRef.current && (copyRef.current.textContent = 'Copy link'),
-                      1500,
-                    );
-                  }
-                } catch {
-                  store.say('The browser would not give clipboard access.', 'bad');
-                }
-              }}
-            >
-              Copy link
-            </button>
-          </>
+        {url ? (
+          <button
+            type="button"
+            class="primary compact"
+            id="d-download"
+            onClick={() => void download(url, x.name || dataTxId!, x.size ?? null)}
+          >
+            <Icon name="download" />
+            Download
+          </button>
+        ) : null}
+        {app ? (
+          <a class="btn secondary compact" href={app} target="_blank" rel="noopener">
+            Open in ArDrive
+            <Icon name="external" />
+          </a>
+        ) : null}
+        {url ? (
+          <ActionMenu
+            id="d-more"
+            label={`More for ${title}`}
+            actions={[
+              { label: 'Copy link', icon: 'copy', run: () => copy(url) },
+              {
+                label: 'Open on the gateway',
+                icon: 'external',
+                run: () => window.open(url, '_blank', 'noopener'),
+              },
+            ]}
+          />
         ) : null}
       </div>
-      <dl class="d-facts">
+      <Facts>
         {fact(
           'Type',
           isPrivate
@@ -201,10 +340,10 @@ function Details({ d, x }: { d: DriveModel; x: DriveItem }) {
               </button>,
             )
           : null}
-      </dl>
+      </Facts>
       {x.versions.length > 1 ? (
         <>
-          <h5>{x.versions.length} versions</h5>
+          <h4>{x.versions.length} versions</h4>
           <ul class="d-versions">
             {x.versions.map((v, i) => (
               <li key={v.id}>
@@ -407,32 +546,69 @@ export function DriveBrowser() {
   const [menu, setMenu] = useState<{ x: DriveItem; anchor: HTMLElement } | null>(null);
   const select = (x: DriveItem) =>
     (store.driveUi.value = { ...store.driveUi.value, selected: x.entityId });
+  const copy = useCopy();
+  const download = useDownload();
+  /** The details, scrolled to the preview: what Preview in a row's menu asks for. */
+  const preview = (x: DriveItem) => {
+    select(x);
+    requestAnimationFrame(() =>
+      document.getElementById('preview')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
+    );
+  };
+  // A file's menu, in the design system's order, leaving out what does not apply:
+  // Open or Preview | Copy link | Download | Open in ArDrive | More info.
   const menuActions = (x: DriveItem): Action[] => {
     const url = fileUrl(d, x, session.gateway);
-    return [
-      ...(x.kind === 'folder' && !isPrivate
-        ? [{ label: 'Open', icon: 'folder' as const, run: () => flows.setFolder(pathTo(d, x)) }]
-        : []),
-      ...(url
-        ? [
-            {
-              label: 'Open',
-              icon: 'external' as const,
-              run: () => window.open(url, '_blank', 'noopener'),
-            },
-            {
-              label: 'Copy link',
-              run: () =>
-                void navigator.clipboard.writeText(url).then(
-                  () => store.say('Link copied.', 'ok'),
-                  () => store.say('The browser would not give clipboard access.', 'bad'),
-                ),
-            },
-          ]
-        : []),
-      { label: 'More info', icon: 'info', run: () => select(x), group: !isPrivate },
-    ];
+    const app = inArDrive(d, x);
+    const folder = x.kind === 'folder';
+    const share =
+      folder && !isPrivate
+        ? session.shareUrl({ kind: 'drive', key: d.driveId, folder: x.entityId })
+        : url;
+    const out: Action[] = [];
+    if (folder && !isPrivate)
+      out.push({ label: 'Open', icon: 'folder', run: () => flows.setFolder(pathTo(d, x)) });
+    if (!folder && url && previewKind(x.type, x.name))
+      out.push({ label: 'Preview', icon: 'preview', run: () => preview(x) });
+    if (share)
+      out.push({ label: 'Copy link', icon: 'copy', run: () => copy(share), group: out.length > 0 });
+    if (url)
+      out.push({
+        label: 'Download',
+        icon: 'download',
+        run: () => void download(url, x.name || x.entityId, x.size ?? null),
+        group: true,
+      });
+    if (app)
+      out.push({
+        label: 'Open in ArDrive',
+        icon: 'external',
+        run: () => window.open(app, '_blank', 'noopener'),
+        group: !url,
+      });
+    out.push({ label: 'More info', icon: 'info', run: () => select(x), group: out.length > 0 });
+    return out;
   };
+  const driveApp = inArDrive(d, null);
+  const driveActions: Action[] = [
+    ...viewActions,
+    ...(driveApp
+      ? [
+          {
+            label: 'Open in ArDrive',
+            icon: 'external' as const,
+            run: () => window.open(driveApp, '_blank', 'noopener'),
+            group: true,
+          },
+        ]
+      : []),
+    {
+      label: 'More info',
+      icon: 'info',
+      run: () => (store.driveUi.value = { ...store.driveUi.value, selected: d.driveId }),
+      group: true,
+    },
+  ];
   const headers: [SortKey, string, boolean][] = [
     ['name', 'Name', false],
     ['modified', 'Modified', false],
@@ -453,16 +629,16 @@ export function DriveBrowser() {
               >
                 {isPrivate ? 'Private drive' : d.name || (d.driveRec ? 'fetching name…' : 'Drive')}
               </h2>
-              <ActionMenu id="viewmenu" label="Share or export this drive" actions={viewActions} />
+              <ActionMenu id="viewmenu" label="Actions for this drive" actions={driveActions} />
             </div>
             <p class="b-sub" id="b-sub">
               {parts.join(' · ') + (d.note ? `\n${d.note}.` : '')}
             </p>
           </div>
         </div>
+        {/* Privacy in words, as ArDrive web shows it: the drive's icon carries it too. */}
         <div class="b-stats" id="b-stats">
-          <Badge text={sentence(d.privacy)} kind={d.privacy} />
-          {d.driveRec?.arfs ? <Badge text={`ArFS ${d.driveRec.arfs}`} /> : null}
+          <span class="privacy">{sentence(d.privacy)}</span>
           {d.driveRec && Number(d.driveRec.created_at) > 0 ? (
             <span class="b-meta">Created {fmtDate(d.driveRec.created_at)}</span>
           ) : null}
@@ -574,7 +750,11 @@ export function DriveBrowser() {
                 : 'This folder is empty.'}
             </p>
           </div>
-          {selected ? <Details d={d} x={selected} /> : null}
+          {ui.selected === d.driveId ? (
+            <DriveDetails d={d} />
+          ) : selected ? (
+            <Details d={d} x={selected} />
+          ) : null}
           {menu ? (
             <AnchoredMenu
               id="b-rowmenu"
