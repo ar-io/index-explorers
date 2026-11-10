@@ -47,11 +47,40 @@ export const KNOWN: Known = LIVE
 export const url = (frag: string): string =>
   `#gw=${encodeURIComponent(GW)}&period=month${frag ? '&' + frag : ''}`;
 
+/** The status line, and the receipt a view shows under itself once it has read. */
 export const status = (page: Page) =>
   page
-    .locator('#status')
-    .innerText()
+    .locator('#status, #receipt')
+    .allInnerTexts()
+    .then((t) => t.filter(Boolean).join(' '))
     .catch(() => '');
+
+/** Opens a section from the left nav: through the menu button on a phone, where the nav is a drawer. */
+export async function goTo(
+  page: Page,
+  section: 'drives' | 'questions' | 'sql' | 'source',
+): Promise<void> {
+  const id = section === 'drives' ? '#browse' : `#nav-${section}`;
+  if (await page.locator('#navbtn').isVisible()) {
+    await page.locator('#navbtn').click();
+    await page.locator('#sidenav.open').waitFor();
+  }
+  await page.locator(id).click();
+}
+
+/** Runs one of the view's own actions (Copy link, Export as CSV, Export as JSON) from its menu. */
+export async function viewAction(page: Page, label: string): Promise<void> {
+  await page.locator('#viewmenu').click();
+  await page.locator('#viewmenu-menu [role=menuitem]', { hasText: label }).click();
+}
+
+/** The labels the view's menu offers, read by opening it and closing it again. */
+export async function viewActions(page: Page): Promise<string[]> {
+  await page.locator('#viewmenu').click();
+  const items = await page.locator('#viewmenu-menu [role=menuitem]').allInnerTexts();
+  await page.keyboard.press('Escape');
+  return items.map((t) => t.trim());
+}
 export const title = (page: Page) =>
   page
     .locator('#viewtitle')
@@ -158,7 +187,7 @@ export async function openPage(page: Page, frag = ''): Promise<void> {
   );
   expect(
     await page.locator('#proof').getAttribute('data-state'),
-    await page.locator('#proof-text').innerText(),
+    await page.locator('#proof-text').textContent(),
   ).toBe('ok');
   (page as unknown as { __errors: string[] }).__errors = errors;
 }
@@ -205,7 +234,27 @@ export async function menuValues(page: Page, sel: string): Promise<string[]> {
   return v;
 }
 
-/** The hero's counts are read (they start empty, drawn as a placeholder bar). */
+/** The index's counts are read (home shows them; they start empty, drawn as a placeholder bar). */
 export const countsShown = async (page: Page): Promise<boolean> =>
-  /\d/.test(await page.locator('#s-drives').innerText()) &&
-  /\d/.test(await page.locator('#s-files').innerText());
+  page
+    .evaluate(() => {
+      const h = (
+        window as unknown as {
+          __explorer: { store: { hero: { value: { drives: string; files: string } } } };
+        }
+      ).__explorer.store.hero.value;
+      return /\d/.test(h.drives) && /\d/.test(h.files);
+    })
+    .catch(() => false);
+
+/** The counts as numbers, from the store: home draws them, the other views do not. */
+export const counts = (page: Page): Promise<{ drives: number; files: number }> =>
+  page.evaluate(() => {
+    const h = (
+      window as unknown as {
+        __explorer: { store: { hero: { value: { drives: string; files: string } } } };
+      }
+    ).__explorer.store.hero.value;
+    const n = (t: string) => Number(t.replace(/[^\d]/g, ''));
+    return { drives: n(h.drives), files: n(h.files) };
+  });

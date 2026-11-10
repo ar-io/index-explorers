@@ -143,6 +143,12 @@ export interface StatusLine {
   action?: { label: string; go: () => void };
   /** Shown as it is under the sentence: the engine's pointer into a query. */
   detail?: string;
+  /**
+   * Feedback on something just done (a link copied, a file saved): said at
+   * the top, where it was done. Any other success is a receipt, said under
+   * what it read.
+   */
+  flash?: boolean;
 }
 
 export class Store {
@@ -202,20 +208,21 @@ export class Store {
   readonly namesTick = signal(0);
   readonly namesProgress = signal<{ wanted: number; loaded: number }>({ wanted: 0, loaded: 0 });
   readonly sql = signal<string>('');
-  readonly editorOpen = signal(false);
   readonly asked = signal<number | null>(null);
   readonly sampleWallet = signal<string | null>(null);
   readonly sampleDrive = signal<string | null>(null);
   /** The question buttons are enabled once the publication verifies. */
   readonly asksEnabled = signal(false);
   readonly lastReceipt = signal<Receipt | null>(null);
+  /** Work the reader just asked for is to be brought into view as its bar and Stop appear. */
+  readonly revealing = signal(false);
   /** A trace of the load path, for tests. */
   readonly trace: string[] = [];
 
   say(
     text: string,
     cls: '' | 'ok' | 'bad' = '',
-    more?: Pick<StatusLine, 'action' | 'detail'>,
+    more?: Pick<StatusLine, 'action' | 'detail' | 'flash'>,
   ): void {
     this.status.value = { text, cls, ...more };
   }

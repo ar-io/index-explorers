@@ -305,13 +305,31 @@ export function AnchoredMenu({
   const menu = useRef<HTMLUListElement>(null);
   const [style, setStyle] = useState<Record<string, string>>({ visibility: 'hidden' });
   useLayoutEffect(() => {
-    const a = anchor.getBoundingClientRect();
-    const m = menu.current!.getBoundingClientRect();
-    const up = a.bottom + m.height + 8 > window.innerHeight && a.top - m.height - 8 > 0;
-    setStyle({
-      top: `${Math.round(up ? a.top - m.height - 4 : a.bottom + 4)}px`,
-      left: `${Math.round(Math.max(8, Math.min(a.right - m.width, window.innerWidth - m.width - 8)))}px`,
-    });
+    const place = () => {
+      const a = anchor.getBoundingClientRect();
+      const m = menu.current!.getBoundingClientRect();
+      const up = a.bottom + m.height + 8 > window.innerHeight && a.top - m.height - 8 > 0;
+      setStyle({
+        top: `${Math.round(up ? a.top - m.height - 4 : a.bottom + 4)}px`,
+        left: `${Math.round(Math.max(8, Math.min(a.right - m.width, window.innerWidth - m.width - 8)))}px`,
+      });
+      return a;
+    };
+    let last = place();
+    // A list that re-sorts as its data lands moves the row, and its button,
+    // under an open menu: the menu follows it, and closes when it leaves the screen.
+    let frame = 0;
+    const follow = () => {
+      const a = anchor.getBoundingClientRect();
+      if (!anchor.isConnected || a.bottom < 0 || a.top > window.innerHeight) {
+        onClose();
+        return;
+      }
+      if (a.top !== last.top || a.left !== last.left) last = place();
+      frame = requestAnimationFrame(follow);
+    };
+    frame = requestAnimationFrame(follow);
+    return () => cancelAnimationFrame(frame);
   }, [anchor]);
   // A scroll or a resize moves the button out from under the menu: close it.
   useEffect(() => {

@@ -4,6 +4,7 @@
  * windowed list with typed icons, and a details panel with versions.
  */
 import {
+  ActionMenu,
   AnchoredMenu,
   Badge,
   Icon,
@@ -17,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { CONFIG } from '../config.js';
 import { useApp } from '../context.js';
-import { sentence } from './ViewArea.js';
+import { sentence, useViewActions } from './ViewArea.js';
 import {
   currentFolder,
   type DriveItem,
@@ -53,6 +54,10 @@ function Crumbs({ d }: { d: DriveModel }) {
   if (ui.filter) items.push({ label: `search "${ui.filter}"`, go: null, last: true });
   return (
     <nav class="b-crumbs" id="b-crumbs" aria-label="Folder path">
+      {/* One path from the list of drives down: the root is not a folder, so not a .crumb. */}
+      <button type="button" class="crumb-root" onClick={() => void flows.browse(true)}>
+        Drives
+      </button>
       {items.map((it, i) => (
         <button
           key={i}
@@ -398,6 +403,7 @@ export function DriveBrowser() {
       `reading names and sizes: ${num(progress.loaded)} of ${num(progress.wanted)} records`,
     );
   const selected = ui.selected ? (d.byId.get(ui.selected) ?? null) : null;
+  const viewActions = useViewActions();
   const [menu, setMenu] = useState<{ x: DriveItem; anchor: HTMLElement } | null>(null);
   const select = (x: DriveItem) =>
     (store.driveUi.value = { ...store.driveUi.value, selected: x.entityId });
@@ -434,17 +440,21 @@ export function DriveBrowser() {
     ['type', 'Type', false],
   ];
   return (
-    <section class="browser" id="browser">
+    <section class="drive" id="browser" aria-labelledby="viewtitle">
+      <Crumbs d={d} />
       <div class="b-head">
         <div class="b-title">
           <Icon name={isPrivate ? 'privateDrive' : 'drive'} big />
           <div>
-            <h3
-              class={`b-drive-name${!isPrivate && d.driveRec && !d.name ? ' pending' : ''}`}
-              id="b-name"
-            >
-              {isPrivate ? 'Private drive' : d.name || (d.driveRec ? 'fetching name…' : 'Drive')}
-            </h3>
+            <div class="b-namerow">
+              <h2
+                class={`b-drive-name${!isPrivate && d.driveRec && !d.name ? ' pending' : ''}`}
+                id="viewtitle"
+              >
+                {isPrivate ? 'Private drive' : d.name || (d.driveRec ? 'fetching name…' : 'Drive')}
+              </h2>
+              <ActionMenu id="viewmenu" label="Share or export this drive" actions={viewActions} />
+            </div>
             <p class="b-sub" id="b-sub">
               {parts.join(' · ') + (d.note ? `\n${d.note}.` : '')}
             </p>
@@ -468,108 +478,113 @@ export function DriveBrowser() {
           ) : null}
         </div>
       </div>
-      <div class="b-tools">
-        <Crumbs d={d} />
-        <div class="b-search">
-          <Icon name="search" />
-          <input
-            id="b-filter"
-            type="search"
-            placeholder="Search in this drive"
-            autocomplete="off"
-            spellcheck={false}
-            aria-label="Search in this drive"
-            value={ui.filter}
-            onInput={(e) =>
-              (store.driveUi.value = {
-                ...store.driveUi.value,
-                filter: (e.target as HTMLInputElement).value.trim().toLowerCase(),
-                selected: null,
-              })
-            }
-          />
+      <div class="browser">
+        <div class="b-tools">
+          <div class="b-search">
+            <Icon name="search" />
+            <input
+              id="b-filter"
+              type="search"
+              placeholder="Search in this drive"
+              autocomplete="off"
+              spellcheck={false}
+              aria-label="Search in this drive"
+              value={ui.filter}
+              onInput={(e) =>
+                (store.driveUi.value = {
+                  ...store.driveUi.value,
+                  filter: (e.target as HTMLInputElement).value.trim().toLowerCase(),
+                  selected: null,
+                })
+              }
+            />
+          </div>
         </div>
-      </div>
-      <div class="b-body">
-        <div class="b-listwrap" ref={setRoot}>
-          <table class="b-list" id="b-list">
-            <thead>
-              <tr>
-                {headers.map(([k, label, isNum]) => (
-                  <th
-                    key={k}
-                    data-key={k}
-                    class={`b-sort${isNum ? ' num' : ''}`}
-                    data-dir={ui.sort.key === k ? (ui.sort.dir > 0 ? 'asc' : 'desc') : ''}
-                    onClick={() => sortBy(k)}
-                    aria-sort={
-                      ui.sort.key === k ? (ui.sort.dir > 0 ? 'ascending' : 'descending') : undefined
-                    }
-                  >
-                    {label}
-                    {ui.sort.key === k ? (
-                      <Icon name={ui.sort.dir > 0 ? 'sortUp' : 'sortDown'} class="b-sortdir" />
-                    ) : null}
+        <div class="b-body">
+          <div class="b-listwrap" ref={setRoot}>
+            <table class="b-list" id="b-list">
+              <thead>
+                <tr>
+                  {headers.map(([k, label, isNum]) => (
+                    <th
+                      key={k}
+                      data-key={k}
+                      class={`b-sort${isNum ? ' num' : ''}`}
+                      data-dir={ui.sort.key === k ? (ui.sort.dir > 0 ? 'asc' : 'desc') : ''}
+                      onClick={() => sortBy(k)}
+                      aria-sort={
+                        ui.sort.key === k
+                          ? ui.sort.dir > 0
+                            ? 'ascending'
+                            : 'descending'
+                          : undefined
+                      }
+                    >
+                      {label}
+                      {ui.sort.key === k ? (
+                        <Icon name={ui.sort.dir > 0 ? 'sortUp' : 'sortDown'} class="b-sortdir" />
+                      ) : null}
+                    </th>
+                  ))}
+                  <th class="b-act">
+                    <span class="sr-only">Actions</span>
                   </th>
+                </tr>
+              </thead>
+              <tbody>
+                {cur && !ui.filter ? (
+                  <tr
+                    class="b-row b-up"
+                    tabIndex={0}
+                    onClick={() => flows.setFolder(ui.path.slice(0, -1))}
+                    onKeyDown={(e) => e.key === 'Enter' && flows.setFolder(ui.path.slice(0, -1))}
+                  >
+                    <td colSpan={5}>
+                      <Icon name="up" />
+                      Back
+                    </td>
+                  </tr>
+                ) : null}
+                {rows.map((x) => (
+                  <Row
+                    key={x.kind + x.entityId}
+                    d={d}
+                    x={x}
+                    selected={selected === x}
+                    menuOpen={menu?.x === x}
+                    onOpen={() => flows.setFolder(pathTo(d, x))}
+                    onSelect={() => select(x)}
+                    onMenu={(anchor) => setMenu(menu?.x === x ? null : { x, anchor })}
+                  />
                 ))}
-                <th class="b-act">
-                  <span class="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {cur && !ui.filter ? (
-                <tr
-                  class="b-row b-up"
-                  tabIndex={0}
-                  onClick={() => flows.setFolder(ui.path.slice(0, -1))}
-                  onKeyDown={(e) => e.key === 'Enter' && flows.setFolder(ui.path.slice(0, -1))}
-                >
-                  <td colSpan={5}>
-                    <Icon name="up" />
-                    Back
-                  </td>
-                </tr>
-              ) : null}
-              {rows.map((x) => (
-                <Row
-                  key={x.kind + x.entityId}
-                  d={d}
-                  x={x}
-                  selected={selected === x}
-                  menuOpen={menu?.x === x}
-                  onOpen={() => flows.setFolder(pathTo(d, x))}
-                  onSelect={() => select(x)}
-                  onMenu={(anchor) => setMenu(menu?.x === x ? null : { x, anchor })}
-                />
-              ))}
-              {more ? (
-                <tr class="b-more" ref={(el) => setSentinel(el)}>
-                  <td
-                    colSpan={5}
-                  >{`${num(shown)} of ${num(list.length)} shown · scroll for more`}</td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-          <p class="b-empty" id="b-empty" hidden={list.length > 0}>
-            {ui.filter
-              ? pending > 0
-                ? `No match yet; still reading names (${num(progress.loaded)} of ${num(progress.wanted)}).`
-                : `Nothing named like "${ui.filter}" in this drive.`
-              : 'This folder is empty.'}
-          </p>
+                {more ? (
+                  <tr class="b-more" ref={(el) => setSentinel(el)}>
+                    <td
+                      colSpan={5}
+                    >{`${num(shown)} of ${num(list.length)} shown · scroll for more`}</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+            <p class="b-empty" id="b-empty" hidden={list.length > 0}>
+              {ui.filter
+                ? pending > 0
+                  ? `No match yet; still reading names (${num(progress.loaded)} of ${num(progress.wanted)}).`
+                  : `Nothing named like "${ui.filter}" in this drive.`
+                : 'This folder is empty.'}
+            </p>
+          </div>
+          {selected ? <Details d={d} x={selected} /> : null}
+          {menu ? (
+            <AnchoredMenu
+              id="b-rowmenu"
+              label={`Actions for ${itemLabel(d, menu.x)}`}
+              anchor={menu.anchor}
+              actions={menuActions(menu.x)}
+              onClose={() => setMenu(null)}
+            />
+          ) : null}
         </div>
-        {selected ? <Details d={d} x={selected} /> : null}
-        {menu ? (
-          <AnchoredMenu
-            id="b-rowmenu"
-            label={`Actions for ${itemLabel(d, menu.x)}`}
-            anchor={menu.anchor}
-            actions={menuActions(menu.x)}
-            onClose={() => setMenu(null)}
-          />
-        ) : null}
       </div>
     </section>
   );

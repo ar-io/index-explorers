@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { encodeFragment, parseFragment } from './router.js';
+import { encodeFragment, parseFragment, sectionOf } from './router.js';
 
 describe('fragment round trips', () => {
   it('encodes and parses every view kind', () => {
@@ -16,6 +16,9 @@ describe('fragment round trips', () => {
       { kind: 'wallet' as const, key: 'dBRMGwLFzqr7V6CSNU6ZwcrDfDI20Y1vdZfpBQINbNU' },
       { kind: 'id' as const, key: '4aCplvNxtUx2DnpUUhhGkecFXiUDJFYhZDlra8ClGXA' },
       { kind: 'query' as const, sql: "SELECT 1 FROM drives WHERE x = 'a b'" },
+      { kind: 'questions' as const },
+      { kind: 'editor' as const },
+      { kind: 'source' as const },
     ];
     for (const view of cases) {
       const frag = encodeFragment({ gw: 'https://turbo-gateway.com', period: 'month', view });
@@ -39,5 +42,18 @@ describe('fragment round trips', () => {
     expect(encodeFragment({ gw: null, period: 'week', view: { kind: 'browse' } })).toBe(
       '#period=week&browse',
     );
+    expect(encodeFragment({ gw: null, period: 'week', view: { kind: 'editor' } })).toBe(
+      '#period=week&sql',
+    );
+    expect(parseFragment('#period=week&questions').view).toEqual({ kind: 'questions' });
+  });
+
+  it('puts each view in its section: a question in Questions, any other query in SQL', () => {
+    expect(sectionOf({ kind: 'drive', key: 'x', folder: null }, null)).toBe('drives');
+    expect(sectionOf({ kind: 'wallet', key: 'x' }, null)).toBe('drives');
+    expect(sectionOf({ kind: 'query', sql: 'select 1' }, 2)).toBe('questions');
+    expect(sectionOf({ kind: 'query', sql: 'select 1' }, null)).toBe('sql');
+    expect(sectionOf({ kind: 'editor' }, null)).toBe('sql');
+    expect(sectionOf({ kind: 'home' }, null)).toBe('home');
   });
 });

@@ -8,7 +8,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-import { countsShown, driveListed, KNOWN, LIVE, openPage, rows, until } from './helpers.js';
+import { countsShown, driveListed, goTo, KNOWN, LIVE, openPage, rows, until } from './helpers.js';
 
 // Markup and colour are the same against any gateway: checked on fixtures, with no live reads.
 test.skip(LIVE, 'the same page live; checked on the fixture gateway');
@@ -35,7 +35,16 @@ for (const colorScheme of ['dark', 'light'] as const)
       await openPage(page);
       await until(page, () => countsShown(page), 60_000, 'counts');
       found.push(...(await violations(page, 'home')));
-      await page.locator('#browse').click();
+      if (width < 834) {
+        await page.locator('#navbtn').click();
+        await page.locator('#sidenav.open').waitFor();
+        found.push(...(await violations(page, 'the nav open')));
+        await page.keyboard.press('Escape');
+      }
+      await page.locator('#proof summary').click();
+      found.push(...(await violations(page, 'the proof open')));
+      await page.keyboard.press('Escape');
+      await goTo(page, 'drives');
       await until(page, async () => (await rows(page)) > 0, 120_000, 'browse');
       found.push(...(await violations(page, 'newest drives')));
       await page.locator('#privacy').click();
@@ -51,10 +60,15 @@ for (const colorScheme of ['dark', 'light'] as const)
         .click();
       await page.locator('#b-details').waitFor();
       found.push(...(await violations(page, 'a drive and a file')));
+      await goTo(page, 'questions');
+      found.push(...(await violations(page, 'the questions')));
       await page.locator('#asks button', { hasText: 'Biggest files' }).click();
       await until(page, async () => (await rows(page)) > 0, 60_000, 'question');
-      await page.locator('#editor > summary').click();
-      found.push(...(await violations(page, 'a question and the SQL')));
+      found.push(...(await violations(page, 'an answer')));
+      await goTo(page, 'sql');
+      found.push(...(await violations(page, 'the SQL editor')));
+      await goTo(page, 'source');
+      found.push(...(await violations(page, 'the data source')));
       await context.close();
       expect(found).toEqual([]);
     });
@@ -65,6 +79,8 @@ test('a menu works from the keyboard, as the design system says', async ({ brows
   const page = await context.newPage();
   await openPage(page);
   await until(page, () => countsShown(page), 60_000, 'counts');
+  await page.locator('#browse').click();
+  await until(page, async () => (await rows(page)) > 0, 120_000, 'browse');
   const focused = () => page.evaluate(() => document.activeElement?.id ?? '');
   const active = () =>
     page.evaluate(() => {
@@ -96,11 +112,22 @@ test('a menu works from the keyboard, as the design system says', async ({ brows
   // A row's menu: Enter on its button opens it, and More info opens the details.
   await openPage(page, `drive=${KNOWN.typicalDrive}`);
   expect(await driveListed(page, 120_000)).toBe(true);
-  const button = page
+  // One file, found with the drive's search: names landing re-sort a full list under the keyboard.
+  const file = page
     .locator('#b-list tbody tr.b-row')
     .filter({ hasNot: page.locator('.ico-folder') })
-    .first()
-    .locator('.b-act button');
+    .filter({ hasNot: page.locator('.name.pending') })
+    .first();
+  await file.waitFor();
+  const name = await file.locator('.name').innerText();
+  await page.fill('#b-filter', name);
+  await until(
+    page,
+    async () => (await page.locator('#b-list tbody tr.b-row').count()) === 1,
+    30_000,
+    'one row',
+  );
+  const button = page.locator('#b-list tbody tr.b-row .b-act button');
   await button.focus();
   await page.keyboard.press('Enter');
   await page.locator('#b-rowmenu').waitFor();

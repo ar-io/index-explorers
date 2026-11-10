@@ -1,4 +1,4 @@
-import { Badge, Icon } from '@ar-io/explorer-ui';
+import { ActionMenu, Badge, Icon, type Action } from '@ar-io/explorer-ui';
 import {
   bytesText,
   cellNum,
@@ -363,12 +363,16 @@ function TableWrap({
   );
 }
 
-export function ViewArea() {
+/**
+ * What any view can do with itself, in the design system's order: Copy link
+ * (Share), then Export contents. The drive header's menu and the view's own
+ * share it, so they read the same wherever they open.
+ */
+export function useViewActions(): Action[] {
   const { store, session } = useApp();
-  const c = store.content.value;
   const drive = store.drive.value;
   const view = store.view.value;
-  const exp = c.exportable;
+  const exp = store.content.value.exportable;
   const copyLink = async () => {
     const v =
       view.kind === 'drive' && drive
@@ -381,6 +385,7 @@ export function ViewArea() {
       store.say(
         'Link copied. The gateway, period and view ride in the fragment, so none of it is sent to a server.',
         'ok',
+        { flash: true },
       );
     } catch {
       store.say(
@@ -389,71 +394,90 @@ export function ViewArea() {
       );
     }
   };
+  const save = (kind: 'csv' | 'json') => {
+    if (!exp) return;
+    if (kind === 'csv')
+      saveFile(
+        `ardrive-${exp.slug}.csv`,
+        'text/csv;charset=utf-8',
+        toCsv(exp.cols, exp.rows, exp.isTime),
+      );
+    else
+      saveFile(
+        `ardrive-${exp.slug}.json`,
+        'application/json',
+        toJson(exp.cols, exp.rows, exp.isTime),
+      );
+    store.say(`Saved ${num(exp.rows.length)} rows as ${kind.toUpperCase()}.`, 'ok', {
+      flash: true,
+    });
+  };
+  return [
+    { label: 'Copy link', icon: 'copy', run: () => void copyLink() },
+    ...(exp && exp.rows.length
+      ? [
+          {
+            label: 'Export as CSV',
+            icon: 'download' as const,
+            run: () => save('csv'),
+            group: true,
+          },
+          { label: 'Export as JSON', icon: 'download' as const, run: () => save('json') },
+        ]
+      : []),
+  ];
+}
+
+export function ViewArea({
+  toolbar = null,
+  receipt = false,
+}: {
+  toolbar?: ComponentChildren;
+  /** Says what the view read, and how it was checked, under it (the status line does not). */
+  receipt?: boolean;
+}) {
+  const { store } = useApp();
+  const c = store.content.value;
+  const status = store.status.value;
+  const drive = store.drive.value;
+  const view = store.view.value;
+  const actions = useViewActions();
+  // An open drive draws its own header, path and menu.
+  const ownHead = !drive;
+  const empty = view.kind === 'home';
   return (
-    <article class="view" id="view" aria-labelledby="viewtitle">
-      <nav class="crumbs" id="crumbs" hidden={!c.crumbs.length}>
-        {c.crumbs.map((cr, i) => (
-          <span key={i} class={i > 0 ? 'crumb-item' : ''}>
-            {i > 0 ? <span class="sep" /> : null}
-            {cr.go ? (
-              <button type="button" class="linkbtn" onClick={cr.go}>
-                {cr.label}
-              </button>
-            ) : (
-              cr.label
-            )}
-          </span>
-        ))}
-      </nav>
-      <div class="view-head">
-        <h3 class="view-title" id="viewtitle">
-          {c.titleName ? <TitleName /> : c.title}
-        </h3>
-        <div class="result-actions" id="resultactions" hidden={!exp && !drive && c.title === ''}>
-          {exp && exp.rows.length ? (
-            <>
-              <button
-                type="button"
-                class="compact"
-                id="csv"
-                onClick={() =>
-                  exp &&
-                  (saveFile(
-                    `ardrive-${exp.slug}.csv`,
-                    'text/csv;charset=utf-8',
-                    toCsv(exp.cols, exp.rows, exp.isTime),
-                  ),
-                  store.say(`Saved ${num(exp.rows.length)} rows as CSV.`, 'ok'))
-                }
-              >
-                CSV
-              </button>
-              <button
-                type="button"
-                class="compact"
-                id="json"
-                onClick={() =>
-                  exp &&
-                  (saveFile(
-                    `ardrive-${exp.slug}.json`,
-                    'application/json',
-                    toJson(exp.cols, exp.rows, exp.isTime),
-                  ),
-                  store.say(`Saved ${num(exp.rows.length)} rows as JSON.`, 'ok'))
-                }
-              >
-                JSON
-              </button>
-            </>
+    <article class={`view${empty ? ' empty-state' : ''}`} id="view" aria-labelledby="viewtitle">
+      {ownHead && c.crumbs.length > 1 ? (
+        <nav class="crumbs" id="crumbs" aria-label="Where this is">
+          {c.crumbs.map((cr, i) => (
+            <span key={i} class={i > 0 ? 'crumb-item' : ''}>
+              {i > 0 ? <span class="sep" /> : null}
+              {cr.go ? (
+                <button type="button" class="linkbtn" onClick={cr.go}>
+                  {cr.label}
+                </button>
+              ) : (
+                <span aria-current="page">{cr.label}</span>
+              )}
+            </span>
+          ))}
+        </nav>
+      ) : null}
+      {empty ? <Icon name="search" big /> : null}
+      {ownHead ? (
+        <div class="view-head">
+          <h2 class="view-title" id="viewtitle">
+            {c.titleName ? <TitleName /> : c.title}
+          </h2>
+          {!empty && c.title !== '' ? (
+            <ActionMenu id="viewmenu" label="Share or export this view" actions={actions} />
           ) : null}
-          <button type="button" class="compact" id="copylink" onClick={() => void copyLink()}>
-            Copy link
-          </button>
         </div>
-      </div>
+      ) : null}
       <p class="view-sub" id="viewsub" hidden={!c.sub}>
         {c.sub}
       </p>
+      {toolbar}
       <dl class="facts" id="viewfacts" hidden={!c.facts.length}>
         {c.facts
           .filter((f) => f.dd !== null && f.dd !== undefined && f.dd !== '')
@@ -509,7 +533,12 @@ export function ViewArea() {
         {c.titleName ? <OpenFileLink /> : null}
         {c.more.map((m, i) =>
           m.kind === 'button' ? (
-            <button key={i} type="button" class="compact" onClick={m.go}>
+            <button
+              key={i}
+              type="button"
+              class={empty ? (i === 0 ? 'primary' : 'secondary') : 'compact'}
+              onClick={m.go}
+            >
               {m.label}
             </button>
           ) : m.kind === 'link' ? (
@@ -530,6 +559,12 @@ export function ViewArea() {
           </a>
         ) : null}
       </div>
+      {receipt && status.cls === 'ok' && !status.flash && status.text ? (
+        <p class="receipt" id="receipt">
+          <Icon name="success" />
+          <span>{status.text}</span>
+        </p>
+      ) : null}
       <p class="names-note" id="namesnote" hidden={!c.namesNote}>
         <Icon name="warning" />
         <span>
