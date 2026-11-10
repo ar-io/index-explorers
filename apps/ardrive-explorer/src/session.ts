@@ -363,6 +363,8 @@ export class Session {
           'busy' in p ? st.barBusy(p.busy) : st.barShow(p.got, p.total, p.label, mb),
       });
       st.extFallback.value = this.engine.extFallback;
+      // "Starting the engine" is done; a line left saying so would read as stuck.
+      if (st.status.value.cls === '') st.say('');
       st.setCheck('engine', 'ok');
       st.engineBooted.value = true;
     } catch (e) {
@@ -902,7 +904,6 @@ export class Session {
       const total = this.bands.reduce((t, x) => t + x.records, 0);
       this.store.sql.value = sql;
       this.store.asked.value = a?.question ?? null;
-      if (!a) this.store.editorOpen.value = true;
       await f.runQuery({
         title: a?.title ?? 'Shared query',
         caption: a?.caption?.replaceAll('{TOTAL_TEXT}', num(total)) ?? null,
@@ -911,22 +912,42 @@ export class Session {
         sql,
       });
     } else if (v.kind === 'browse') await f.browse(true);
+    else if (v.kind === 'questions' || v.kind === 'editor' || v.kind === 'source')
+      this.show(v.kind);
     else await this.home();
+  }
+
+  /**
+   * A section that reads nothing until asked: the question cards, the SQL
+   * editor, the data source. Whatever was loading stops repainting.
+   */
+  show(kind: 'questions' | 'editor' | 'source'): void {
+    this.nav += 1;
+    this.pushHistory({ kind });
+    this.clearView();
+    this.store.say('');
+    this.store.barHide();
+    this.store.showStop(false);
   }
 
   /**
    * A plain visit: nothing listed until the reader asks, so the page never
    * opens on other people's drives. The counts still load.
    */
-  async home(): Promise<void> {
+  async home(push = false): Promise<void> {
     this.nav += 1;
-    this.pushHistory({ kind: 'home' }, true);
+    // The first load replaces its entry; the wordmark, pressed, adds one.
+    this.pushHistory({ kind: 'home' }, !push);
+    if (push) this.store.say('');
     this.clearView();
     this.store.content.value = {
       ...emptyContent(),
       title: 'Nothing listed yet',
-      sub: 'Look up a drive, a wallet, a file or a block above, ask a question below, or list the drives created most recently.',
-      more: [{ kind: 'button', label: 'Newest drives', go: () => void this.browse(true) }],
+      sub: 'Paste a drive id, a wallet address, a file id or a block height into Find, or list the newest drives.',
+      more: [
+        { kind: 'button', label: 'Newest drives', go: () => void this.browse(true) },
+        { kind: 'button', label: 'Ask a question', go: () => this.show('questions') },
+      ],
     };
     await this.ready();
   }

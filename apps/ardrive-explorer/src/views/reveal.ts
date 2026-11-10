@@ -1,9 +1,12 @@
 import type { Store } from '../store.js';
 
-const visible = (el: Element) => {
+const visible = (el: Element, room = 0) => {
   const r = el.getBoundingClientRect();
-  return r.top >= 0 && r.bottom <= window.innerHeight;
+  return r.top >= 0 && r.bottom <= window.innerHeight - room;
 };
+
+/** Under the status line while work runs: the progress bar, its note and Stop. */
+const BAR_ROOM = 96;
 
 /**
  * Brings an answer into view after Find or a question: the status line when
@@ -19,17 +22,24 @@ export function reveal(store: Store): void {
 
 /**
  * While a question works: the status line, with the progress bar and Stop
- * under it, unless the status line or the result's title is already on screen.
+ * under it, unless they or the result's title are already on screen.
  */
 export function revealWork(): void {
-  const el = document.getElementById('status');
+  // The box that holds the status line and the bar: in the page even while both are empty.
+  const el = document.getElementById('work');
   const title = document.getElementById('viewtitle');
-  if (!el || visible(el) || (title && visible(title))) return;
+  // The status line with room under it for Stop, or the answer's title, already on screen.
+  if (!el || visible(el, BAR_ROOM) || (title && visible(title))) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /** Both, for anything asked from below the answer: at once, and again once it settles. */
 export function revealAround(store: Store, work: Promise<unknown>): void {
   requestAnimationFrame(revealWork);
-  void work.then(() => reveal(store));
+  // Again once the bar shows: a short page may not have had the room to scroll before.
+  store.revealing.value = true;
+  void work.then(() => {
+    store.revealing.value = false;
+    reveal(store);
+  });
 }

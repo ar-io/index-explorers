@@ -3,7 +3,8 @@ import type { ComponentChildren } from 'preact';
 export type CheckState = '' | 'run' | 'ok' | 'bad';
 export type ProofChecks = Record<'registry' | 'signature' | 'engine' | 'pieces', CheckState>;
 
-const LABELS: Record<keyof ProofChecks, string> = {
+/** What each of the four checks is, for a page that draws them its own way. */
+export const PROOF_LABELS: Record<keyof ProofChecks, string> = {
   registry: "The publisher's signing key, read from the ar.io registry through a different gateway",
   signature: "The publication's signature, checked against that key",
   engine:
@@ -18,7 +19,7 @@ export function Proof({
   text,
   checks,
   note,
-  labels = LABELS,
+  labels = PROOF_LABELS,
 }: {
   state: 'run' | 'ok' | 'bad';
   text: string;

@@ -10,7 +10,42 @@ export type ViewState =
   | { kind: 'drive'; key: string; folder: string | null }
   | { kind: 'wallet'; key: string }
   | { kind: 'id'; key: string }
-  | { kind: 'query'; sql: string | null };
+  | { kind: 'query'; sql: string | null }
+  /** The question cards, before one is asked. */
+  | { kind: 'questions' }
+  /** The SQL editor, before a query runs. */
+  | { kind: 'editor' }
+  /** The gateway and the publication the page reads. */
+  | { kind: 'source' };
+
+/** The left nav's sections, and the views each one shows. */
+export type Section = 'home' | 'drives' | 'questions' | 'sql' | 'source';
+
+/** A query is a question's answer while its card is the one asked, else the editor's. */
+export function sectionOf(v: ViewState, asked: number | null): Section {
+  switch (v.kind) {
+    case 'home':
+      return 'home';
+    case 'questions':
+      return 'questions';
+    case 'editor':
+      return 'sql';
+    case 'source':
+      return 'source';
+    case 'query':
+      return asked === null ? 'sql' : 'questions';
+    default:
+      return 'drives';
+  }
+}
+
+/** Views that are a bare key in the fragment: `#browse`, `#questions`, `#sql`, `#source`. */
+const BARE: Partial<Record<ViewState['kind'], string>> = {
+  browse: 'browse',
+  questions: 'questions',
+  editor: 'sql',
+  source: 'source',
+};
 
 export interface Link {
   gw: string | null;
@@ -33,9 +68,9 @@ export function encodeFragment(link: {
   } else if (v.kind === 'wallet') q.set('wallet', v.key);
   else if (v.kind === 'id') q.set('id', v.key);
   else if (v.kind === 'query' && v.sql) q.set('sql', v.sql);
-  else if (v.kind === 'browse') q.set('browse', '');
-  // A bare `browse` key, not `browse=`.
-  return '#' + q.toString().replace(/(^|&)browse=(?=&|$)/, '$1browse');
+  else if (BARE[v.kind]) q.set(BARE[v.kind]!, '');
+  // A bare key (`browse`), not `browse=`.
+  return '#' + q.toString().replace(/(^|&)(browse|questions|sql|source)=(?=&|$)/, '$1$2');
 }
 
 export function parseFragment(hash: string): Link {
@@ -51,6 +86,9 @@ export function parseFragment(hash: string): Link {
   else if (id) view = { kind: 'id', key: id };
   else if (sql) view = { kind: 'query', sql };
   else if (q.has('browse')) view = { kind: 'browse' };
+  else if (q.has('questions')) view = { kind: 'questions' };
+  else if (q.has('sql')) view = { kind: 'editor' };
+  else if (q.has('source')) view = { kind: 'source' };
   // A gateway or a period alone opens the page as a plain visit would: nothing listed.
   else view = { kind: 'home' };
   return { gw: q.get('gw'), period: q.get('period'), view };

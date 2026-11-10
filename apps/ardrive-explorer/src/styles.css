@@ -72,7 +72,7 @@ code {
   outline-offset: 2px;
 }
 /* text-low is AA (4.5:1) on L0 and L1 only; on anything raised, a step up. */
-:is(.drawer, .b-details, .asks, tbody, .menu, .notice) {
+:is(.card, .b-details, .asks, tbody, .menu, .notice, .proof-panel, .sqlcell) {
   --text-low: var(--text-mid);
 }
 .sr-only {
@@ -102,15 +102,30 @@ code {
   top: var(--space-sm);
 }
 
-/* The page: one column, a 16 px gutter on a phone, 32 px from 834 px. */
-.rail {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 var(--space-md) var(--space-xxl);
+/* The app shell: the bar across the top, the nav down the left at 240 px (as
+   ArDrive web's side bar), one view in the content area. Under 834 px the nav
+   is a drawer and the content keeps a 16 px gutter. */
+.shell {
+  min-height: 100vh;
 }
-@media (min-width: 834px) {
-  .rail {
-    padding-inline: var(--space-xl);
+.shell-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+.content {
+  min-width: 0;
+  max-width: 1280px;
+  padding: var(--space-lg) var(--space-xl) var(--space-xxl);
+}
+.content:focus {
+  outline: none;
+}
+@media (max-width: 833px) {
+  .shell-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .content {
+    padding: var(--space-md) var(--space-md) var(--space-xxl);
   }
 }
 
@@ -485,23 +500,33 @@ input[type='search']::-webkit-search-cancel-button {
 
 /* ---------------------------------------------------------- top bar */
 .topbar {
-  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 640px) 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-md);
   height: 72px;
+  padding-right: var(--space-xl);
+  border-bottom: 1px solid var(--stroke-low);
+  background: var(--container-l0);
+}
+.navbtn {
+  display: none;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   min-width: 0;
+  padding-left: var(--space-lg);
   color: var(--text-high);
   text-decoration: none;
 }
 .brand img {
   display: block;
-  height: 28px;
+  height: 24px;
   width: auto;
 }
 /* The wordmark for the theme that is on: light text on dark, dark on light. */
@@ -530,64 +555,154 @@ input[type='search']::-webkit-search-cancel-button {
   color: var(--text-mid);
   line-height: 24px;
 }
+.find {
+  min-width: 0;
+  padding-left: var(--space-xl);
+}
 .topbar-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-xs);
 }
+/* A phone: the menu button, the wordmark, the chip and the theme; Find on a row of its own. */
 @media (max-width: 833px) {
   .topbar {
-    height: 64px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'nav brand actions' 'find find find';
+    gap: var(--space-xs) var(--space-xs);
+    height: auto;
+    padding: var(--space-xs) var(--space-md) var(--space-sm);
+  }
+  .navbtn {
+    display: inline-flex;
+    grid-area: nav;
+    margin-left: calc(-1 * var(--space-xs));
+  }
+  .brand {
+    grid-area: brand;
+    padding-left: 0;
   }
   .brand img {
-    height: 24px;
+    height: 20px;
   }
-  /* On a phone the docs link is the footer's; the bar keeps the theme. */
-  .topbar-actions .btn {
-    display: none;
+  .brand .product {
+    font-size: var(--paragraph);
+  }
+  .find {
+    grid-area: find;
+    padding-left: 0;
+  }
+  .topbar-actions {
+    grid-area: actions;
   }
 }
 
-/* -------------------------------------------------------------- hero */
-.hero {
-  position: relative;
-  overflow: hidden;
-  padding: var(--space-xxl);
-  border: 1px solid var(--stroke-low);
-  border-radius: var(--radius-lg);
+/* ------------------------------------------------------------- nav */
+.sidenav {
+  position: sticky;
+  top: 72px;
+  align-self: start;
+  height: calc(100vh - 72px);
+  overflow-y: auto;
+  padding: var(--space-lg) var(--space-md);
+  border-right: 1px solid var(--stroke-low);
+}
+.sidenav ul {
+  display: grid;
+  gap: var(--space-xxs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sidenav hr {
+  margin: 6px 0;
+  border: 0;
+  border-top: 1px solid var(--stroke-low);
+}
+/* A row of the side bar: 18 px icon, the label in SemiBold text-mid; the
+   current one filled container-l2, in Bold text-high. */
+.navitem {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  min-height: 40px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-mid);
+  font-size: var(--paragraph);
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+}
+.navitem:hover {
   background: var(--container-l1);
+  color: var(--text-high);
 }
-.hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(55% 75% at 100% 0%, var(--glow), transparent 100%);
+.navitem .ico {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: currentColor;
 }
-.hero > * {
-  position: relative;
+.navitem > span:not(.ico) {
+  flex: 1;
+}
+.navitem .navitem-out {
+  width: 14px;
+  height: 14px;
+  color: var(--icon-low);
+}
+.navitem[aria-current='page'] {
+  background: var(--container-l2);
+  color: var(--text-high);
+  font-weight: 700;
+}
+.scrim {
+  display: none;
 }
 @media (max-width: 833px) {
-  .hero {
-    padding: var(--space-lg) var(--space-md);
+  .sidenav {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(280px, 85vw);
+    height: auto;
+    border-right: 1px solid var(--stroke-low);
+    background: var(--container-l1);
+    box-shadow: 0 8px 16px var(--shadow);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.18s ease,
+      visibility 0s linear 0.18s;
+  }
+  .sidenav.open {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.18s ease;
+  }
+  .scrim:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: var(--scrim);
   }
 }
-.hero h1 {
-  font-size: var(--display);
+
+/* ------------------------------------------------------------ home */
+.intro h1 {
+  max-width: 32ch;
+  font-size: var(--heading4);
   line-height: 1.3;
   color: var(--text-high);
   text-wrap: balance;
-}
-.hero h1 em {
-  display: block;
-  font-style: normal;
-  color: var(--button-primary);
-}
-.lede {
-  max-width: 64ch;
-  margin-top: var(--space-sm);
-  font-size: var(--paragraph-l);
-  color: var(--text-mid);
 }
 /* Counts: the figure in Light at a heading size, its label under it. */
 /* Equal columns while every value fits; a value that would not fit moves
@@ -596,9 +711,8 @@ input[type='search']::-webkit-search-cancel-button {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-md) var(--space-lg);
-  margin: var(--space-xl) 0 0;
-  padding: var(--space-lg) 0 0;
-  border-top: 1px solid var(--stroke-low);
+  margin: var(--space-lg) 0 0;
+  padding: 0;
 }
 .stat {
   display: flex;
@@ -648,23 +762,43 @@ input[type='search']::-webkit-search-cancel-button {
   color: var(--text-low);
 }
 
-/* The trust line, with the four checks behind "How it's verified". */
+/* The Verified chip: the proof, told once. It opens the four checks. */
 .proof {
-  margin-top: var(--space-lg);
+  position: relative;
 }
 .proof > summary {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xs) var(--space-sm);
-  width: fit-content;
+  gap: var(--space-xs);
+  height: var(--button-compact);
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--stroke-mid);
+  border-radius: var(--radius-control);
   list-style: none;
   cursor: pointer;
   font-size: var(--paragraph);
+  font-weight: 600;
   color: var(--text-mid);
+  white-space: nowrap;
+}
+.proof > summary:hover {
+  background: var(--button-outline-hover);
 }
 .proof > summary::-webkit-details-marker {
   display: none;
+}
+.chip-host {
+  font-weight: 400;
+  color: var(--text-mid);
+}
+.chip-host::before {
+  content: '\00b7';
+  margin-right: var(--space-xs);
+}
+@media (max-width: 1100px) {
+  .chip-host {
+    display: none;
+  }
 }
 .proof > summary > i,
 .checks i {
@@ -703,26 +837,60 @@ input[type='search']::-webkit-search-cancel-button {
 .checks li[data-state='bad'] {
   color: var(--error-fg);
 }
+.proof[data-state='bad'] > summary {
+  border-color: var(--error-stroke);
+}
 .proof[data-state='bad'] > summary > i,
 .checks li[data-state='bad'] i {
   border-style: solid;
 }
-.proof-how {
+/* The panel: the menu's card, under the chip, its right edge on the chip's. */
+.proof-panel {
+  position: absolute;
+  top: calc(100% + var(--space-xs));
+  right: 0;
+  z-index: 50;
+  width: min(440px, calc(100vw - 2 * var(--space-md)));
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--menu);
+  box-shadow: 0 8px 16px var(--shadow);
+}
+@media (max-width: 833px) {
+  .proof {
+    position: static;
+  }
+  .proof-panel {
+    right: var(--space-md);
+    top: 56px;
+  }
+}
+.proof-text {
+  font-size: var(--paragraph);
+  font-weight: 600;
+  color: var(--text-high);
+  overflow-wrap: anywhere;
+}
+.proof[data-state='bad'] .proof-text {
+  color: var(--error-fg);
+}
+.proof-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  margin-top: var(--space-sm);
+  font-size: var(--paragraph);
+}
+.proof-links a {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xxs);
-  font-weight: 600;
-  color: var(--text-link);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
-.proof-how b {
-  display: inline-block;
-  font-weight: 600;
-  transition: transform 0.12s ease;
-}
-.proof[open] .proof-how b {
-  transform: rotate(90deg);
+.proof-links .ico {
+  width: 14px;
+  height: 14px;
 }
 .checks {
   display: grid;
@@ -764,42 +932,96 @@ input[type='search']::-webkit-search-cancel-button {
   }
 }
 
-/* ------------------------------------------------------------ panels */
-.panel {
-  margin-top: var(--space-lg);
-  padding: var(--space-xl);
-  border: 1px solid var(--stroke-low);
-  border-radius: var(--radius-lg);
-  background: var(--container-l1);
+/* ---------------------------------------------------- section heads */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-lg);
 }
-@media (max-width: 833px) {
-  .panel {
-    padding: var(--space-lg) var(--space-md);
-  }
-}
-.panel-title {
-  font-size: var(--heading5);
+.section-head h1 {
+  font-size: var(--heading3);
   color: var(--text-high);
-  text-wrap: balance;
 }
-.panel-sub {
+.section-sub {
   margin-top: var(--space-xxs);
   font-size: var(--paragraph);
   color: var(--text-mid);
 }
-
-/* Find and the period, side by side; one column on a phone. */
-.askbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
-  gap: var(--space-md);
-  align-items: start;
-  margin-top: var(--space-lg);
+.subhead {
+  margin-top: var(--space-xl);
+  font-size: var(--heading6);
+  color: var(--text-high);
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  margin-bottom: var(--space-sm);
+}
+.back .ico {
+  width: 16px;
+  height: 16px;
+}
+/* A group of a page: card padding, the large-panel radius. */
+.card {
+  padding: var(--space-lg);
+  border: 1px solid var(--stroke-low);
+  border-radius: var(--radius-lg);
+  background: var(--container-l1);
+}
+.card + .card {
+  margin-top: var(--space-md);
+}
+.card-title {
+  margin-bottom: var(--space-md);
+  font-size: var(--heading6);
+  color: var(--text-high);
 }
 @media (max-width: 833px) {
-  .askbar {
-    grid-template-columns: minmax(0, 1fr);
+  .card {
+    padding: var(--space-md);
   }
+}
+/* The period: a button that opens its menu, what it covers under it. */
+.period {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xxs);
+}
+.period .field-help {
+  margin: 0;
+}
+/* Among the filters: the period is one more button, its help line the row under them. */
+.period.inline {
+  display: contents;
+}
+.period.inline .field-help {
+  flex-basis: 100%;
+  order: 99;
+}
+/* What a view read and how it was checked, quietly, under it. */
+.receipt {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+  font-size: var(--paragraph-small);
+  color: var(--text-low);
+  overflow-wrap: anywhere;
+}
+.receipt .ico {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  color: var(--success-fg);
+}
+#rangenote {
+  margin-top: var(--space-md);
 }
 .searchbox {
   position: relative;
@@ -833,12 +1055,9 @@ input[type='search']::-webkit-search-cancel-button {
 .filters {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-xs);
   margin-top: var(--space-md);
-}
-.filters .note {
-  flex: 1 1 240px;
 }
 .note {
   font-size: var(--paragraph-small);
@@ -846,8 +1065,11 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /* The status line: what is happening, in words; a failure as an error notice. */
+.statusarea {
+  scroll-margin: var(--space-md);
+}
 #status {
-  margin-top: var(--space-md);
+  margin-top: var(--space-sm);
   font-size: var(--paragraph);
   color: var(--text-mid);
   overflow-wrap: anywhere;
@@ -933,7 +1155,7 @@ input[type='search']::-webkit-search-cancel-button {
 /* -------------------------------------------------------------- view */
 .view {
   min-width: 0;
-  margin-top: var(--space-lg);
+  margin-top: var(--space-md);
 }
 .crumbs {
   display: flex;
@@ -945,7 +1167,7 @@ input[type='search']::-webkit-search-cancel-button {
   color: var(--text-low);
 }
 .crumbs .sep::before {
-  content: '/';
+  content: '\203a';
   margin: 0 var(--space-xxs);
   color: var(--text-xlow);
 }
@@ -974,14 +1196,35 @@ input[type='search']::-webkit-search-cancel-button {
   color: var(--error-fg);
   text-decoration: line-through;
 }
-.result-actions {
+/* The kit's empty state: an icon, a heading, one line and up to two actions, xxl around. */
+.view.empty-state {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin-left: auto;
+  flex-direction: column;
+  align-items: center;
+  margin-top: var(--space-xl);
+  padding: var(--space-xxl) var(--space-md);
+  border: 1px solid var(--stroke-low);
+  border-radius: var(--radius-lg);
+  text-align: center;
 }
-.result-actions button {
-  height: var(--button-compact);
+.empty-state > .ico {
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--space-md);
+  color: var(--icon-mid);
+}
+.empty-state .view-head {
+  justify-content: center;
+}
+.empty-state .view-sub {
+  max-width: 48ch;
+}
+.empty-state .more {
+  justify-content: center;
+  margin-top: var(--space-lg);
+}
+.empty-state .more button {
+  height: var(--button-regular);
 }
 .view-sub {
   max-width: 80ch;
@@ -1030,6 +1273,7 @@ input[type='search']::-webkit-search-cancel-button {
   overflow-wrap: anywhere;
 }
 .fact dd.mono,
+.fact dd > .mono,
 .fact dd .rowlink.mono {
   font-size: var(--code);
   white-space: normal;
@@ -1218,6 +1462,9 @@ td .name.mismatch {
 }
 
 /* ---------------------------------------------------- drive browser */
+.drive {
+  margin-top: var(--space-xs);
+}
 .browser {
   margin-top: var(--space-md);
   overflow: hidden;
@@ -1231,8 +1478,13 @@ td .name.mismatch {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm) var(--space-lg);
-  padding: var(--space-md);
-  border-bottom: 1px solid var(--stroke-low);
+  margin-top: var(--space-xs);
+}
+.b-namerow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  min-width: 0;
 }
 .b-title {
   display: flex;
@@ -1241,8 +1493,10 @@ td .name.mismatch {
   min-width: 0;
 }
 .b-drive-name {
-  font-size: var(--heading5);
+  min-width: 0;
+  font-size: var(--heading4);
   overflow-wrap: anywhere;
+  scroll-margin: var(--space-md);
 }
 .b-drive-name.pending {
   color: var(--text-low);
@@ -1271,7 +1525,7 @@ td .name.mismatch {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-sm) var(--space-md);
   padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--stroke-low);
@@ -1306,10 +1560,21 @@ td .name.mismatch {
   background: none;
   color: var(--text-high);
 }
-.crumb + .crumb::before {
-  content: '/';
+.crumb-root {
+  height: var(--button-compact);
+  padding: 0 var(--space-xs);
+  background: none;
+  color: var(--text-link);
+  font-size: var(--paragraph);
+  font-weight: 600;
+}
+.crumb-root:hover {
+  background: var(--button-secondary);
+}
+.crumb::before {
+  content: '\203a';
   margin-right: var(--space-xs);
-  color: var(--text-xlow);
+  color: var(--text-low);
   font-weight: 400;
 }
 .b-search {
@@ -1596,57 +1861,17 @@ td .name.mismatch {
   color: var(--text-xlow);
 }
 
-/* A section that opens: the SQL editor, the data source. */
-.drawer {
-  margin-top: var(--space-md);
+/* The SQL editor: the card that holds the examples, the text and Run. */
+.sqlcell {
+  padding: var(--space-lg);
   border: 1px solid var(--stroke-low);
-  border-radius: var(--radius-md);
-  background: var(--container-l2);
+  border-radius: var(--radius-lg);
+  background: var(--container-l1);
 }
-.drawer > summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xxs) var(--space-sm);
-  min-height: 48px;
-  padding: var(--space-sm) var(--space-md);
-  list-style: none;
-  cursor: pointer;
-  border-radius: var(--radius-md);
-}
-.drawer > summary::-webkit-details-marker {
-  display: none;
-}
-.drawer > summary:hover {
-  background: var(--container-l3);
-}
-.drawer-title {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--paragraph-l);
-  font-weight: 600;
-}
-.drawer-title .ico {
-  transform: rotate(-90deg);
-  transition: transform 0.12s ease;
-}
-.drawer[open] > summary .drawer-title .ico {
-  transform: none;
-}
-.drawer-sub {
-  font-size: var(--paragraph);
-  color: var(--text-low);
-}
-.drawer .when-open,
-.drawer[open] .when-closed {
-  display: none;
-}
-.drawer[open] .when-open {
-  display: inline;
-}
-.drawer-body {
-  padding: var(--space-xs) var(--space-md) var(--space-md);
+@media (max-width: 833px) {
+  .sqlcell {
+    padding: var(--space-md);
+  }
 }
 .presets {
   display: flex;
@@ -1680,8 +1905,16 @@ td .name.mismatch {
 .runscope {
   flex: 1 1 260px;
   min-width: 0;
-  font-size: var(--paragraph);
-  color: var(--text-mid);
+}
+.runbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.keys {
+  font-family: var(--font-body);
+  font-size: var(--paragraph-small);
+  color: var(--text-low);
 }
 details.guide {
   margin-top: var(--space-md);
@@ -1772,42 +2005,8 @@ details.guide[open] > summary .ico {
   height: var(--field-height);
 }
 
-/* ------------------------------------------------------------ footer */
-footer {
-  margin-top: var(--space-xxl);
-  padding-top: var(--space-xl);
-  border-top: 1px solid var(--stroke-low);
-  font-size: var(--paragraph);
-  color: var(--text-mid);
-}
-.foot-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-lg);
-}
-@media (min-width: 834px) {
-  .foot-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr);
-    gap: var(--space-xl);
-  }
-}
-footer h4 {
-  margin-bottom: var(--space-sm);
-  font-size: var(--paragraph);
-  font-weight: 600;
-  color: var(--text-high);
-}
-footer ul {
-  display: grid;
-  gap: var(--space-xs);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.foot-cli p {
-  margin-bottom: var(--space-xs);
-}
-.foot-cli pre {
+/* ------------------------------------------------------ data source */
+.source .cli {
   margin: 0 0 var(--space-xs);
   padding: var(--space-sm) var(--space-md);
   overflow-x: auto;
@@ -1815,15 +2014,33 @@ footer ul {
   border-radius: var(--radius-md);
   background: var(--container-l2);
 }
-.foot-cli code {
+.source .cli code {
   padding: 0;
   background: none;
   font-size: var(--paragraph-small);
 }
-.foot-legal {
-  margin-top: var(--space-xl);
-  font-size: var(--paragraph-small);
-  color: var(--text-low);
+.source .note + .note {
+  margin-top: var(--space-xs);
+}
+.links {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0 0 var(--space-md);
+  padding: 0;
+  list-style: none;
+  font-size: var(--paragraph);
+}
+.links a,
+.fact-link {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: var(--space-xxs);
+}
+.links .ico,
+.fact-link .ico {
+  width: 14px;
+  height: 14px;
 }
 
 @media (prefers-reduced-motion: reduce) {

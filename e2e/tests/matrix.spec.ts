@@ -9,10 +9,12 @@ import fs from 'node:fs';
 import {
   choose,
   clearStatus,
+  counts,
   countsShown,
   driveListed,
   driveOpened,
   driveRows,
+  goTo,
   GW,
   KNOWN,
   LIVE,
@@ -24,6 +26,8 @@ import {
   title,
   until,
   url,
+  viewAction,
+  viewActions,
   waitAnswer,
 } from './helpers.js';
 
@@ -57,10 +61,9 @@ test('publication verifies, the range reader controls the page, drives list with
   expect(await countsShown(page)).toBe(true);
   if (!LIVE) {
     // One band's from its stats file, the other's from its tag lookup.
-    const count = async (id: string) =>
-      Number((await page.locator(id).innerText()).replace(/[^\d]/g, ''));
-    expect(await count('#s-drives')).toBe(KNOWN.drives);
-    expect(await count('#s-files')).toBe(KNOWN.files);
+    const c = await counts(page);
+    expect(c.drives).toBe(KNOWN.drives);
+    expect(c.files).toBe(KNOWN.files);
   }
   await page.waitForTimeout(LIVE ? 6000 : 2000);
   const names = await page.locator('#results tbody .name').allInnerTexts();
@@ -167,7 +170,7 @@ test('filters: privacy, app and period reload the listing', async () => {
     'week',
   );
   expect(await page.locator('#viewsub').innerText()).toMatch(/Drives created/);
-  expect(await page.locator('#runscope').textContent()).toMatch(/Last 7 days/);
+  expect(await page.locator('#scopedates').innerText()).toMatch(/\d{4}/);
   await choose(page, '#scope', 'month');
   await until(
     page,
@@ -188,20 +191,23 @@ test('show older adds rows, and exports carry every row', async () => {
   }
   const [dl] = await Promise.all([
     page.waitForEvent('download', { timeout: 20_000 }),
-    page.click('#csv'),
+    viewAction(page, 'Export as CSV'),
   ]);
   const csv = fs.readFileSync((await dl.path())!, 'utf8');
   expect(csv.split('\n').length).toBeGreaterThan(2);
   expect(csv.split('\n')[0]).toMatch(/drive_id/);
   const [dj] = await Promise.all([
     page.waitForEvent('download', { timeout: 20_000 }),
-    page.click('#json'),
+    viewAction(page, 'Export as JSON'),
   ]);
   const js = JSON.parse(fs.readFileSync((await dj.path())!, 'utf8')) as { drive_id: string }[];
   expect(Array.isArray(js) && js.length > 2 && !!js[0]!.drive_id).toBe(true);
 });
 
 test('every question answers, with a caption', async () => {
+  await goTo(page, 'questions');
+  // The cards, before one is asked, read nothing.
+  expect(await page.locator('#view').count()).toBe(0);
   const n = await page.locator('#asks button').count();
   expect(n).toBe(8);
   for (let i = 0; i < n; i++) {
@@ -219,7 +225,8 @@ test('every question answers, with a caption', async () => {
 });
 
 test('every preset runs; a bad query is reported; a drive_id link opens the drive', async () => {
-  await page.locator('#editor > summary').click();
+  await goTo(page, 'sql');
+  expect(await page.locator('#runscope').textContent()).toMatch(/Last 30 days/);
   const np = await page.locator('#presets button').count();
   expect(np).toBe(7);
   for (let i = 0; i < np; i++) {
@@ -253,7 +260,7 @@ test('every preset runs; a bad query is reported; a drive_id link opens the driv
 });
 
 test('a share link carries the drive and opens it in a new tab', async ({ browser }) => {
-  await page.click('#copylink');
+  await viewAction(page, 'Copy link');
   const href = await page.evaluate(() => location.href);
   expect(href).toMatch(/#.*drive=/);
   const p2 = await browser.newPage({ colorScheme: 'dark' });
@@ -264,9 +271,16 @@ test('a share link carries the drive and opens it in a new tab', async ({ browse
 });
 
 test('a private drive shows its shape only', async () => {
-  await choose(page, '#privacy', 'private');
   await page.locator('#browse').click();
-  await until(page, async () => (await rows(page)) > 0, 120_000, 'private browse');
+  await until(page, async () => (await rows(page)) > 0, 120_000, 'browse');
+  await clearStatus(page);
+  await choose(page, '#privacy', 'private');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'private browse',
+  );
   await page.locator('#results tbody tr').first().locator('.rowlink').first().click();
   await driveListed(page, 120_000, 'private drive', async () =>
     /Private drive/.test(
@@ -280,7 +294,21 @@ test('a private drive shows its shape only', async () => {
   expect(head).toMatch(/Private drive/);
   expect(head).toMatch(/encrypted/);
   await page.locator('#view').screenshot({ path: 'e2e/out/private-drive.png' });
+  const owner = await page.locator('.b-owner').first().getAttribute('title');
+  await page.locator('#browse').click();
+  await until(page, async () => (await rows(page)) > 0, 120_000, 'browse');
+  await clearStatus(page);
   await choose(page, '#privacy', 'any');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered/.test(await status(page)),
+    120_000,
+    'any again',
+  );
+  // Back to the private drive, for the wallet test that follows.
+  await page.goBack();
+  await until(page, async () => (await page.locator('.b-owner').count()) > 0, 120_000, 'drive');
+  expect(await page.locator('.b-owner').first().getAttribute('title')).toBe(owner);
 });
 
 test('the wallet view: totals, stretches, and every drive on request', async () => {
@@ -450,12 +478,11 @@ test('Run query brings its work, its answer or its failure into view, and only w
         return r.top >= 0 && r.bottom <= window.innerHeight;
       }, sel);
     const settle = () => m.waitForTimeout(900);
-    await m.locator('#editor > summary').click();
+    await goTo(m, 'sql');
     const run = async (sql: string) => {
       await m.fill('#sql', sql);
-      // The editor at the top of the screen, as after typing a long query: the answer is above.
-      await m.evaluate(() => document.getElementById('run')!.scrollIntoView({ block: 'start' }));
-      expect(await inView('#status'), 'the status line starts out of view').toBe(false);
+      // The editor at the top of the screen, as after typing a long query: the answer is under it.
+      await m.evaluate(() => window.scrollTo(0, 0));
       await m.click('#run');
     };
     // Work that takes a while: its status line and Stop come into view as it runs.
@@ -479,8 +506,7 @@ test('Run query brings its work, its answer or its failure into view, and only w
       /^LINE 1: selct 1\n\s+\^$/,
     );
     expect(await m.locator('#viewsub').innerText()).toBe('Syntax error at or near "selct".');
-    expect(await m.locator('#csv, #json').count()).toBe(0);
-    expect(await m.locator('#copylink').isVisible()).toBe(true);
+    expect(await viewActions(m)).toEqual(['Copy link']);
     // An empty editor says so, in place of the last failure.
     await run('');
     await until(m, async () => /Type a query first/.test(await status(m)), 10_000, 'empty');
@@ -505,6 +531,7 @@ test('on a phone, a question table shows it has more columns, and a wallet table
   const m = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
   await openPage(m);
   await until(m, () => countsShown(m), 60_000, 'counts');
+  await goTo(m, 'questions');
   await m.locator('#asks button', { hasText: 'Biggest files' }).click();
   await until(m, async () => (await rows(m)) > 0, 60_000, 'biggest files');
   // Ids shortened, whole in the link's title; units keep their case in the headers.
@@ -529,7 +556,7 @@ test('on a phone, a question table shows it has more columns, and a wallet table
   expect(q.seen, 'columns in view').toBeGreaterThan(1);
   expect(/more-right/.test(q.fades)).toBe(q.scrolls);
   // A wallet opened from Newest drives, after scrolling that table sideways.
-  await m.locator('#browse').click();
+  await goTo(m, 'drives');
   // The drives table itself, not the question's rows still on screen as it starts.
   await until(
     m,
@@ -562,6 +589,7 @@ test('on a phone, a question table shows it has more columns, and a wallet table
 });
 
 test('Back to a question keeps its title and pressed card; a card is pressed only for its own answer', async () => {
+  await goTo(page, 'questions');
   const card = page.locator('#asks button').first();
   const q = await card.locator('span').first().innerText();
   await clearStatus(page);
@@ -618,6 +646,7 @@ test('a wide drive says its cost first, Stop cancels, and browsing works after a
 });
 
 test('periods: all history asks first for a question; a calendar year browses', async () => {
+  await goTo(page, 'questions');
   await choose(page, '#scope', 'all');
   await page.locator('#asks button').nth(3).click();
   if (LIVE) {
@@ -646,6 +675,12 @@ test('periods: all history asks first for a question; a calendar year browses', 
     );
   }
   await choose(page, '#scope', 'month');
+  await until(
+    page,
+    async () => /Read|Nothing new|Answered|drives? in this period/.test(await status(page)),
+    180_000,
+    'month browse',
+  );
 });
 
 test('a link opens over its own period, All history too; a lookup-only answer covers the whole index', async ({
@@ -675,7 +710,7 @@ test('a link opens over its own period, All history too; a lookup-only answer co
 });
 
 test('the data-source drawer: another gateway is refused with a reason, switching back re-verifies', async () => {
-  await page.locator('#datadrawer > summary').click();
+  await goTo(page, 'source');
   const options = await menuValues(page, '#gwsel');
   const other = options.find((o) => o !== 'auto' && o !== 'custom' && o !== GW);
   if (other) {
@@ -687,7 +722,7 @@ test('the data-source drawer: another gateway is refused with a reason, switchin
       60_000,
       'other gateway',
     );
-    const txt = await page.locator('#proof-text').innerText();
+    const txt = (await page.locator('#proof-text').textContent()) ?? '';
     expect(/no index of ArDrive's data items|Refusing|not|Verified/i.test(txt), txt).toBe(true);
   }
   // The page counts its navigations: reading the publication again is one, and
@@ -708,9 +743,13 @@ test('the data-source drawer: another gateway is refused with a reason, switchin
     60_000,
     'back',
   );
-  const fresh = async () => (await nav()) >= before + 2 && (await rows(page)) > 0;
-  await until(page, fresh, 180_000, 'browse after switch');
-  expect(await fresh()).toBe(true);
+  // The reader stays on the data source; the listing reads over the new publication when asked.
+  await until(page, async () => (await nav()) >= before + 2, 30_000, 'reopened');
+  expect(await nav()).toBeGreaterThanOrEqual(before + 2);
+  expect(await page.locator('#source').isVisible()).toBe(true);
+  await page.locator('#browse').click();
+  await until(page, async () => (await rows(page)) > 0, 180_000, 'browse after switch');
+  expect(await rows(page)).toBeGreaterThan(0);
 });
 
 test('light theme renders; phone width has no horizontal scroll', async ({ browser }) => {
@@ -749,7 +788,9 @@ test('with every gateway unreachable, the page says so, not that none publishes 
     120_000,
     'refused',
   );
-  expect(await m.locator('#proof-text').innerText()).toMatch(/could not reach/i);
+  // Behind the chip, which says so in red; the status line says it in the view.
+  expect(await m.locator('#proof-text').textContent()).toMatch(/could not reach/i);
+  expect(await m.locator('#proof summary').innerText()).toMatch(/Not verified/);
   expect(await status(m)).toMatch(/^Could not reach/);
   expect(await status(m)).not.toMatch(/Refusing|publish/);
   await m.close();
@@ -815,7 +856,7 @@ test('a period picked while the engine starts, then a query: the answer, not an 
     await r.continue();
   });
   await openPage(m);
-  await m.locator('#editor > summary').click();
+  await goTo(m, 'sql');
   await m.locator('#scope').click();
   // All history on fixtures; live it asks before its read (the periods test checks that), so
   // the last 7 days: the same race, with a small read.
