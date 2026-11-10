@@ -214,10 +214,13 @@ export class Session {
         // Drives and files wait for the engine; uploads and span are in the publication.
         counting: st.hero.value.drives === '',
         items: records ? num(records) : '',
+        // One year once, not "2026–2026"; "to", since Wavehaus has no en dash.
         span:
           first.fromTime && last.toTime
-            ? `${yr(first.fromTime)}–${yr(last.toTime)}`
-            : `${num(first.from)}–${num(tip)}`,
+            ? yr(first.fromTime) === yr(last.toTime)
+              ? `${yr(last.toTime)}`
+              : `${yr(first.fromTime)} to ${yr(last.toTime)}`
+            : `${num(first.from)} to ${num(tip)}`,
       };
       st.pub.value = {
         ...st.pub.value,

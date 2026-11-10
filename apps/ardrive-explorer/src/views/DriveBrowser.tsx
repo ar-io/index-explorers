@@ -7,8 +7,12 @@ import {
   ActionMenu,
   AnchoredMenu,
   ardriveUrl,
+  dateText,
+  dateTimeText,
   FilePreview,
+  fileType,
   Icon,
+  IdField,
   iconFor,
   typeLabel,
   previewKind,
@@ -16,7 +20,7 @@ import {
   useWindowed,
   type Action,
 } from '@ar-io/explorer-ui';
-import { bytesText, fmtDate, fmtWhen, isId43, num, shortId } from '@ar-io/index-client';
+import { bytesText, isId43, num, shortId } from '@ar-io/index-client';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { CONFIG } from '../config.js';
@@ -186,31 +190,18 @@ function DriveDetails({ d }: { d: DriveModel }) {
       ) : null}
       <Facts>
         {fact('Privacy', sentence(d.privacy))}
-        {fact('Drive-Id', d.driveId, true)}
+        {fact('Drive-Id', <IdField id={d.driveId} />)}
         {r?.arfs ? fact('ArFS', r.arfs) : null}
-        {r && Number(r.created_at) > 0 ? fact('Created', fmtWhen(r.created_at)) : null}
+        {r && Number(r.created_at) > 0 ? fact('Created', dateTimeText(r.created_at)) : null}
         {r
           ? fact(
               'Owner',
-              <button
-                type="button"
-                class="rowlink mono"
-                onClick={() => void flows.openWallet(r.owner, false)}
-              >
-                {r.owner}
-              </button>,
+              <IdField id={r.owner} onOpen={() => void flows.openWallet(r.owner, false)} />,
             )
           : null}
         {r ? fact('App', `${r.app || ''} ${r.app_version || ''}`.trim()) : null}
-        {r
-          ? fact(
-              'Record',
-              <button type="button" class="rowlink mono" onClick={() => void flows.openId(r.id)}>
-                {r.id}
-              </button>,
-            )
-          : null}
-        {d.rootFolderId ? fact('Root folder', d.rootFolderId, true) : null}
+        {r ? fact('Record', <IdField id={r.id} onOpen={() => void flows.openId(r.id)} />) : null}
+        {d.rootFolderId ? fact('Root folder', <IdField id={d.rootFolderId} />) : null}
       </Facts>
     </aside>
   );
@@ -298,49 +289,37 @@ function Details({ d, x }: { d: DriveModel; x: DriveItem }) {
       <Facts>
         {fact(
           'Type',
-          isPrivate
-            ? 'encrypted'
-            : x.kind === 'folder'
-              ? 'Folder'
-              : x.type || typeLabel(null, x.name),
+          isPrivate ? (
+            'Encrypted'
+          ) : x.kind === 'folder' ? (
+            'Folder'
+          ) : (
+            <>
+              {fileType(x.type, x.name)}
+              {x.type ? <span class="d-sub mono">{x.type}</span> : null}
+            </>
+          ),
         )}
         {fact('Size', x.size != null ? `${bytesText(x.size)} (${num(x.size)} bytes)` : null)}
-        {fact('Modified', x.modified ? fmtWhen(x.modified) : null)}
+        {fact('Modified', x.modified ? dateTimeText(x.modified) : null)}
         {fact(
           'Uploaded',
           Number(x.latest.created_at) > 0
-            ? fmtWhen(x.latest.created_at)
+            ? dateTimeText(x.latest.created_at)
             : `block ${num(x.latest.height)}`,
         )}
         {fact(
           'Owner',
-          <button
-            type="button"
-            class="rowlink mono"
-            onClick={() => void flows.openWallet(x.latest.owner, false)}
-          >
-            {x.latest.owner}
-          </button>,
+          <IdField
+            id={x.latest.owner}
+            onOpen={() => void flows.openWallet(x.latest.owner, false)}
+          />,
         )}
         {fact('App', `${x.latest.app || ''} ${x.latest.app_version || ''}`.trim())}
-        {fact(x.kind === 'folder' ? 'Folder-Id' : 'File-Id', x.entityId, true)}
-        {fact(
-          'Record',
-          <button type="button" class="rowlink mono" onClick={() => void flows.openId(x.latest.id)}>
-            {x.latest.id}
-          </button>,
-        )}
+        {fact(x.kind === 'folder' ? 'Folder-Id' : 'File-Id', <IdField id={x.entityId} />)}
+        {fact('Record', <IdField id={x.latest.id} onOpen={() => void flows.openId(x.latest.id)} />)}
         {dataTxId
-          ? fact(
-              'Data',
-              <button
-                type="button"
-                class="rowlink mono"
-                onClick={() => void flows.openId(dataTxId)}
-              >
-                {dataTxId}
-              </button>,
-            )
+          ? fact('Data', <IdField id={dataTxId} onOpen={() => void flows.openId(dataTxId)} />)
           : null}
       </Facts>
       {x.versions.length > 1 ? (
@@ -349,7 +328,7 @@ function Details({ d, x }: { d: DriveModel; x: DriveItem }) {
           <ul class="d-versions">
             {x.versions.map((v, i) => (
               <li key={v.id}>
-                {`${i === 0 ? 'current' : 'v' + (x.versions.length - i)} · ${Number(v.created_at) > 0 ? fmtWhen(v.created_at) : `block ${num(v.height)}`} · `}
+                {`${i === 0 ? 'current' : 'v' + (x.versions.length - i)} · ${Number(v.created_at) > 0 ? dateTimeText(v.created_at) : `block ${num(v.height)}`} · `}
                 <button type="button" class="rowlink mono" onClick={() => void flows.openId(v.id)}>
                   {shortId(v.id)}
                 </button>
@@ -443,7 +422,7 @@ function Row({
           {x.versions.length > 1 ? <span class="b-ver">{x.versions.length} versions</span> : null}
         </div>
       </td>
-      <td class="b-dim">{fmtDate(x.modified ?? x.latest.created_at)}</td>
+      <td class="b-dim">{dateText(x.modified ?? x.latest.created_at)}</td>
       <td class="num b-dim">
         {folder
           ? `${num((d.children.get(x.entityId) ?? []).length)} items`
@@ -652,7 +631,7 @@ export function DriveBrowser() {
         <div class="b-stats" id="b-stats">
           <span class="privacy">{sentence(d.privacy)}</span>
           {d.driveRec && Number(d.driveRec.created_at) > 0 ? (
-            <span class="b-meta">Created {fmtDate(d.driveRec.created_at)}</span>
+            <span class="b-meta">Created {dateText(d.driveRec.created_at)}</span>
           ) : null}
           {owner ? (
             <button

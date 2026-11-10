@@ -103,6 +103,7 @@ export function createDriveFlows(s: Session) {
         ...emptyContent(),
         title: 'Newest drives',
         sub: `Drives created ${when ?? p.label.toLowerCase()}, newest first.`,
+        loading: true,
       };
       browseState = { period: p.id, hi: p.hi, rows: [], hidden: 0, step: 1000, done: false };
     }
@@ -285,6 +286,7 @@ export function createDriveFlows(s: Session) {
       crumbs: [...crumbs, { label: `Drive ${driveId.slice(0, 8)}…`, go: null }],
       title: `Drive ${driveId.slice(0, 8)}…`,
       sub: 'Finding its records through the index’s lookups…',
+      loading: true,
     };
     const w = planned?.w ?? (await driveWindow(driveId).catch(() => null));
     if (s.overtaken(my)) return;
@@ -293,6 +295,8 @@ export function createDriveFlows(s: Session) {
         ...st.content.value,
         title: `No drive ${driveId.slice(0, 8)}…`,
         sub: 'Nothing in the index carries this Drive-Id. Check the id, or the index may not reach it yet.',
+        loading: false,
+        empty: true,
       };
       st.say('');
       return;

@@ -14,15 +14,7 @@
  */
 import { useEffect, useState } from 'preact/hooks';
 
-/** A size as a file browser writes one (1.5 MB); kept here so the component stands alone. */
-export function sizeText(n: number | null | undefined): string {
-  const v = Number(n);
-  if (!(v >= 0)) return '';
-  if (v < 1024) return `${v} B`;
-  if (v < 1048576) return `${(v / 1024).toFixed(1)} KB`;
-  if (v < 1073741824) return `${(v / 1048576).toFixed(1)} MB`;
-  return `${(v / 1073741824).toFixed(2)} GB`;
-}
+import { sizeText } from './format.js';
 
 /** Loaded on selection up to this size; past it, a button says the size first. */
 export const PREVIEW_AUTO = 20e6;

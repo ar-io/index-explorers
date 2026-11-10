@@ -14,6 +14,8 @@ Design tokens, the shared page chassis and a few primitives for the index explor
 - ArDrive pieces another app can lift (`src/ardrive/`): each takes plain props and reads nothing from an app's store, over `ardrive-tokens.css`.
   - `FilePreview` (with `previewKind`): a public file's image, video, audio or first 64 KB of text, from its gateway URL. Anything over 20 MB waits for a button. It never frames a page or a PDF. Import `@ar-io/explorer-ui/ardrive/file-preview.css` too.
   - `Sheet`: the design system's bottom sheet, for a panel on a phone: over the scrim, Escape or the scrim closes it, focus goes in and comes back. Import `@ar-io/explorer-ui/ardrive/sheet.css` too.
+  - `IdField`: the design system's copy field for an id or an address: shortened in Roboto Mono, whole on hover and to a screen reader, with a Copy link, and optionally a link to its own view. Import `@ar-io/explorer-ui/ardrive/id-field.css` too.
+  - `dateText`, `dateTimeText`, `sizeText`, `fileType`: how ArDrive writes a day in a list ("Oct 13, 2026"), the time added in details (UTC), a size scaled to its unit, and a file's type in words ("MP3 audio", "PDF"). `typeLabel` uses `fileType`.
   - `ardriveUrl`: the ArDrive app's public link for a drive, a folder or a file (`app.ardrive.io/#/drives/<id>`, `…/folders/<id>`, `#/file/<id>/view`); null for a private drive.
 
 Import the CSS in your entry (for an ar.io page `@ar-io/explorer-ui/tokens.css`, then `base.css`, then `ario.css`) and the components from the package root. See `apps/network-index` for the smallest page built on it.

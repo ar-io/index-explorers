@@ -1,14 +1,17 @@
-import { ActionMenu, Icon, type Action } from '@ar-io/explorer-ui';
 import {
-  bytesText,
-  cellNum,
-  fmtDate,
-  fmtWhen,
-  isId43,
-  isUuid,
-  num,
-  shortId,
-} from '@ar-io/index-client';
+  ActionMenu,
+  ardriveUrl,
+  dateText,
+  dateTimeText,
+  FilePreview,
+  fileType,
+  Icon,
+  IdField,
+  previewKind,
+  sizeText,
+  type Action,
+} from '@ar-io/explorer-ui';
+import { bytesText, cellNum, isId43, isUuid, num, shortId } from '@ar-io/index-client';
 import type { ComponentChildren } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 
@@ -127,7 +130,9 @@ function DrivesTable({ rows }: { rows: DriveRow[] }) {
                   text={shortId(r.owner)}
                 ></RowLink>
               </td>
-              <td>{Number(r.created_at) > 0 ? fmtDate(r.created_at) : `block ${num(r.height)}`}</td>
+              <td>
+                {Number(r.created_at) > 0 ? dateText(r.created_at) : `block ${num(r.height)}`}
+              </td>
               <td>
                 <span class="privacy">{sentence(r.privacy)}</span>
               </td>
@@ -187,7 +192,7 @@ function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
             <td class="num">{num(d.records)}</td>
             <td>
               {Number(d.last.created_at) > 0
-                ? fmtWhen(d.last.created_at)
+                ? dateText(d.last.created_at)
                 : `block ${num(d.last.height)}`}
             </td>
           </tr>
@@ -196,6 +201,9 @@ function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
     </table>
   );
 }
+
+/** GiB and MiB columns hold rounded sizes, in bytes per unit. */
+const UNIT: Record<string, number> = { gib: 2 ** 30, mib: 2 ** 20 };
 
 function GenericTable({ table }: { table: TableContent }) {
   const { flows } = useApp();
@@ -214,7 +222,12 @@ function GenericTable({ table }: { table: TableContent }) {
     if (isTime.has(c.key) && !(Number(v) > 0))
       return { node: <span class="nodate">(no date)</span>, num: false };
     if (v === null || v === undefined) return { node: '', num: false };
-    if (isTime.has(c.key)) return { node: fmtWhen(v), num: false };
+    if (isTime.has(c.key)) return { node: dateTimeText(v), num: false };
+    // A question's sizes read as bytes do elsewhere (7.34 GB), and its types in words.
+    if (table.labelled && UNIT[c.key] && Number.isFinite(Number(v)))
+      return { node: sizeText(Math.round(Number(v) * UNIT[c.key]!)), num: true };
+    if (table.labelled && (c.key === 'type' || c.key === 'content_type') && /\//.test(String(v)))
+      return { node: <span title={String(v)}>{fileType(String(v))}</span>, num: false };
     const text = String(v);
     if (c.key === 'owner' && isId43(text))
       return {
@@ -266,7 +279,7 @@ function GenericTable({ table }: { table: TableContent }) {
         <tr>
           {table.cols.map((c) => (
             <th key={c.key} scope="col" class={numCols.has(c.key) || c.num ? 'num' : undefined}>
-              {/^[KMGT]iB$/.test(c.label) ? <span class="unit">{c.label}</span> : c.label}
+              {table.labelled && UNIT[c.key] ? 'Size' : c.label}
             </th>
           ))}
         </tr>
@@ -300,24 +313,85 @@ function TitleName() {
   );
 }
 
-/** For a file record, once its JSON is in hand: a link to the file itself. */
-function OpenFileLink() {
+/**
+ * A public file record's file, once its JSON is in hand: what the record
+ * describes, as its own block above the record's facts. The name, type and
+ * data id come from the record, which is outside the signature.
+ */
+function FileCard() {
   const { store, session } = useApp();
   void store.namesTick.value;
-  const t = store.content.value.titleName;
-  if (!t) return null;
-  const r = session.names.cache.get(t.id);
+  const c = store.content.value;
+  if (!c.file) return null;
+  const r = session.names.cache.get(c.file.recordId);
   const meta = r?.ok ? r.meta : null;
   const dataTxId =
     meta && typeof meta.dataTxId === 'string' && isId43(meta.dataTxId) ? meta.dataTxId : null;
-  if (!dataTxId) return null;
+  if (!meta || !dataTxId) return null;
+  const url = `${session.gateway}/${dataTxId}`;
+  const type = typeof meta.dataContentType === 'string' ? meta.dataContentType : null;
+  const name = r?.name ?? '';
+  const size = typeof meta.size === 'number' ? meta.size : null;
+  const kind = previewKind(type, name);
+  const app =
+    c.file.fileId && c.file.driveId
+      ? ardriveUrl(
+          { driveId: c.file.driveId, privacy: 'public', fileId: c.file.fileId },
+          CONFIG.appUrl,
+        )
+      : null;
   return (
-    <a href={`${session.gateway}/${dataTxId}`} target="_blank" rel="noopener">
-      Open the file
-      {meta!.size != null
-        ? ` (${bytesText(meta!.size)}${typeof meta!.dataContentType === 'string' ? ', ' + meta!.dataContentType : ''})`
-        : ''}
-    </a>
+    <section class="block" id="filecard" aria-labelledby="filecard-title">
+      <h3 class="block-title" id="filecard-title">
+        File
+      </h3>
+      {kind ? (
+        <FilePreview key={url} url={url} kind={kind} name={name || 'the file'} size={size} />
+      ) : null}
+      <dl class="facts">
+        <div class="fact">
+          <dt>Name</dt>
+          <dd>{name || '(none)'}</dd>
+        </div>
+        <div class="fact">
+          <dt>Size</dt>
+          <dd>{sizeText(size)}</dd>
+        </div>
+        <div class="fact">
+          <dt>Type</dt>
+          <dd>{type ? `${fileType(type, name)} (${type})` : fileType(null, name)}</dd>
+        </div>
+        <div class="fact">
+          <dt>Data</dt>
+          <dd>
+            <IdField id={dataTxId} label="the data id" />
+          </dd>
+        </div>
+      </dl>
+      <p class="block-links">
+        <a href={url} target="_blank" rel="noopener">
+          Open the file
+          <Icon name="external" />
+        </a>
+        {app ? (
+          <a href={app} target="_blank" rel="noopener">
+            Open in ArDrive
+            <Icon name="external" />
+          </a>
+        ) : null}
+      </p>
+    </section>
+  );
+}
+
+/** Placeholder rows while a listing reads: the table's shape, not a line of text. */
+function Skeleton() {
+  return (
+    <div class="skeleton" aria-hidden="true">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <i key={i} />
+      ))}
+    </div>
   );
 }
 
@@ -437,7 +511,7 @@ export function ViewArea({
   /** Says what the view read, and how it was checked, under it (the status line does not). */
   receipt?: boolean;
 }) {
-  const { store } = useApp();
+  const { store, flows } = useApp();
   const c = store.content.value;
   const status = store.status.value;
   const drive = store.drive.value;
@@ -445,7 +519,15 @@ export function ViewArea({
   const actions = useViewActions();
   // An open drive draws its own header, path and menu.
   const ownHead = !drive;
-  const empty = view.kind === 'home';
+  const empty = view.kind === 'home' || c.empty;
+  // Placeholder rows while this view reads, until its rows, its cost card or its failure.
+  const loadingRows =
+    c.loading &&
+    !(c.table && c.table.rows.length) &&
+    !c.cost &&
+    !drive &&
+    status.cls !== 'bad' &&
+    (store.progress.value.visible || status.cls === '');
   return (
     <article class={`view${empty ? ' empty-state' : ''}`} id="view" aria-labelledby="viewtitle">
       {ownHead && c.crumbs.length > 1 ? (
@@ -464,7 +546,7 @@ export function ViewArea({
           ))}
         </nav>
       ) : null}
-      {empty ? <Icon name="search" big /> : null}
+      {empty ? <Icon name={view.kind === 'home' ? 'search' : 'info'} big /> : null}
       {ownHead ? (
         <div class="view-head">
           <h2 class="view-title" id="viewtitle">
@@ -479,13 +561,29 @@ export function ViewArea({
         {c.sub}
       </p>
       {toolbar}
+      <FileCard />
+      {c.file && c.facts.length ? <h3 class="block-title">Record</h3> : null}
       <dl class="facts" id="viewfacts" hidden={!c.facts.length}>
         {c.facts
           .filter((f) => f.dd !== null && f.dd !== undefined && f.dd !== '')
           .map((f) => (
             <div class="fact" key={f.dt}>
               <dt>{f.dt}</dt>
-              <dd class={f.mono ? 'mono' : undefined}>{f.dd}</dd>
+              <dd>
+                {f.mono && typeof f.dd === 'string' ? (
+                  <IdField
+                    id={f.dd}
+                    label={f.dt.toLowerCase()}
+                    {...(isId43(f.dd) && f.dt === 'Owner'
+                      ? { onOpen: () => void flows.openWallet(f.dd as string, false) }
+                      : isUuid(f.dd) && f.dt === 'Drive'
+                        ? { onOpen: () => void flows.openDrive(f.dd as string, false, null) }
+                        : {})}
+                  />
+                ) : (
+                  f.dd
+                )}
+              </dd>
             </div>
           ))}
       </dl>
@@ -515,6 +613,19 @@ export function ViewArea({
             )
           : null}
       </p>
+      {c.tags && c.tags.length ? (
+        <table class="kv" id="tags" aria-label="Tags">
+          <tbody>
+            {c.tags.map(([k, v], i) => (
+              <tr key={i}>
+                <th scope="row">{k}</th>
+                <td>{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+      {loadingRows ? <Skeleton /> : null}
       {c.chart ? <Chart c={c.chart} /> : null}
       <TableWrap
         hidden={!c.table || !c.table.rows.length}
@@ -531,8 +642,7 @@ export function ViewArea({
         ) : null}
       </TableWrap>
       {drive ? <DriveBrowser /> : null}
-      <div class="more" id="more" hidden={!c.more.length && !c.titleName && !c.portalWallet}>
-        {c.titleName ? <OpenFileLink /> : null}
+      <div class="more" id="more" hidden={!c.more.length && !c.portalWallet}>
         {c.more.map((m, i) =>
           m.kind === 'button' ? (
             <button
@@ -561,7 +671,7 @@ export function ViewArea({
           </a>
         ) : null}
       </div>
-      {receipt && status.cls === 'ok' && !status.flash && status.text ? (
+      {receipt && status.cls === 'ok' && !status.flash && status.text && !loadingRows ? (
         <p class="receipt" id="receipt">
           <Icon name="success" />
           <span>{status.text}</span>

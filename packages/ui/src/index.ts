@@ -8,9 +8,10 @@ export { ActionMenu, AnchoredMenu, Select, type Action, type Choice } from './me
 export {
   FilePreview,
   previewKind,
-  sizeText,
   PREVIEW_AUTO,
   type PreviewKind,
 } from './ardrive/file-preview.js';
+export { dateText, dateTimeText, fileType, sizeText } from './ardrive/format.js';
 export { ardriveUrl, type ArDriveTarget } from './ardrive/links.js';
 export { Sheet } from './ardrive/sheet.js';
+export { IdField, shortened } from './ardrive/id-field.js';

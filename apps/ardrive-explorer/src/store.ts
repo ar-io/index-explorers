@@ -73,6 +73,8 @@ export interface TableContent {
   preset?: 'drives' | 'walletDrives';
   /** Columns Arrow hands back as epoch milliseconds. */
   isTime?: Set<string>;
+  /** A question's or preset's table: headers, sizes and types in words. A typed query keeps its raw values. */
+  labelled?: boolean;
 }
 
 /** A name fetched for the view's title (a record's), labelled as not covered by the signature. */
@@ -114,6 +116,14 @@ export interface ViewContent {
   exportable: ExportData | null;
   /** A link to the Network Portal for the wallet the view is about. */
   portalWallet: string | null;
+  /** An upload's tags, as name and value. */
+  tags: [string, string][] | null;
+  /** A public file record's file: drawn as its own block above the record's facts. */
+  file: { recordId: string; fileId: string | null; driveId: string | null } | null;
+  /** Nothing to show (nothing found): drawn as the design system's empty state. */
+  empty: boolean;
+  /** Reading: rows-to-be drawn as placeholders until the answer lands. */
+  loading: boolean;
 }
 
 export const emptyContent = (): ViewContent => ({
@@ -130,6 +140,10 @@ export const emptyContent = (): ViewContent => ({
   namesNote: false,
   exportable: null,
   portalWallet: null,
+  tags: null,
+  file: null,
+  empty: false,
+  loading: false,
 });
 
 export interface DriveUi {

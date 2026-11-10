@@ -5,7 +5,6 @@
 import {
   arfs,
   bytesText,
-  fmtWhen,
   isId43,
   isUuid,
   num,
@@ -14,6 +13,7 @@ import {
   shortId,
   sq,
 } from '@ar-io/index-client';
+import { dateTimeText, fileType } from '@ar-io/explorer-ui';
 
 import { toRecord } from '../model/arfs.js';
 import type { RunOptions } from './query.js';
@@ -55,6 +55,7 @@ export function createFindFlows(
       crumbs,
       title: `Looking up ${shortId(id)}`,
       sub: 'Through the index’s id lookup, then its wallet lookup.',
+      loading: true,
     };
     const r = await s.measured('Looking it up', async () => {
       const bands = s.registeredBands();
@@ -74,7 +75,7 @@ export function createFindFlows(
           : ((rowsOf(
               await s.engine!.query(
                 `SELECT b64u(i.id) AS id, i.height, b64u(i.owner_address) AS owner, i.data_size, i.content_type, b64u(i.root_transaction_id) AS bundle,
-                 (SELECT string_agg(name || '=' || value, '  ') FROM ${parquetL2.tagsSql(bands, lo, hi)} g WHERE g.height = i.height AND g.id = i.id) AS tags
+                 (SELECT string_agg(name || '=' || value, chr(10)) FROM ${parquetL2.tagsSql(bands, lo, hi)} g WHERE g.height = i.height AND g.id = i.id) AS tags
                  FROM ${parquetL2.itemsSql(bands, lo, hi, false)} i WHERE i.id = unb64u(${sq(id)}) LIMIT 1`,
               ),
             )[0] as unknown as IdHit | undefined) ?? null);
@@ -102,6 +103,8 @@ export function createFindFlows(
         ...st.content.value,
         title: `Nothing found for ${shortId(id)}`,
         sub: 'Not an ArDrive upload and not a wallet with ArDrive uploads, by the index’s own lookups. It may be newer than the index, or not ArDrive’s.',
+        loading: false,
+        empty: true,
       };
       st.say(r.receipt, 'ok');
       return;
@@ -111,9 +114,12 @@ export function createFindFlows(
     const facts: Fact[] = [
       { dt: 'Owner', dd: hit.owner, mono: true },
       { dt: 'Size', dd: bytesText(hit.data_size) },
-      { dt: 'Type', dd: hit.content_type || '' },
+      {
+        dt: 'Type',
+        dd: hit.content_type ? `${fileType(hit.content_type)} (${hit.content_type})` : '',
+      },
       { dt: 'Block', dd: num(hit.height) },
-      { dt: 'Written', dd: ent && Number(ent.created_at) > 0 ? fmtWhen(ent.created_at) : '' },
+      { dt: 'Written', dd: ent && Number(ent.created_at) > 0 ? dateTimeText(ent.created_at) : '' },
       { dt: 'Bundle', dd: hit.bundle ?? '', mono: true },
       { dt: 'Drive', dd: ent?.drive_id ?? '', mono: true },
       { dt: 'Parent folder', dd: ent?.parent_folder_id ?? '', mono: true },
@@ -126,7 +132,17 @@ export function createFindFlows(
       title: ent && ent.privacy !== 'private' ? `${Title}: ` : `${Title} ${shortId(id)}`,
       sub: '',
       facts,
-      caption: 'Tags: ' + (hit.tags || '(none)'),
+      tags: (hit.tags || '')
+        .split('\n')
+        .filter(Boolean)
+        .map((t) => {
+          const at = t.indexOf('=');
+          return [t.slice(0, at), t.slice(at + 1)] as [string, string];
+        }),
+      file:
+        ent && ent.kind === 'file' && ent.privacy !== 'private'
+          ? { recordId: id, fileId: ent.entity_id, driveId: ent.drive_id }
+          : null,
       more: [
         {
           kind: 'link',

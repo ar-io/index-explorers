@@ -2,6 +2,7 @@
  * An answer drawn before its table: which columns a question charts, and the
  * points that come out of its rows. Pure, so it is tested without a page.
  */
+import { fileType } from '@ar-io/explorer-ui';
 import { bytesText, num, shortId } from '@ar-io/index-client';
 
 import { columnLabel } from './questions.js';
@@ -47,6 +48,7 @@ function nameOf(key: string, v: unknown): string {
   const m = /^(\d{4})-(\d{2})$/.exec(t);
   if (m && key === 'month') return `${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
   if (key === 'size_bucket') return t.replace(/^[a-z]\. /, '');
+  if ((key === 'type' || key === 'content_type') && t.includes('/')) return fileType(t);
   return t;
 }
 

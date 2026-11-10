@@ -1533,6 +1533,99 @@ td .name.mismatch {
   }
 }
 
+/* A view in blocks (a file record: File, then Record), each with a small title. */
+.block {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border: 1px solid var(--stroke-low);
+  border-radius: var(--radius-md);
+}
+.block-title {
+  margin-top: var(--space-lg);
+  font-size: var(--heading6);
+  color: var(--text-high);
+}
+.block > .block-title {
+  margin: 0 0 var(--space-md);
+}
+.block .facts {
+  margin-top: var(--space-md);
+}
+.block-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-lg);
+  margin-top: var(--space-md);
+  font-size: var(--paragraph);
+}
+.block-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+}
+.block-links .ico {
+  width: 14px;
+  height: 14px;
+}
+/* An upload's tags: a key and value list, not a run-on line. */
+table.kv {
+  min-width: 0;
+  width: 100%;
+  margin-top: var(--space-md);
+  border-spacing: 0;
+  table-layout: fixed;
+}
+table.kv th,
+table.kv td {
+  height: auto;
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--stroke-low);
+  border-radius: 0;
+  background: none;
+  font-size: var(--paragraph);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+table.kv th {
+  width: 32%;
+  font-weight: 600;
+  color: var(--text-low);
+  vertical-align: top;
+}
+table.kv td {
+  font-family: var(--font-mono);
+  font-size: var(--code);
+  font-weight: 400;
+}
+/* Rows while a listing reads: the table's own shape, quietly pulsing. */
+.skeleton {
+  display: grid;
+  gap: 5px;
+  margin-top: var(--space-md);
+}
+.skeleton i {
+  display: block;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--table-row);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.skeleton i:nth-child(2n) {
+  animation-delay: 0.2s;
+}
+.d-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--paragraph-small);
+  color: var(--text-low);
+}
+/* Nothing found: the path stays above the empty state, not inside it. */
+.empty-state .crumbs {
+  align-self: stretch;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------- drive browser */
 .drive {
   margin-top: var(--space-xs);
 }

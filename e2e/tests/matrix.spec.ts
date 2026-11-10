@@ -398,13 +398,13 @@ test('find: a file record, file data, a wallet, a drive id; rejects nonsense; an
     if (name === 'file record') {
       await until(
         page,
-        async () => (await page.locator('#more a', { hasText: 'Open the file' }).count()) > 0,
+        async () => (await page.locator('#filecard a', { hasText: 'Open the file' }).count()) > 0,
         20_000,
         'open the file link',
       );
-      expect(await page.locator('#more a', { hasText: 'Open the file' }).count()).toBeGreaterThan(
-        0,
-      );
+      expect(
+        await page.locator('#filecard a', { hasText: 'Open the file' }).count(),
+      ).toBeGreaterThan(0);
     }
   }
   for (const [input, re] of [
@@ -537,11 +537,14 @@ test('on a phone, a question table shows it has more columns, and a wallet opene
   await goTo(m, 'questions');
   await m.locator('#asks button', { hasText: 'Biggest files' }).click();
   await until(m, async () => (await rows(m)) > 0, 60_000, 'biggest files');
-  // Ids shortened, whole in the link's title; units keep their case in the headers.
+  // Ids shortened, whole in the link's title; sizes as bytes, under a header in words.
   const id = m.locator('#results tbody td').first().locator('button');
   expect(await id.innerText()).toMatch(/^.{6}….{4}$/);
   expect(await id.getAttribute('title')).toMatch(/^[A-Za-z0-9_-]{43}$/);
-  expect(await m.locator('#results thead th').allInnerTexts()).toContain('MiB');
+  expect(await m.locator('#results thead th').allInnerTexts()).toContain('Size');
+  expect(await m.locator('#results tbody td.num').first().innerText()).toMatch(
+    /^[\d.]+ (B|KB|MB|GB)$/,
+  );
   const box = () =>
     m.evaluate(() => {
       const w = document.querySelector('.tablewrap') as HTMLElement;

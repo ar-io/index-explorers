@@ -145,6 +145,7 @@ export function createQueryFlow(s: Session) {
         chart: buildChart(opts.chart, cols, rows),
         table: {
           cols: cols.map((c) => ({ key: c, label: opts.labels ? columnLabel(c) : c })),
+          labelled: !!opts.labels,
           rows: rows.slice(0, 200),
           isTime,
         },
