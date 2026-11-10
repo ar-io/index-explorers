@@ -6,11 +6,46 @@
  * Dark is the default theme and light is first class: the page follows the
  * system, and data-theme on <html> (the toggle in the masthead) overrides it.
  *
- * Wavehaus is a licensed face and is not served from here: every page that
- * has not been given its files uses the system stack the system names.
+ * Wavehaus is ArDrive's licensed face, served beside the page with the
+ * ArDrive team's permission (2026-11-09) and for ArDrive pages only: the cuts
+ * the apps use (section 3.1), with Book as CSS 400 and Light as 300, as the
+ * kit says a web page declares them. Its middle dot sits on the baseline, so
+ * U+00B7 is left out of its range and the separators take the system's.
  * Roboto Mono (SIL Open Font License 1.1) is served beside the page, for IDs,
  * addresses and code only.
  */
+@font-face {
+  font-family: Wavehaus;
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./fonts/wavehaus-light.woff2') format('woff2');
+  unicode-range: U+0000-00B6, U+00B8-FFFF;
+}
+@font-face {
+  font-family: Wavehaus;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/wavehaus-book.woff2') format('woff2');
+  unicode-range: U+0000-00B6, U+00B8-FFFF;
+}
+@font-face {
+  font-family: Wavehaus;
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/wavehaus-semibold.woff2') format('woff2');
+  unicode-range: U+0000-00B6, U+00B8-FFFF;
+}
+@font-face {
+  font-family: Wavehaus;
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/wavehaus-bold.woff2') format('woff2');
+  unicode-range: U+0000-00B6, U+00B8-FFFF;
+}
 @font-face {
   font-family: 'Roboto Mono';
   font-style: normal;

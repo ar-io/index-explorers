@@ -1060,10 +1060,25 @@ input[type='search']::-webkit-search-cancel-button {
 .more button {
   height: var(--button-compact);
 }
+/* A warning in the kit's sense: neutral text, the icon carries the meaning. */
 .names-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
   margin-top: var(--space-sm);
   font-size: var(--paragraph-small);
   color: var(--text-low);
+}
+.names-note .ico {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--icon-mid);
+}
+.names-note strong {
+  font-weight: 600;
+  color: var(--text-mid);
 }
 .nodate {
   color: var(--text-low);
@@ -1162,6 +1177,8 @@ td .name.mismatch {
   gap: 2px;
 }
 .namewrap .rowlink {
+  /* A button centres its label; this one stretches across its cell. */
+  justify-self: start;
   text-decoration: none;
   font-weight: 600;
 }

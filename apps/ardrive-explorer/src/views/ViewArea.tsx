@@ -531,8 +531,13 @@ export function ViewArea() {
         ) : null}
       </div>
       <p class="names-note" id="namesnote" hidden={!c.namesNote}>
-        Names are read from the gateway's copy of each entity's metadata and checked for size
-        against the signed index; everything else here is from the index.
+        <Icon name="warning" />
+        <span>
+          <strong>Names are chosen by each owner, and this page does not review them.</strong> Don't
+          trust a link, address or offer in a name. Names are read from the gateway's copy of each
+          record and checked for size against the signed index; everything else here is from the
+          index.
+        </span>
       </p>
     </article>
   );
