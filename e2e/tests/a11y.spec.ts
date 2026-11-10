@@ -94,22 +94,22 @@ test('a menu works from the keyboard, as the design system says', async ({ brows
   await page.locator('#privacy').focus();
   await page.keyboard.press('ArrowDown');
   await page.locator('#privacy-menu').waitFor();
-  expect(await active()).toBe('any');
+  expect(await active()).toBe('public');
   expect(
     await page.locator('#privacy-menu [aria-selected="true"]').getAttribute('data-value'),
-  ).toBe('any');
+  ).toBe('public');
   await page.keyboard.press('ArrowDown');
-  expect(await active()).toBe('public');
+  expect(await active()).toBe('any');
   await page.keyboard.press('Enter');
   expect(await page.locator('#privacy-menu').count()).toBe(0);
-  expect(await page.locator('#privacy').getAttribute('data-value')).toBe('public');
+  expect(await page.locator('#privacy').getAttribute('data-value')).toBe('any');
   expect(await focused()).toBe('privacy');
   // Escape closes without picking, and focus returns.
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Escape');
   expect(await page.locator('#privacy-menu').count()).toBe(0);
-  expect(await page.locator('#privacy').getAttribute('data-value')).toBe('public');
+  expect(await page.locator('#privacy').getAttribute('data-value')).toBe('any');
   expect(await focused()).toBe('privacy');
   // A row's menu: Enter on its button opens it, and More info opens the details.
   await openPage(page, `drive=${KNOWN.typicalDrive}`);

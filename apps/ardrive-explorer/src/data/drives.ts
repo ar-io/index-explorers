@@ -111,69 +111,96 @@ export function createDriveFlows(s: Session) {
     if (bs.done) return;
     const where = filtersSql(st.privacy.value, st.app.value);
     const hide = st.hideEmpty.value && s.hasLookups;
+    // The listing as it stands; `reading` while older windows are still on their way.
+    const show = (reading: boolean) => {
+      // A new array each time: the table keeps its rows until they change.
+      const rows = [...bs.rows] as unknown as Record<string, unknown>[];
+      const back =
+        `back to block ${num(bs.hi + 1)}` +
+        (timeAt(s.bands, bs.hi + 1) ? ` (${fmtDay(timeAt(s.bands, bs.hi + 1)!)})` : '');
+      const hidden = bs.hidden ? `; ${num(bs.hidden)} empty ones hidden` : '';
+      st.content.value = {
+        ...st.content.value,
+        table: { cols: [], rows, preset: 'drives' },
+        namesNote: true,
+        more: reading
+          ? [{ kind: 'text', label: `${num(bs.rows.length)} so far, reading ${back}${hidden}` }]
+          : bs.done
+            ? [
+                {
+                  kind: 'text',
+                  label:
+                    `${num(bs.rows.length)} drive${bs.rows.length === 1 ? '' : 's'} in this period` +
+                    (bs.hidden ? `, and ${num(bs.hidden)} empty ones hidden.` : '.'),
+                },
+              ]
+            : [
+                { kind: 'button', label: 'Show older drives', go: () => void browse(false) },
+                { kind: 'text', label: `${num(bs.rows.length)} so far, ${back}${hidden}` },
+              ],
+        exportable: {
+          cols: [
+            'drive_id',
+            'id',
+            'owner',
+            'privacy',
+            'created_at',
+            'app',
+            'app_version',
+            'arfs',
+            'records',
+          ],
+          rows,
+          isTime: new Set(['created_at']),
+          slug: 'drives',
+        },
+      };
+    };
     const r = await s.measured('Reading drives', async () => {
-      const got: DriveRow[] = [];
+      let got = 0;
       // Walk back in windows until a page is full: a window that comes back
       // nearly empty is doubled, so a quiet period does not cost many requests.
-      while (got.length < CONFIG.page && bs.hi >= p.lo) {
+      // Each window's drives are listed as soon as they are counted, so the
+      // first rows do not wait for the whole page.
+      while (got < CONFIG.page && bs.hi >= p.lo) {
         const lo = Math.max(p.lo, bs.hi - bs.step + 1);
+        st.tr(`drives ${lo}-${bs.hi}`);
+        // The window's tags and items, fetched at once rather than as the
+        // engine asks for them, one growing read after another.
+        await readAhead(s.engine!, parquetL2.windowReadAhead(s.registeredBands(), lo, bs.hi), {
+          stop: () => s.overtaken(my),
+        });
+        if (s.overtaken(my)) break;
         const rows = rowsOf(
           await s.engine!.query(arfs.newestDrivesSql(s.registeredBands(), lo, bs.hi, where)),
         ).map(toRecord);
-        bs.hi = lo - 1;
+        st.tr(`drives ${rows.length}; counts`);
         if (rows.length < CONFIG.page / 4) bs.step = Math.min(bs.step * 2, 64000);
-        for (const d of await withRecords(rows, my)) {
-          if (hide && d.records !== null && d.records <= EMPTY_DRIVE_RECORDS) bs.hidden++;
-          else got.push(d);
-        }
+        const counted = await withRecords(rows, my);
+        st.tr('counts done');
         if (s.overtaken(my)) break;
+        bs.hi = lo - 1;
+        for (const d of counted) {
+          if (hide && d.records !== null && d.records <= EMPTY_DRIVE_RECORDS) bs.hidden++;
+          else {
+            bs.rows.push(d);
+            got++;
+          }
+        }
+        if (bs.hi < p.lo) bs.done = true;
+        if (got < CONFIG.page && !bs.done && bs.rows.length) show(true);
       }
       if (bs.hi < p.lo) bs.done = true;
       return got;
     });
-    if (!r || s.overtaken(my)) return;
-    bs.rows.push(...r.out);
-    const c = st.content.value;
-    st.content.value = {
-      ...c,
-      table: { cols: [], rows: bs.rows as unknown as Record<string, unknown>[], preset: 'drives' },
-      namesNote: true,
-      more: bs.done
-        ? [
-            {
-              kind: 'text',
-              label:
-                `${num(bs.rows.length)} drive${bs.rows.length === 1 ? '' : 's'} in this period` +
-                (bs.hidden ? `, and ${num(bs.hidden)} empty ones hidden.` : '.'),
-            },
-          ]
-        : [
-            { kind: 'button', label: 'Show older drives', go: () => void browse(false) },
-            {
-              kind: 'text',
-              label:
-                `${num(bs.rows.length)} so far, back to block ${num(bs.hi + 1)}` +
-                (timeAt(s.bands, bs.hi + 1) ? ` (${fmtDay(timeAt(s.bands, bs.hi + 1)!)})` : '') +
-                (bs.hidden ? `; ${num(bs.hidden)} empty ones hidden` : ''),
-            },
-          ],
-      exportable: {
-        cols: [
-          'drive_id',
-          'id',
-          'owner',
-          'privacy',
-          'created_at',
-          'app',
-          'app_version',
-          'arfs',
-          'records',
-        ],
-        rows: bs.rows as unknown as Record<string, unknown>[],
-        isTime: new Set(['created_at']),
-        slug: 'drives',
-      },
-    };
+    if (s.overtaken(my)) return;
+    // A read that failed (already said) keeps the drives listed so far, with
+    // "Show older drives" to try the rest again.
+    if (!r) {
+      if (bs.rows.length) show(false);
+      return;
+    }
+    show(false);
     st.say(r.receipt, 'ok');
   }
 

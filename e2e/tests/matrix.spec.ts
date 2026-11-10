@@ -54,10 +54,8 @@ test('publication verifies, the range reader controls the page, drives list with
   expect(await page.locator('main').count()).toBe(1);
   expect(await page.locator('a.skip').getAttribute('href')).toBe('#explore');
   expect(await page.locator('#view').getAttribute('aria-live')).toBeNull();
-  await page.locator('#more button', { hasText: 'Newest drives' }).click();
-  await until(page, async () => (await rows(page)) > 0, 240_000, 'browse');
-  expect(await rows(page)).toBeGreaterThan(0);
-  await until(page, async () => countsShown(page), 30_000, 'hero');
+  // The counts are home's own, read while home shows (the list does not wait for them).
+  await until(page, async () => countsShown(page), 120_000, 'hero');
   expect(await countsShown(page)).toBe(true);
   if (!LIVE) {
     // One band's from its stats file, the other's from its tag lookup.
@@ -65,6 +63,9 @@ test('publication verifies, the range reader controls the page, drives list with
     expect(c.drives).toBe(KNOWN.drives);
     expect(c.files).toBe(KNOWN.files);
   }
+  await page.locator('#more button', { hasText: 'Newest drives' }).click();
+  await until(page, async () => (await rows(page)) > 0, 240_000, 'browse');
+  expect(await rows(page)).toBeGreaterThan(0);
   await page.waitForTimeout(LIVE ? 6000 : 2000);
   const names = await page.locator('#results tbody .name').allInnerTexts();
   expect(
@@ -113,14 +114,8 @@ test('records come from the lookup; empty drives stay hidden until asked for', a
 });
 
 test('filters: privacy, app and period reload the listing', async () => {
-  await clearStatus(page);
-  await choose(page, '#privacy', 'public');
-  await until(
-    page,
-    async () => /Read|Nothing new|Answered/.test(await status(page)),
-    120_000,
-    'public filter',
-  );
+  // Public only by default: a private drive's name is encrypted, so its row has nothing to show.
+  expect(await page.locator('#privacy').getAttribute('data-value')).toBe('public');
   const badges = await page.locator('#results tbody .privacy').allInnerTexts();
   expect(badges.length).toBeGreaterThan(0);
   expect(badges.every((b) => /public/i.test(b))).toBe(true);
@@ -934,7 +929,8 @@ test('after the gateway answered 503, nothing is read by itself; Try again or an
     expect(reads).toBe(seen + 1);
     if (how === 'try again') await until(m, () => countsShown(m), 60_000, 'counts');
     else await until(m, async () => (await rows(m)) > 0, 120_000, 'drives');
-    expect(await countsShown(m)).toBe(true);
+    // The counts are home's: the newest drives, asked for first, do not wait for them.
+    expect(await countsShown(m)).toBe(how === 'try again');
     expect(await m.locator('#status .bad').count()).toBe(0);
     await m.close();
   }
