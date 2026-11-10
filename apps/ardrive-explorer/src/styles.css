@@ -1466,7 +1466,73 @@ td .name.mismatch {
   white-space: nowrap;
 }
 
-/* ---------------------------------------------------- drive browser */
+/* On a phone, a list of drives is a list: each drive on two lines, its name,
+   then owner, date, privacy, app and records in one quiet line, never a
+   table that scrolls sideways. The headers stay for a screen reader. */
+@media (max-width: 640px) {
+  table.as-list,
+  table.as-list tbody {
+    display: block;
+    min-width: 0;
+  }
+  table.as-list thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  table.as-list tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-xxs) var(--space-xs);
+    margin-bottom: 5px;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    background: var(--table-row);
+  }
+  table.as-list tr:hover {
+    background: var(--table-hover);
+  }
+  table.as-list td,
+  #results.as-list tbody tr:has(.namewrap):hover > td {
+    display: block;
+    height: auto;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    white-space: nowrap;
+  }
+  table.as-list td:first-child {
+    flex-basis: 100%;
+    min-width: 0;
+    margin-bottom: var(--space-xxs);
+  }
+  table.as-list td:first-child .sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.as-list td:not(:first-child) {
+    font-size: var(--paragraph-small);
+    font-weight: 400;
+    color: var(--text-mid);
+    text-align: left;
+  }
+  table.as-list td:empty,
+  table.as-list td.app {
+    display: none;
+  }
+  table.as-list td:not(:first-child) + td:not(:empty)::before {
+    content: '\00b7';
+    margin-right: var(--space-xs);
+    color: var(--text-low);
+  }
+  table.as-list td.num::after {
+    content: ' records';
+  }
+}
+
 .drive {
   margin-top: var(--space-xs);
 }
@@ -1614,14 +1680,16 @@ td .name.mismatch {
 .b-body:has(.b-details) {
   grid-template-columns: minmax(0, 1fr) 340px;
 }
+/* In a bottom sheet (under 960 px), the details are the sheet's content. */
 @media (max-width: 960px) {
   .b-body:has(.b-details) {
     grid-template-columns: minmax(0, 1fr);
   }
-  .b-details {
-    border-left: 0 !important;
-    border-top: 1px solid var(--stroke-low);
-  }
+}
+.sheet .b-details {
+  padding: 0;
+  border: 0;
+  background: none;
 }
 .b-listwrap {
   min-width: 0;

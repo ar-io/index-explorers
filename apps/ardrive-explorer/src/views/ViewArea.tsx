@@ -78,7 +78,7 @@ export function Name({
 function DrivesTable({ rows }: { rows: DriveRow[] }) {
   const { flows } = useApp();
   return (
-    <table id="results">
+    <table id="results" class="as-list">
       <thead>
         <tr>
           <th scope="col">Drive</th>
@@ -131,7 +131,7 @@ function DrivesTable({ rows }: { rows: DriveRow[] }) {
               <td>
                 <span class="privacy">{sentence(r.privacy)}</span>
               </td>
-              <td>{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
+              <td class="app">{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
               <td class="num">{r.records === null ? '' : num(r.records)}</td>
             </tr>
           );
@@ -144,7 +144,7 @@ function DrivesTable({ rows }: { rows: DriveRow[] }) {
 function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
   const { flows } = useApp();
   return (
-    <table id="results">
+    <table id="results" class="as-list">
       <thead>
         <tr>
           <th scope="col">Drive</th>

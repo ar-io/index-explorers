@@ -13,3 +13,4 @@ export {
   type PreviewKind,
 } from './ardrive/file-preview.js';
 export { ardriveUrl, type ArDriveTarget } from './ardrive/links.js';
+export { Sheet } from './ardrive/sheet.js';

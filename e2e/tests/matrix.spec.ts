@@ -528,7 +528,7 @@ test('Run query brings its work, its answer or its failure into view, and only w
   }
 });
 
-test('on a phone, a question table shows it has more columns, and a wallet table starts at its left edge', async ({
+test('on a phone, a question table shows it has more columns, and a wallet opened from it starts at its left edge', async ({
   browser,
 }) => {
   const m = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
@@ -558,17 +558,7 @@ test('on a phone, a question table shows it has more columns, and a wallet table
   const q = await box();
   expect(q.seen, 'columns in view').toBeGreaterThan(1);
   expect(/more-right/.test(q.fades)).toBe(q.scrolls);
-  // A wallet opened from Newest drives, after scrolling that table sideways.
-  await goTo(m, 'drives');
-  // The drives table itself, not the question's rows still on screen as it starts.
-  await until(
-    m,
-    async () =>
-      (await m.locator('#results thead th').first().textContent()) === 'Drive' &&
-      (await rows(m)) > 0,
-    120_000,
-    'browse',
-  );
+  // A wallet opened from that answer, after scrolling its table sideways.
   await m.evaluate(() => {
     const w = document.querySelector('.tablewrap') as HTMLElement;
     w.scrollLeft = w.scrollWidth;
@@ -770,6 +760,13 @@ test('light theme renders; phone width has no horizontal scroll', async ({ brows
   const overflow = await m.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );
+  // The drives list is a list on a phone: nothing in it scrolls sideways.
+  expect(
+    await m.evaluate(() => {
+      const w = document.querySelector('.tablewrap') as HTMLElement;
+      return w.scrollWidth - w.clientWidth;
+    }),
+  ).toBeLessThanOrEqual(1);
   expect(
     overflow,
     `scrollWidth ${await m.evaluate(() => document.documentElement.scrollWidth)}`,

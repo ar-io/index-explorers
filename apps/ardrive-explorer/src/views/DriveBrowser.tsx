@@ -12,6 +12,7 @@ import {
   iconFor,
   typeLabel,
   previewKind,
+  Sheet,
   useWindowed,
   type Action,
 } from '@ar-io/explorer-ui';
@@ -21,6 +22,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { CONFIG } from '../config.js';
 import { useApp } from '../context.js';
 import { saveBlob } from '../util/export.js';
+import { useMedia } from './useMedia.js';
 import { sentence, useViewActions } from './ViewArea.js';
 import {
   currentFolder,
@@ -543,6 +545,16 @@ export function DriveBrowser() {
     );
   const selected = ui.selected ? (d.byId.get(ui.selected) ?? null) : null;
   const viewActions = useViewActions();
+  // Beside the list where there is room; a bottom sheet where there is not,
+  // so a tap on a phone shows the details instead of scrolling them away.
+  const sheet = useMedia('(max-width: 960px)');
+  const closeDetails = () => (store.driveUi.value = { ...store.driveUi.value, selected: null });
+  const details =
+    ui.selected === d.driveId ? (
+      <DriveDetails d={d} />
+    ) : selected ? (
+      <Details d={d} x={selected} />
+    ) : null;
   const [menu, setMenu] = useState<{ x: DriveItem; anchor: HTMLElement } | null>(null);
   const select = (x: DriveItem) =>
     (store.driveUi.value = { ...store.driveUi.value, selected: x.entityId });
@@ -750,11 +762,15 @@ export function DriveBrowser() {
                 : 'This folder is empty.'}
             </p>
           </div>
-          {ui.selected === d.driveId ? (
-            <DriveDetails d={d} />
-          ) : selected ? (
-            <Details d={d} x={selected} />
-          ) : null}
+          {sheet ? (
+            details ? (
+              <Sheet label="Details" onClose={closeDetails}>
+                {details}
+              </Sheet>
+            ) : null
+          ) : (
+            details
+          )}
           {menu ? (
             <AnchoredMenu
               id="b-rowmenu"

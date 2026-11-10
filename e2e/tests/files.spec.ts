@@ -80,3 +80,36 @@ test('a file previews when selected, downloads under its name, and opens in ArDr
     await page.locator('#b-details a', { hasText: 'Open in ArDrive' }).getAttribute('href'),
   ).toBe(`https://app.ardrive.io/#/drives/${KNOWN.typicalDrive}`);
 });
+
+test('on a phone, a tapped file opens its details in a bottom sheet, in view', async ({
+  browser,
+}) => {
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+    colorScheme: 'dark',
+  });
+  const page = await ctx.newPage();
+  await openPage(page, `drive=${KNOWN.typicalDrive}`);
+  expect(await driveListed(page, 120_000)).toBe(true);
+  await until(
+    page,
+    async () => (await fileRow(page, /\.(png|jpe?g)$/).count()) > 0,
+    30_000,
+    'image',
+  );
+  await fileRow(page, /\.(png|jpe?g)$/).tap();
+  const sheet = page.locator('.sheet[role=dialog]');
+  await sheet.waitFor();
+  expect(await sheet.locator('#b-details #preview').count()).toBe(1);
+  // Once it has risen (a 0.18 s slide).
+  await page.waitForTimeout(400);
+  const box = (await sheet.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(845);
+  expect(box.y).toBeGreaterThan(0);
+  await page.keyboard.press('Escape');
+  await until(page, async () => (await sheet.count()) === 0, 5_000, 'closed');
+  expect(await page.locator('#b-details').count()).toBe(0);
+  await ctx.close();
+});

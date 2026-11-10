@@ -1,0 +1,50 @@
+/* Sheet, over the ArDrive tokens (ardrive-tokens.css): container-l3, radius 12 on its top corners, elevation 80, over the scrim. */
+.sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+}
+.sheet {
+  position: absolute;
+  inset: auto 0 0 0;
+  max-height: 85vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-xs) var(--space-lg) var(--space-lg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--container-l3);
+  box-shadow: 0 -8px 16px var(--shadow);
+  animation: sheet-up 0.18s ease-out;
+}
+.sheet:focus {
+  outline: none;
+}
+.sheet-grip {
+  display: block;
+  width: 32px;
+  height: 4px;
+  margin: 0 auto var(--space-sm);
+  border-radius: 2px;
+  background: var(--stroke-high);
+}
+@media (max-width: 833px) {
+  .sheet {
+    padding-inline: var(--space-md);
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
