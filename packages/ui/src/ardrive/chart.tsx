@@ -1,11 +1,29 @@
 /**
+ * ArDrive's chart, standalone: give it points; styles in `chart.css`, over
+ * the ArDrive tokens. The ArDrive explorer draws a question's answer with it.
+ *
  * An answer, drawn before its table. Ranked bars are a list (a name, a bar
  * and its figure per row); a measure over months is columns, one scale, with
  * the figure on hover. One neutral hue: the kit keeps red for actions and its
  * status hues for states. Two series stack, in two steps of it, with a key.
  * The table under it holds every figure, so a screen reader reads that.
  */
-import type { ChartData } from '../data/chart.js';
+/** One bar or column: its name, its values (one per series, stacked), and the figure said beside it. */
+export interface ChartPoint {
+  label: string;
+  values: number[];
+  text: string;
+}
+
+/** What a chart draws: bars (ranked) or columns (over time), one scale. */
+export interface ChartData {
+  form: 'bars' | 'columns';
+  /** The series' names, for the key when there are two. */
+  series: string[];
+  points: ChartPoint[];
+  /** The largest total, which a full bar or column stands for. */
+  max: number;
+}
 
 const pct = (v: number, max: number): string => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
 
@@ -87,9 +105,9 @@ function maxText(c: ChartData): string {
   return c.series.length > 1 ? `${top.t.toLocaleString()} at most` : top.p.text;
 }
 
-export function Chart({ c }: { c: ChartData }) {
+export function Chart({ c, id }: { c: ChartData; id?: string }) {
   return (
-    <figure class={`chart ${c.form}`} id="chart" aria-hidden="true">
+    <figure class={`chart ${c.form}`} {...(id ? { id } : {})} aria-hidden="true">
       <Key series={c.series} />
       {c.form === 'bars' ? <Bars c={c} /> : <Columns c={c} />}
     </figure>

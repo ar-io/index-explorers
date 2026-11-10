@@ -1,6 +1,8 @@
 import {
   ActionMenu,
+  AnchoredMenu,
   ardriveUrl,
+  Chart,
   dateText,
   dateTimeText,
   FilePreview,
@@ -21,7 +23,6 @@ import type { DriveRow } from '../model/arfs.js';
 import type { Column, TableContent } from '../store.js';
 import { saveFile, toCsv, toJson } from '../util/export.js';
 import { captionSegments } from '../data/questions.js';
-import { Chart } from './Chart.js';
 import { DriveBrowser } from './DriveBrowser.js';
 import { useMedia } from './useMedia.js';
 import type { WalletDrive } from '../data/wallet.js';
@@ -78,127 +79,223 @@ export function Name({
   );
 }
 
+/**
+ * A drive's menu on its row in a list, the same as its menu in its own
+ * header, less what needs it open: Open | Copy link | Open in ArDrive. One
+ * menu for the whole list, opened beside the row's button.
+ */
+function useDriveRowMenu() {
+  const { store, session, flows } = useApp();
+  const [menu, setMenu] = useState<{
+    id: string;
+    privacy: string;
+    label: string;
+    anchor: HTMLElement;
+  } | null>(null);
+  const button = (id: string, privacy: string, label: string) => (
+    <td class="row-act">
+      <button
+        type="button"
+        class="iconbtn compact"
+        aria-label={`Actions for ${label}`}
+        aria-haspopup="menu"
+        aria-controls="drive-rowmenu"
+        aria-expanded={menu?.id === id ? 'true' : 'false'}
+        onClick={(e) => {
+          e.stopPropagation();
+          const anchor = e.currentTarget;
+          setMenu(menu?.id === id ? null : { id, privacy, label, anchor });
+        }}
+      >
+        <Icon name="more" />
+      </button>
+    </td>
+  );
+  const node = menu ? (
+    <AnchoredMenu
+      id="drive-rowmenu"
+      label={`Actions for ${menu.label}`}
+      anchor={menu.anchor}
+      onClose={() => setMenu(null)}
+      actions={(() => {
+        const share = session.shareUrl({ kind: 'drive', key: menu.id, folder: null });
+        const app = ardriveUrl(
+          { driveId: menu.id, privacy: menu.privacy === 'private' ? 'private' : 'public' },
+          CONFIG.appUrl,
+        );
+        return [
+          { label: 'Open', icon: 'drive', run: () => void flows.openDrive(menu.id, false, null) },
+          {
+            label: 'Copy link',
+            icon: 'copy',
+            group: true,
+            run: () =>
+              void navigator.clipboard.writeText(share).then(
+                () => store.say('Link copied.', 'ok', { flash: true }),
+                () => store.say('The browser would not give clipboard access.', 'bad'),
+              ),
+          },
+          ...(app
+            ? [
+                {
+                  label: 'Open in ArDrive',
+                  icon: 'external' as const,
+                  run: () => window.open(app, '_blank', 'noopener'),
+                },
+              ]
+            : []),
+        ] satisfies Action[];
+      })()}
+    />
+  ) : null;
+  return { button, node };
+}
+
 function DrivesTable({ rows }: { rows: DriveRow[] }) {
   const { flows } = useApp();
+  const menu = useDriveRowMenu();
   return (
-    <table id="results" class="as-list">
-      <thead>
-        <tr>
-          <th scope="col">Drive</th>
-          <th scope="col">Owner</th>
-          <th scope="col">Created</th>
-          <th scope="col">Privacy</th>
-          <th scope="col">App</th>
-          <th
-            scope="col"
-            class="num"
-            title="Records over the drive's whole history, from the signed tag lookup. A drive with nothing in it has 2: itself and its root folder."
-          >
-            Records
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => {
-          const open = () => void flows.openDrive(r.drive_id!, false, null);
-          return (
-            <tr
-              key={r.id}
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest('button, a')) return;
-                open();
-              }}
+    <>
+      <table id="results" class="as-list">
+        <thead>
+          <tr>
+            <th scope="col">Drive</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Created</th>
+            <th scope="col">Privacy</th>
+            <th scope="col">App</th>
+            <th
+              scope="col"
+              class="num"
+              title="Records over the drive's whole history, from the signed tag lookup. A drive with nothing in it has 2: itself and its root folder."
             >
-              <td>
-                <div class="namewrap">
-                  <RowLink go={open}>
-                    <Icon name={r.privacy === 'private' ? 'privateDrive' : 'drive'} />
-                    <Name
-                      id={r.id}
-                      size={r.record_size}
-                      fallback={r.privacy === 'private' ? 'Private drive' : 'Unnamed drive'}
-                      isPrivate={r.privacy === 'private'}
-                    />
-                  </RowLink>
-                  <span class="sub">{r.drive_id}</span>
-                </div>
-              </td>
-              <td>
-                <RowLink
-                  go={() => void flows.openWallet(r.owner, false)}
-                  mono
-                  text={shortId(r.owner)}
-                ></RowLink>
-              </td>
-              <td>
-                {Number(r.created_at) > 0 ? dateText(r.created_at) : `block ${num(r.height)}`}
-              </td>
-              <td>
-                <span class="privacy">{sentence(r.privacy)}</span>
-              </td>
-              <td class="app">{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
-              <td class="num">{r.records === null ? '' : num(r.records)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+              Records
+            </th>
+            <th scope="col" class="row-act">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const open = () => void flows.openDrive(r.drive_id!, false, null);
+            return (
+              <tr
+                key={r.id}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button, a')) return;
+                  open();
+                }}
+              >
+                <td>
+                  <div class="namewrap">
+                    <RowLink go={open}>
+                      <Icon name={r.privacy === 'private' ? 'privateDrive' : 'drive'} />
+                      <Name
+                        id={r.id}
+                        size={r.record_size}
+                        fallback={r.privacy === 'private' ? 'Private drive' : 'Unnamed drive'}
+                        isPrivate={r.privacy === 'private'}
+                      />
+                    </RowLink>
+                    <span class="sub">{r.drive_id}</span>
+                  </div>
+                </td>
+                <td>
+                  <RowLink
+                    go={() => void flows.openWallet(r.owner, false)}
+                    mono
+                    text={shortId(r.owner)}
+                  ></RowLink>
+                </td>
+                <td>
+                  {Number(r.created_at) > 0 ? dateText(r.created_at) : `block ${num(r.height)}`}
+                </td>
+                <td>
+                  <span class="privacy">{sentence(r.privacy)}</span>
+                </td>
+                <td class="app">{`${r.app || ''}${r.app_version ? ' ' + r.app_version : ''}`}</td>
+                <td class="num">{r.records === null ? '' : num(r.records)}</td>
+                {menu.button(
+                  r.drive_id!,
+                  r.privacy,
+                  r.privacy === 'private' ? 'a private drive' : `drive ${r.drive_id!.slice(0, 8)}`,
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {menu.node}
+    </>
   );
 }
 
 function WalletDrivesTable({ rows }: { rows: WalletDrive[] }) {
   const { flows } = useApp();
+  const menu = useDriveRowMenu();
   return (
-    <table id="results" class="as-list">
-      <thead>
-        <tr>
-          <th scope="col">Drive</th>
-          <th scope="col">Privacy</th>
-          <th scope="col" class="num">
-            Records here
-          </th>
-          <th scope="col">Last written</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((d) => (
-          <tr
-            key={d.drive_id}
-            onClick={(e) =>
-              (e.target as HTMLElement).closest('button, a')
-                ? null
-                : void flows.openDrive(d.drive_id, false, null)
-            }
-          >
-            <td>
-              <div class="namewrap">
-                <RowLink go={() => void flows.openDrive(d.drive_id, false, null)}>
-                  {d.privacy === 'private' || !d.drive ? (
-                    <span class="name pending">
-                      {d.privacy === 'private'
-                        ? 'private drive'
-                        : 'drive (record not in this stretch)'}
-                    </span>
-                  ) : (
-                    <Name id={d.drive.id} size={d.drive.record_size} fallback="unnamed drive" />
-                  )}
-                </RowLink>
-                <span class="sub">{d.drive_id}</span>
-              </div>
-            </td>
-            <td>
-              <span class="privacy">{sentence(d.privacy)}</span>
-            </td>
-            <td class="num">{num(d.records)}</td>
-            <td>
-              {Number(d.last.created_at) > 0
-                ? dateText(d.last.created_at)
-                : `block ${num(d.last.height)}`}
-            </td>
+    <>
+      <table id="results" class="as-list">
+        <thead>
+          <tr>
+            <th scope="col">Drive</th>
+            <th scope="col">Privacy</th>
+            <th scope="col" class="num">
+              Records here
+            </th>
+            <th scope="col">Last written</th>
+            <th scope="col" class="row-act">
+              <span class="sr-only">Actions</span>
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((d) => (
+            <tr
+              key={d.drive_id}
+              onClick={(e) =>
+                (e.target as HTMLElement).closest('button, a')
+                  ? null
+                  : void flows.openDrive(d.drive_id, false, null)
+              }
+            >
+              <td>
+                <div class="namewrap">
+                  <RowLink go={() => void flows.openDrive(d.drive_id, false, null)}>
+                    {d.privacy === 'private' || !d.drive ? (
+                      <span class="name pending">
+                        {d.privacy === 'private'
+                          ? 'private drive'
+                          : 'drive (record not in this stretch)'}
+                      </span>
+                    ) : (
+                      <Name id={d.drive.id} size={d.drive.record_size} fallback="unnamed drive" />
+                    )}
+                  </RowLink>
+                  <span class="sub">{d.drive_id}</span>
+                </div>
+              </td>
+              <td>
+                <span class="privacy">{sentence(d.privacy)}</span>
+              </td>
+              <td class="num">{num(d.records)}</td>
+              <td>
+                {Number(d.last.created_at) > 0
+                  ? dateText(d.last.created_at)
+                  : `block ${num(d.last.height)}`}
+              </td>
+              {menu.button(
+                d.drive_id,
+                d.privacy,
+                d.privacy === 'private' ? 'a private drive' : `drive ${d.drive_id.slice(0, 8)}`,
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {menu.node}
+    </>
   );
 }
 
@@ -626,7 +723,7 @@ export function ViewArea({
         </table>
       ) : null}
       {loadingRows ? <Skeleton /> : null}
-      {c.chart ? <Chart c={c.chart} /> : null}
+      {c.chart ? <Chart c={c.chart} id="chart" /> : null}
       <TableWrap
         hidden={!c.table || !c.table.rows.length}
         view={`${view.kind} ${'key' in view ? view.key : ''} ${c.title} ${c.table?.preset ?? ''}`}

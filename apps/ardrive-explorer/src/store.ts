@@ -8,7 +8,7 @@ import type { Band, Period, Receipt } from '@ar-io/index-client';
 import type { CheckState, ProofChecks, ProgressState } from '@ar-io/explorer-ui';
 import type { ComponentChildren } from 'preact';
 
-import type { ChartData } from './data/chart.js';
+import type { ChartData } from '@ar-io/explorer-ui';
 import type { DriveModel, SortKey } from './model/arfs.js';
 import type { ViewState } from './router.js';
 

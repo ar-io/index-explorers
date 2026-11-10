@@ -113,3 +113,36 @@ test('on a phone, a tapped file opens its details in a bottom sheet, in view', a
   expect(await page.locator('#b-details').count()).toBe(0);
   await ctx.close();
 });
+
+test("a drive's row in Newest drives has the drive's menu: Open, Copy link, Open in ArDrive", async ({
+  page,
+}) => {
+  await openPage(page, 'browse');
+  await until(
+    page,
+    async () => (await page.locator('#results tbody tr').count()) > 0,
+    120_000,
+    'browse',
+  );
+  const row = page
+    .locator('#results tbody tr')
+    .filter({ has: page.locator('.privacy', { hasText: 'Public' }) })
+    .first();
+  await row.locator('td.row-act button').click();
+  const items = page.locator('#drive-rowmenu [role=menuitem]');
+  expect((await items.allInnerTexts()).map((t) => t.trim())).toEqual([
+    'Open',
+    'Copy link',
+    'Open in ArDrive',
+  ]);
+  await items.filter({ hasText: 'Open' }).first().click();
+  await until(
+    page,
+    async () =>
+      (await page.locator('#b-list tbody tr.b-row').count()) > 0 ||
+      (await page.locator('#cost').isVisible()),
+    120_000,
+    'drive',
+  );
+  expect(await page.evaluate(() => location.hash)).toMatch(/drive=/);
+});

@@ -2,7 +2,7 @@
  * An answer drawn before its table: which columns a question charts, and the
  * points that come out of its rows. Pure, so it is tested without a page.
  */
-import { fileType } from '@ar-io/explorer-ui';
+import { fileType, type ChartData, type ChartPoint } from '@ar-io/explorer-ui';
 import { bytesText, num, shortId } from '@ar-io/index-client';
 
 import { columnLabel } from './questions.js';
@@ -15,22 +15,6 @@ export interface ChartSpec {
   label: string[];
   /** One measure, or two that stack (public and private). Never two scales. */
   series: string[];
-}
-
-export interface ChartPoint {
-  label: string;
-  values: number[];
-  /** The figure written beside a bar, or in a column's tooltip. */
-  text: string;
-}
-
-export interface ChartData {
-  form: 'bars' | 'columns';
-  /** The measure, as the table's header names it ("GiB", "Uploads"). */
-  series: string[];
-  points: ChartPoint[];
-  /** The largest total, which a full bar or column stands for. */
-  max: number;
 }
 
 /** GiB and MiB columns hold rounded sizes: written back as bytes are elsewhere. */
@@ -66,7 +50,7 @@ export function buildChart(
   const have = new Set(cols);
   const spec = specs.find((s) => [...s.label, ...s.series].every((c) => have.has(c)));
   if (!spec) return null;
-  const points = rows.map((r) => {
+  const points: ChartPoint[] = rows.map((r) => {
     const values = spec.series.map((k) => {
       const v = Number(r[k]);
       return Number.isFinite(v) && v > 0 ? v : 0;
