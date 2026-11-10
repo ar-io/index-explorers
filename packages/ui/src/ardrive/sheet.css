@@ -37,10 +37,10 @@
     padding-inline: var(--space-md);
   }
 }
+/* A slide, no fade: half-faded text fails contrast while the sheet rises. */
 @keyframes sheet-up {
   from {
     transform: translateY(24px);
-    opacity: 0.6;
   }
 }
 @media (prefers-reduced-motion: reduce) {

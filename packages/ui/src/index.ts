@@ -15,3 +15,4 @@ export { dateText, dateTimeText, fileType, sizeText } from './ardrive/format.js'
 export { ardriveUrl, type ArDriveTarget } from './ardrive/links.js';
 export { Sheet } from './ardrive/sheet.js';
 export { IdField, shortened } from './ardrive/id-field.js';
+export { Chart, type ChartData, type ChartPoint } from './ardrive/chart.js';
